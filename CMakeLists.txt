@@ -42,8 +42,10 @@ endfunction()
 add_library(packetcore STATIC
 	src/core/buffer.c
 	src/core/callsign.c
+	src/monitor/monitor.c
 	src/proto/ax25.c
 	src/proto/kiss.c
+	src/proto/kiss_stream.c
 )
 set_target_properties(packetcore PROPERTIES OUTPUT_NAME packetcore)
 target_include_directories(packetcore PUBLIC include)
@@ -74,3 +76,13 @@ add_executable(test_kiss tests/test_kiss.c)
 target_link_libraries(test_kiss PRIVATE packetcore)
 kilonode_target_defaults(test_kiss)
 add_test(NAME kiss COMMAND test_kiss)
+
+add_executable(test_kiss_stream tests/test_kiss_stream.c)
+target_link_libraries(test_kiss_stream PRIVATE packetcore)
+kilonode_target_defaults(test_kiss_stream)
+add_test(NAME kiss_stream COMMAND test_kiss_stream)
+
+add_executable(test_monitor tests/test_monitor.c)
+target_link_libraries(test_monitor PRIVATE packetcore)
+kilonode_target_defaults(test_monitor)
+add_test(NAME monitor COMMAND test_monitor)
