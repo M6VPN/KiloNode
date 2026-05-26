@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "kilonode/bbs_control.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
 #include "kilonode/stats.h"
@@ -18,6 +19,8 @@ static enum kn_control_error append_format(char *, size_t, size_t *,
 	const char *, ...);
 static uint8_t command_clean(const char *);
 static void format_digipeaters(const struct kn_heard_entry *, char *, size_t);
+static enum kn_control_error format_bbs(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
 static enum kn_control_error format_heard(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
 static enum kn_control_error format_help(char *, size_t);
@@ -96,6 +99,18 @@ format_digipeaters(const struct kn_heard_entry *entry, char *buf,
 }
 
 static enum kn_control_error
+format_bbs(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	enum kn_bbs_control_error rc;
+
+	rc = kn_bbs_control_format(command, snapshot->bbs_enabled,
+	    snapshot->bbs_store, buf, bufsiz);
+	return rc == KN_BBS_CONTROL_OK ? KN_CONTROL_OK :
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
 format_heard(const struct kn_control_snapshot *snapshot, const char *port_name,
 	char *buf, size_t bufsiz)
 {
@@ -165,7 +180,7 @@ format_help(char *buf, size_t bufsiz)
 
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
-	    "OK HELP PING VERSION STATUS PORTS STATS HEARD HELP QUIT\n");
+	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS HELP QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -302,6 +317,12 @@ kn_control_protocol_handle(const char *command,
 		(void)snprintf(out, out_len, "ERR invalid-heard-command\n");
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 	}
+	if (strcmp(command, "BBS") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-bbs-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "BBS ", 4) == 0)
+		return format_bbs(snapshot, command + 4, out, out_len);
 	if (strcmp(command, "HELP") == 0)
 		return format_help(out, out_len);
 	if (strcmp(command, "QUIT") == 0)

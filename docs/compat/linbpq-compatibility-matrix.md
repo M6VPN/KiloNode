@@ -35,6 +35,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KiloNode-native store reindex | tested | Rebuilds native index files |
 | KiloNode-native store export | tested | Directory snapshot with manifest |
 | Soft-delete purge | tested | Removes messages already marked deleted |
+| KiloNode-native BBS control status | tested | Read-only `BBS STATUS` over local control socket |
+| KiloNode-native BBS control stats | tested | Read-only store counts through `kilonodectl bbs stats` |
+| KiloNode-native BBS control areas | tested | Indexed bulletin area summaries |
+| KiloNode-native BBS control users | tested | Local user summaries, no passwords |
+| KiloNode-native BBS control message summaries | tested | Filtered message summaries and bounded previews |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |
@@ -63,10 +68,13 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQ/LinBPQ mailbox import/export | planned | Not implemented |
 | BPQ/LinBPQ mailbox import | planned | Not implemented |
 | BPQ/LinBPQ mailbox export | planned | Not implemented |
+| BPQ/LinBPQ remote sysop status commands | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
 | BBS forwarding queue | planned | Not implemented |
 | BBS forwarding queues | planned | Not implemented |
 | FBB forwarding compatibility | planned | Not implemented |
+| BBS forwarding status | planned | Not implemented |
+| FBB forwarding status | planned | Not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |
 | Telnet user access | partial | Local TCP shell only, no auth or public mode |

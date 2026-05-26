@@ -43,6 +43,7 @@ add_library(packetcore STATIC
 	src/control/control_protocol.c
 	src/control/control_socket.c
 	src/bbs/bbs_area.c
+	src/bbs/bbs_control.c
 	src/bbs/bbs_read_state.c
 	src/bbs/bbs_shell.c
 	src/bbs/bbs_store_lock.c
@@ -172,6 +173,11 @@ add_executable(test_bbs_area tests/test_bbs_area.c)
 target_link_libraries(test_bbs_area PRIVATE packetcore)
 kilonode_target_defaults(test_bbs_area)
 add_test(NAME bbs_area COMMAND test_bbs_area)
+
+add_executable(test_bbs_control tests/test_bbs_control.c)
+target_link_libraries(test_bbs_control PRIVATE packetcore)
+kilonode_target_defaults(test_bbs_control)
+add_test(NAME bbs_control COMMAND test_bbs_control)
 
 add_executable(test_bbs_read_state tests/test_bbs_read_state.c)
 target_link_libraries(test_bbs_read_state PRIVATE packetcore)

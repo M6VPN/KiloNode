@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "kilonode/heard.h"
+#include "kilonode/message_store.h"
 #include "kilonode/stats.h"
 
 #define KN_CONTROL_COMMAND_MAX 64
@@ -32,6 +33,8 @@ struct kn_control_snapshot {
 	size_t port_count;
 	const struct kn_heard_entry *heard;
 	size_t heard_count;
+	uint8_t bbs_enabled;
+	struct kn_message_store *bbs_store;
 };
 
 struct kn_control_socket {

@@ -11,6 +11,15 @@
 
 static void snapshot_init(struct kn_control_snapshot *,
 	struct kn_daemon_stats *, struct kn_port_stats *, size_t);
+static int test_bbs_areas_disabled(void);
+static int test_bbs_malformed_command(void);
+static int test_bbs_message_disabled(void);
+static int test_bbs_messages_disabled(void);
+static int test_bbs_messages_filter_disabled(void);
+static int test_bbs_stats_disabled(void);
+static int test_bbs_status_disabled(void);
+static int test_bbs_unknown_command(void);
+static int test_bbs_users_disabled(void);
 static int test_control_character_command(void);
 static int test_help_response(void);
 static int test_heard_empty_response(void);
@@ -58,6 +67,24 @@ main(void)
 		return 1;
 	if (test_heard_port_overlong() != 0)
 		return 1;
+	if (test_bbs_status_disabled() != 0)
+		return 1;
+	if (test_bbs_stats_disabled() != 0)
+		return 1;
+	if (test_bbs_areas_disabled() != 0)
+		return 1;
+	if (test_bbs_users_disabled() != 0)
+		return 1;
+	if (test_bbs_messages_disabled() != 0)
+		return 1;
+	if (test_bbs_messages_filter_disabled() != 0)
+		return 1;
+	if (test_bbs_message_disabled() != 0)
+		return 1;
+	if (test_bbs_unknown_command() != 0)
+		return 1;
+	if (test_bbs_malformed_command() != 0)
+		return 1;
 	if (test_help_response() != 0)
 		return 1;
 	if (test_unknown_command() != 0)
@@ -84,6 +111,144 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->port_count = port_count;
 	snapshot->heard = NULL;
 	snapshot->heard_count = 0;
+	snapshot->bbs_enabled = 0;
+	snapshot->bbs_store = NULL;
+}
+
+static int
+test_bbs_areas_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS AREAS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-bbs-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_message_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS MESSAGE 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_messages_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS MESSAGES", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_messages_filter_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS MESSAGES AREA GENERAL", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_stats_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS STATS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_status_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out,
+	    "OK BBS STATUS enabled=false open=false\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_unknown_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS NOPE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_users_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("BBS USERS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR bbs-disabled\n") == 0 ? 0 : 1;
 }
 
 static int

@@ -52,7 +52,8 @@ static enum kn_daemon_error open_config_port(struct daemon_port *,
 	const struct kn_config_port *);
 static int control_handle(struct kn_control_socket *,
 	const struct kn_daemon_stats *, const struct daemon_port *, size_t,
-	const struct kn_heard_table *, uint8_t);
+	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
+	uint8_t);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t);
 static void shell_snapshot_init(struct kn_node_shell_snapshot *,
@@ -303,7 +304,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		if (control_enabled != 0 && control_poll != (size_t)-1 &&
 		    (pollfds[control_poll].revents & POLLIN) != 0) {
 			if (control_handle(&control, &daemon_stats, ports,
-			    port_count, &heard, config->heard.enabled) != 0) {
+			    port_count, &heard, config->heard.enabled,
+			    &bbs_store, bbs_enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -419,7 +421,8 @@ static int
 control_handle(struct kn_control_socket *control,
 	const struct kn_daemon_stats *daemon_stats, const struct daemon_port *ports,
 	size_t port_count, const struct kn_heard_table *heard,
-	uint8_t heard_enabled)
+	uint8_t heard_enabled, struct kn_message_store *bbs_store,
+	uint8_t bbs_enabled)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -455,6 +458,8 @@ control_handle(struct kn_control_socket *control,
 		snapshot.heard = NULL;
 		snapshot.heard_count = 0;
 	}
+	snapshot.bbs_enabled = bbs_enabled;
+	snapshot.bbs_store = bbs_enabled != 0 ? bbs_store : NULL;
 	control_rc = kn_control_protocol_handle(command, &snapshot, response,
 	    sizeof(response));
 	(void)control_rc;

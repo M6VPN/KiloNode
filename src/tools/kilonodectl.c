@@ -12,8 +12,9 @@
 
 #include "kilonode/control.h"
 
-#define CTL_RESPONSE_BUFSIZ 512
+#define CTL_RESPONSE_BUFSIZ KN_CONTROL_QUEUE_MAX
 
+static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
 static int command_set(char *, size_t, const char *);
 static int run_command(const char *, const char *);
@@ -63,6 +64,14 @@ main(int argc, char *argv[])
 				return 1;
 			continue;
 		}
+		if (strcmp(argv[i], "bbs") == 0) {
+			if (command_bbs(command, sizeof(command), &i, argc,
+			    argv) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			continue;
+		}
 		if (command_set(command, sizeof(command),
 		    command_map(argv[i])) != 0) {
 			usage(stderr, argv[0]);
@@ -76,6 +85,78 @@ main(int argc, char *argv[])
 	}
 
 	return run_command(socket_path, command);
+}
+
+static int
+command_bbs(char *dst, size_t dst_len, int *index, int argc, char *argv[])
+{
+	const char *sub;
+	const char *filter;
+	int needed;
+
+	if (*index + 1 >= argc)
+		return 1;
+	sub = argv[*index + 1];
+	if (strcmp(sub, "status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "BBS STATUS");
+	}
+	if (strcmp(sub, "stats") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "BBS STATS");
+	}
+	if (strcmp(sub, "areas") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "BBS AREAS");
+	}
+	if (strcmp(sub, "users") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "BBS USERS");
+	}
+	if (strcmp(sub, "message") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "BBS MESSAGE %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "messages") != 0)
+		return 1;
+	if (*index + 2 >= argc) {
+		*index += 1;
+		return command_set(dst, dst_len, "BBS MESSAGES");
+	}
+	if (strcmp(argv[*index + 2], "--private") == 0) {
+		*index += 2;
+		return command_set(dst, dst_len, "BBS MESSAGES PRIVATE");
+	}
+	if (strcmp(argv[*index + 2], "--bulletins") == 0) {
+		*index += 2;
+		return command_set(dst, dst_len, "BBS MESSAGES BULLETINS");
+	}
+	if (strcmp(argv[*index + 2], "--area") == 0 ||
+	    strcmp(argv[*index + 2], "--to") == 0 ||
+	    strcmp(argv[*index + 2], "--from") == 0) {
+		if (*index + 3 >= argc)
+			return 1;
+		if (strcmp(argv[*index + 2], "--area") == 0)
+			filter = "AREA";
+		else if (strcmp(argv[*index + 2], "--to") == 0)
+			filter = "TO";
+		else
+			filter = "FROM";
+		needed = snprintf(dst, dst_len, "BBS MESSAGES %s %s",
+		    filter, argv[*index + 3]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 3;
+		return 0;
+	}
+	*index += 1;
+	return command_set(dst, dst_len, "BBS MESSAGES");
 }
 
 static const char *
@@ -174,5 +255,12 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH stats\n", argv0);
 	fprintf(out, "       %s --socket PATH heard\n", argv0);
 	fprintf(out, "       %s --socket PATH heard --port NAME\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs status\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs stats\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs areas\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs users\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs messages\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs messages --area AREA\n", argv0);
+	fprintf(out, "       %s --socket PATH bbs message ID\n", argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }
