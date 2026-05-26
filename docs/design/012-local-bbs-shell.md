@@ -16,6 +16,11 @@ Commands:
 | `HELP` | Lists local BBS commands |
 | `AREAS` | Lists bulletin areas found in stored bulletins |
 | `LIST` | Lists non-deleted private messages and bulletins |
+| `LIST PRIVATE` | Lists private messages |
+| `LIST BULLETINS` | Lists bulletins |
+| `LIST AREA <area>` | Lists bulletins in one area |
+| `LIST TO <callsign>` | Lists private messages for one callsign |
+| `LIST FROM <callsign>` | Lists messages from one callsign |
 | `READ <id>` | Prints message metadata and body |
 | `SEND PRIVATE <from> <to> <subject>` | Starts private message body entry |
 | `SEND BULLETIN <from> <area> <subject>` | Starts bulletin body entry |
@@ -29,8 +34,12 @@ Commands:
 bounded by the configured message store limit.
 
 Calls and bulletin areas use the existing message validation rules. Private
-message destinations must be valid callsigns. Bulletin areas must use the
-KiloNode area character set. Subjects are bounded by the message model.
+message destinations must be valid callsigns. Bulletin areas are normalized to
+uppercase and must use the KiloNode area character set. Subjects are bounded by
+the message model.
+
+`READ` marks the message read through the global message read flag. Per-user
+read state is deferred.
 
 Output replaces unsafe control characters with `?` before writing them to the
 terminal. Message bodies are never assumed to be NUL-terminated.

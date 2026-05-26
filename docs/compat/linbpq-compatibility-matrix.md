@@ -29,18 +29,28 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Private message storage | tested | Create, list, read, and soft delete |
 | Bulletin storage | tested | Create, list, read, and soft delete |
 | Message deletion | partial | Soft delete only |
+| KiloNode-native message indexes | tested | Index rebuild, filters, and corruption recovery |
+| Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |
+| LIST PRIVATE | tested | Indexed private message filter |
+| LIST BULLETINS | tested | Indexed bulletin filter |
+| LIST AREA | tested | Indexed bulletin area filter |
+| LIST TO/FROM filters | tested | Indexed callsign filters |
 | Local READ command | tested | Reads metadata and body through BBS mode |
+| Read flag | tested | Global read flag, no per-user state |
 | Local SEND PRIVATE command | tested | Creates private messages through BBS mode |
 | Local SEND BULLETIN command | tested | Creates bulletins through BBS mode |
 | Local KILL command | tested | Soft-deletes messages through BBS mode |
+| Per-user read state | planned | Not implemented |
+| BPQ/LinBPQ topic compatibility | planned | Future black-box research |
 | RF BBS access | planned | Not implemented |
 | BPQ/LinBPQ BBS command compatibility | planned | Not implemented |
 | BPQ mailbox command compatibility | planned | Not implemented |
 | BPQ/LinBPQ message import | planned | Not implemented |
 | BPQ/LinBPQ mailbox import/export | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
+| BBS forwarding queue | planned | Not implemented |
 | FBB forwarding compatibility | planned | Not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |

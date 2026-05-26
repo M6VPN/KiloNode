@@ -36,9 +36,8 @@ kn_message_area_valid(const char *area)
 	for (i = 0; area[i] != '\0'; i++) {
 		if (i >= KN_MESSAGE_AREA_MAX)
 			return 0;
-		if (!(isupper((unsigned char)area[i]) ||
-		    isdigit((unsigned char)area[i]) || area[i] == '_' ||
-		    area[i] == '-'))
+		if (!(isalnum((unsigned char)area[i]) ||
+		    area[i] == '_' || area[i] == '-'))
 			return 0;
 	}
 
@@ -50,6 +49,7 @@ kn_message_bulletin_init(struct kn_message *message, const char *from,
 	const char *area, const char *subject, size_t body_len, uint64_t now)
 {
 	enum kn_message_error rc;
+	size_t i;
 
 	if (message == NULL || from == NULL || area == NULL || subject == NULL)
 		return KN_MESSAGE_ERR_INVALID_ARGUMENT;
@@ -66,7 +66,9 @@ kn_message_bulletin_init(struct kn_message *message, const char *from,
 	if (rc != KN_MESSAGE_OK)
 		return rc;
 
-	memcpy(message->area, area, strlen(area) + 1);
+	for (i = 0; area[i] != '\0'; i++)
+		message->area[i] = (char)toupper((unsigned char)area[i]);
+	message->area[i] = '\0';
 	message->type = KN_MESSAGE_TYPE_BULLETIN;
 	message->created = now;
 	message->updated = now;

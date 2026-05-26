@@ -43,6 +43,8 @@ enum kn_message_store_error kn_message_store_delete(struct kn_message_store *,
 void kn_message_store_init(struct kn_message_store *);
 enum kn_message_store_error kn_message_store_list(struct kn_message_store *,
 	struct kn_message *, size_t, size_t *);
+enum kn_message_store_error kn_message_store_mark_read(
+	struct kn_message_store *, uint64_t);
 enum kn_message_store_error kn_message_store_open(struct kn_message_store *,
 	const char *, size_t);
 enum kn_message_store_error kn_message_store_read_body(

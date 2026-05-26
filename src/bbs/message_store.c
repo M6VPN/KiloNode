@@ -17,6 +17,7 @@
 
 #include "kilonode/callsign.h"
 #include "kilonode/message.h"
+#include "kilonode/message_index.h"
 #include "kilonode/message_store.h"
 
 #define META_BUFSIZ 1024
@@ -40,6 +41,8 @@ static enum kn_message_store_error read_file(const char *, uint8_t *, size_t,
 	size_t *);
 static enum kn_message_store_error store_write_atomic(const char *,
 	const uint8_t *, size_t);
+static enum kn_message_store_error index_error_map(
+	enum kn_message_index_error);
 static enum kn_message_store_error write_body(const struct kn_message_store *,
 	uint64_t, const uint8_t *, size_t);
 static enum kn_message_store_error write_meta(const struct kn_message_store *,
@@ -73,9 +76,33 @@ create_message(struct kn_message_store *store, struct kn_message *message,
 	rc = next_id_write(store);
 	if (rc != KN_MESSAGE_STORE_OK)
 		return rc;
+	rc = index_error_map(kn_message_index_add(store, message));
+	if (rc != KN_MESSAGE_STORE_OK)
+		return rc;
 
 	*id_out = message->id;
 	return KN_MESSAGE_STORE_OK;
+}
+
+static enum kn_message_store_error
+index_error_map(enum kn_message_index_error error)
+{
+	switch (error) {
+	case KN_MESSAGE_INDEX_OK:
+		return KN_MESSAGE_STORE_OK;
+	case KN_MESSAGE_INDEX_ERR_INVALID_ARGUMENT:
+		return KN_MESSAGE_STORE_ERR_INVALID_ARGUMENT;
+	case KN_MESSAGE_INDEX_ERR_IO:
+		return KN_MESSAGE_STORE_ERR_IO;
+	case KN_MESSAGE_INDEX_ERR_CORRUPT:
+		return KN_MESSAGE_STORE_ERR_CORRUPT;
+	case KN_MESSAGE_INDEX_ERR_BUFFER:
+		return KN_MESSAGE_STORE_ERR_BUFFER;
+	case KN_MESSAGE_INDEX_ERR_STORE:
+		return KN_MESSAGE_STORE_ERR_IO;
+	}
+
+	return KN_MESSAGE_STORE_ERR_IO;
 }
 
 static enum kn_message_store_error
@@ -564,7 +591,11 @@ kn_message_store_delete(struct kn_message_store *store, uint64_t id)
 
 	message.deleted = 1;
 	message.updated = message.created;
-	return write_meta(store, &message);
+	rc = write_meta(store, &message);
+	if (rc != KN_MESSAGE_STORE_OK)
+		return rc;
+
+	return index_error_map(kn_message_index_rebuild(store));
 }
 
 void
@@ -582,31 +613,32 @@ enum kn_message_store_error
 kn_message_store_list(struct kn_message_store *store, struct kn_message *msgs,
 	size_t max_msgs, size_t *count_out)
 {
-	struct kn_message message;
-	uint64_t id;
-	size_t count;
-	enum kn_message_store_error rc;
-
 	if (store == NULL || msgs == NULL || count_out == NULL ||
 	    store->open == 0)
 		return KN_MESSAGE_STORE_ERR_INVALID_ARGUMENT;
 
-	count = 0;
-	for (id = 1; id < store->next_id; id++) {
-		rc = kn_message_store_read_metadata(store, id, &message);
-		if (rc == KN_MESSAGE_STORE_ERR_NOT_FOUND ||
-		    rc == KN_MESSAGE_STORE_ERR_CORRUPT ||
-		    rc == KN_MESSAGE_STORE_ERR_DELETED)
-			continue;
-		if (rc != KN_MESSAGE_STORE_OK)
-			return rc;
-		if (count < max_msgs)
-			msgs[count] = message;
-		count++;
-	}
+	return index_error_map(kn_message_index_list(store,
+	    KN_MESSAGE_INDEX_ALL, NULL, msgs, max_msgs, count_out));
+}
 
-	*count_out = count;
-	return KN_MESSAGE_STORE_OK;
+enum kn_message_store_error
+kn_message_store_mark_read(struct kn_message_store *store, uint64_t id)
+{
+	struct kn_message message;
+	enum kn_message_store_error rc;
+
+	rc = kn_message_store_read_metadata(store, id, &message);
+	if (rc != KN_MESSAGE_STORE_OK)
+		return rc;
+	if (message.read != 0)
+		return KN_MESSAGE_STORE_OK;
+	message.read = 1;
+	message.updated = message.created;
+	rc = write_meta(store, &message);
+	if (rc != KN_MESSAGE_STORE_OK)
+		return rc;
+
+	return index_error_map(kn_message_index_rebuild(store));
 }
 
 enum kn_message_store_error
@@ -636,6 +668,11 @@ kn_message_store_open(struct kn_message_store *store, const char *path,
 		return rc;
 
 	store->open = 1;
+	rc = index_error_map(kn_message_index_init(store));
+	if (rc != KN_MESSAGE_STORE_OK) {
+		store->open = 0;
+		return rc;
+	}
 	return KN_MESSAGE_STORE_OK;
 }
 

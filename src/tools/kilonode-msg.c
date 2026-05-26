@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "kilonode/message.h"
+#include "kilonode/message_index.h"
 #include "kilonode/message_store.h"
 
 #define MSG_LIST_MAX 1024
@@ -18,9 +19,13 @@ static int body_file_read(const char *, uint8_t **, size_t *);
 static int command_create_bulletin(struct kn_message_store *, int, char **);
 static int command_create_private(struct kn_message_store *, int, char **);
 static int command_delete(struct kn_message_store *, int, char **);
+static int command_areas(struct kn_message_store *, int, char **);
 static int command_init(struct kn_message_store *, int, char **);
 static int command_list(struct kn_message_store *, int, char **);
+static int command_list_filter(struct kn_message_store *,
+	enum kn_message_index_filter, const char *, int, char **);
 static int command_read(struct kn_message_store *, int, char **);
+static int command_reindex(struct kn_message_store *, int, char **);
 static int id_parse(const char *, uint64_t *);
 static void message_print(const struct kn_message *);
 static void usage(FILE *, const char *);
@@ -73,6 +78,28 @@ main(int argc, char *argv[])
 		rc = command_create_bulletin(&store, argc - i - 1, argv + i + 1);
 	else if (strcmp(command, "list") == 0)
 		rc = command_list(&store, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "reindex") == 0)
+		rc = command_reindex(&store, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "areas") == 0)
+		rc = command_areas(&store, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "list-private") == 0)
+		rc = command_list_filter(&store, KN_MESSAGE_INDEX_PRIVATE,
+		    NULL, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "list-bulletins") == 0)
+		rc = command_list_filter(&store, KN_MESSAGE_INDEX_BULLETIN,
+		    NULL, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "list-area") == 0)
+		rc = command_list_filter(&store, KN_MESSAGE_INDEX_AREA,
+		    argc - i > 1 ? argv[i + 1] : NULL, argc - i - 2,
+		    argv + i + 2);
+	else if (strcmp(command, "list-to") == 0)
+		rc = command_list_filter(&store, KN_MESSAGE_INDEX_TO,
+		    argc - i > 1 ? argv[i + 1] : NULL, argc - i - 2,
+		    argv + i + 2);
+	else if (strcmp(command, "list-from") == 0)
+		rc = command_list_filter(&store, KN_MESSAGE_INDEX_FROM,
+		    argc - i > 1 ? argv[i + 1] : NULL, argc - i - 2,
+		    argv + i + 2);
 	else if (strcmp(command, "read") == 0)
 		rc = command_read(&store, argc - i - 1, argv + i + 1);
 	else if (strcmp(command, "delete") == 0)
@@ -122,6 +149,27 @@ body_file_read(const char *path, uint8_t **body_out, size_t *len_out)
 	(void)fclose(fp);
 	*body_out = body;
 	*len_out = len;
+	return 0;
+}
+
+static int
+command_areas(struct kn_message_store *store, int argc, char **argv)
+{
+	struct kn_message_index_area areas[MSG_LIST_MAX];
+	size_t count;
+	size_t i;
+
+	(void)argv;
+	if (argc != 0)
+		return 1;
+	if (kn_message_index_areas(store, areas, MSG_LIST_MAX, &count) !=
+	    KN_MESSAGE_INDEX_OK)
+		return 1;
+	for (i = 0; i < count && i < MSG_LIST_MAX; i++) {
+		printf("area=%s count=%llu newest=%llu\n", areas[i].name,
+		    (unsigned long long)areas[i].count,
+		    (unsigned long long)areas[i].newest_id);
+	}
 	return 0;
 }
 
@@ -205,6 +253,15 @@ command_init(struct kn_message_store *store, int argc, char **argv)
 static int
 command_list(struct kn_message_store *store, int argc, char **argv)
 {
+	return command_list_filter(store, KN_MESSAGE_INDEX_ALL, NULL, argc,
+	    argv);
+}
+
+static int
+command_list_filter(struct kn_message_store *store,
+	enum kn_message_index_filter filter, const char *value, int argc,
+	char **argv)
+{
 	struct kn_message messages[MSG_LIST_MAX];
 	size_t count;
 	size_t i;
@@ -212,8 +269,11 @@ command_list(struct kn_message_store *store, int argc, char **argv)
 	(void)argv;
 	if (argc != 0)
 		return 1;
-	if (kn_message_store_list(store, messages, MSG_LIST_MAX,
-	    &count) != KN_MESSAGE_STORE_OK)
+	if ((filter == KN_MESSAGE_INDEX_AREA || filter == KN_MESSAGE_INDEX_TO ||
+	    filter == KN_MESSAGE_INDEX_FROM) && value == NULL)
+		return 1;
+	if (kn_message_index_list(store, filter, value, messages, MSG_LIST_MAX,
+	    &count) != KN_MESSAGE_INDEX_OK)
 		return 1;
 
 	for (i = 0; i < count && i < MSG_LIST_MAX; i++)
@@ -249,9 +309,23 @@ command_read(struct kn_message_store *store, int argc, char **argv)
 		    kn_message_store_error_name(rc));
 		return 1;
 	}
+	if (kn_message_store_mark_read(store, id) == KN_MESSAGE_STORE_OK)
+		message.read = 1;
 	message_print(&message);
 	(void)fwrite(body, 1, body_len, stdout);
 	free(body);
+	return 0;
+}
+
+static int
+command_reindex(struct kn_message_store *store, int argc, char **argv)
+{
+	(void)argv;
+	if (argc != 0)
+		return 1;
+	if (kn_message_index_rebuild(store) != KN_MESSAGE_INDEX_OK)
+		return 1;
+	printf("reindexed\n");
 	return 0;
 }
 
@@ -286,7 +360,14 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "usage: %s --store PATH init\n", argv0);
 	fprintf(out, "       %s --store PATH create-private FROM TO SUBJECT BODYFILE\n", argv0);
 	fprintf(out, "       %s --store PATH create-bulletin FROM AREA SUBJECT BODYFILE\n", argv0);
+	fprintf(out, "       %s --store PATH reindex\n", argv0);
+	fprintf(out, "       %s --store PATH areas\n", argv0);
 	fprintf(out, "       %s --store PATH list\n", argv0);
+	fprintf(out, "       %s --store PATH list-private\n", argv0);
+	fprintf(out, "       %s --store PATH list-bulletins\n", argv0);
+	fprintf(out, "       %s --store PATH list-area AREA\n", argv0);
+	fprintf(out, "       %s --store PATH list-to CALLSIGN\n", argv0);
+	fprintf(out, "       %s --store PATH list-from CALLSIGN\n", argv0);
 	fprintf(out, "       %s --store PATH read ID\n", argv0);
 	fprintf(out, "       %s --store PATH delete ID\n", argv0);
 }

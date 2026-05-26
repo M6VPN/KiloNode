@@ -25,7 +25,9 @@ static int test_areas_after_bulletin(void);
 static int test_invalid_bulletin_area(void);
 static int test_invalid_private_destination(void);
 static int test_kill_hides_message(void);
+static int test_list_filters(void);
 static int test_overlarge_body(void);
+static int test_read_marks_read(void);
 static int test_read_sanitizes_body(void);
 static int test_send_bulletin_and_list(void);
 static int test_send_private_and_read(void);
@@ -40,6 +42,10 @@ main(void)
 	if (test_kill_hides_message() != 0)
 		return 1;
 	if (test_areas_after_bulletin() != 0)
+		return 1;
+	if (test_list_filters() != 0)
+		return 1;
+	if (test_read_marks_read() != 0)
 		return 1;
 	if (test_invalid_private_destination() != 0)
 		return 1;
@@ -169,7 +175,7 @@ test_invalid_bulletin_area(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND BULLETIN M6VPN-1 bad \"Subject\"",
+	rc = run_bbs("SEND BULLETIN M6VPN-1 BAD! \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    strstr(out, "ERR invalid-message") != NULL ? 0 : 1;
 	kn_message_store_close(&store);
@@ -225,6 +231,49 @@ test_kill_hides_message(void)
 }
 
 static int
+test_list_filters(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	int rc;
+
+	if (open_shell(&store, &session, &snapshot, dir,
+	    KN_MESSAGE_BODY_MAX) != 0)
+		return 1;
+	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Private\"",
+	    &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("SEND BULLETIN M6VPN-1 GENERAL \"Bulletin\"",
+	    &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("LIST PRIVATE", &session, &snapshot, out, sizeof(out)) ==
+	    0 && strstr(out, "OK LIST count=1") != NULL &&
+	    strstr(out, "type=private") != NULL &&
+	    run_bbs("LIST BULLETINS", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "type=bulletin") != NULL &&
+	    run_bbs("LIST AREA GENERAL", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "to=GENERAL") != NULL &&
+	    run_bbs("LIST TO N0CALL", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "type=private") != NULL &&
+	    run_bbs("LIST FROM M6VPN-1", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "OK LIST count=2") != NULL &&
+	    run_bbs("LIST AREA UNKNOWN", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "OK LIST count=0") != NULL &&
+	    run_bbs("LIST TO BAD!", &session, &snapshot, out,
+	    sizeof(out)) == 0 && strstr(out, "ERR index-error") != NULL &&
+	    run_bbs("LIST BAD", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "ERR invalid-list") != NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
 test_overlarge_body(void)
 {
 	struct kn_message_store store;
@@ -241,6 +290,34 @@ test_overlarge_body(void)
 	    run_bbs("123456789", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    strstr(out, "ERR body-too-large") != NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
+test_read_marks_read(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	int rc;
+
+	if (open_shell(&store, &session, &snapshot, dir,
+	    KN_MESSAGE_BODY_MAX) != 0)
+		return 1;
+	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Subject\"",
+	    &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("LIST", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "read=no") != NULL &&
+	    run_bbs("READ 1", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "read=yes") != NULL &&
+	    run_bbs("LIST", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "read=yes") != NULL ? 0 : 1;
 	kn_message_store_close(&store);
 	cleanup_store(dir);
 	return rc;

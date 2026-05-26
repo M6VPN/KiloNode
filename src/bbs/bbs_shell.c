@@ -13,6 +13,7 @@
 
 #include "kilonode/bbs_shell.h"
 #include "kilonode/callsign.h"
+#include "kilonode/message_index.h"
 #include "kilonode/node_shell.h"
 
 #define BBS_LIST_MAX 256
@@ -28,14 +29,13 @@ static enum kn_bbs_shell_error command_areas(
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_kill(const char *,
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
-static enum kn_bbs_shell_error command_list(
+static enum kn_bbs_shell_error command_list(const char *,
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_read(const char *,
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_send(const char *,
 	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
 	char *, size_t, size_t *);
-static uint8_t dest_seen(const struct kn_message *, size_t, const char *);
 static enum kn_bbs_shell_error finalize_body(
 	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
 	char *, size_t, size_t *);
@@ -126,41 +126,34 @@ static enum kn_bbs_shell_error
 command_areas(const struct kn_bbs_shell_snapshot *snapshot, char *buf,
 	size_t bufsiz, size_t *offset)
 {
-	struct kn_message messages[BBS_LIST_MAX];
+	struct kn_message_index_area areas[BBS_LIST_MAX];
 	size_t count;
-	size_t area_count;
 	size_t i;
-	enum kn_message_store_error src;
+	enum kn_message_index_error irc;
 	enum kn_bbs_shell_error rc;
 
-	src = kn_message_store_list(snapshot->store, messages, BBS_LIST_MAX,
+	irc = kn_message_index_areas(snapshot->store, areas, BBS_LIST_MAX,
 	    &count);
-	if (src != KN_MESSAGE_STORE_OK)
+	if (irc != KN_MESSAGE_INDEX_OK)
 		return append_format(buf, bufsiz, offset,
-		    "ERR store-error code=%s\r\n",
-		    kn_message_store_error_name(src));
+		    "ERR index-error code=%s\r\n",
+		    kn_message_index_error_name(irc));
 
-	area_count = 0;
-	for (i = 0; i < count && i < BBS_LIST_MAX; i++) {
-		if (messages[i].type == KN_MESSAGE_TYPE_BULLETIN &&
-		    dest_seen(messages, i, messages[i].area) == 0)
-			area_count++;
-	}
 	rc = append_format(buf, bufsiz, offset, "OK AREAS count=%llu\r\n",
-	    (unsigned long long)area_count);
+	    (unsigned long long)count);
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 	for (i = 0; i < count && i < BBS_LIST_MAX; i++) {
-		if (messages[i].type != KN_MESSAGE_TYPE_BULLETIN ||
-		    dest_seen(messages, i, messages[i].area) != 0)
-			continue;
 		rc = append_format(buf, bufsiz, offset, "AREA name=");
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
-		rc = append_safe(buf, bufsiz, offset, messages[i].area);
+		rc = append_safe(buf, bufsiz, offset, areas[i].name);
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
-		rc = append_format(buf, bufsiz, offset, "\r\n");
+		rc = append_format(buf, bufsiz, offset,
+		    " count=%llu newest=%llu\r\n",
+		    (unsigned long long)areas[i].count,
+		    (unsigned long long)areas[i].newest_id);
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
 	}
@@ -190,21 +183,62 @@ command_kill(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 }
 
 static enum kn_bbs_shell_error
-command_list(const struct kn_bbs_shell_snapshot *snapshot, char *buf,
-	size_t bufsiz, size_t *offset)
+command_list(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
+	char *buf, size_t bufsiz, size_t *offset)
 {
 	struct kn_message messages[BBS_LIST_MAX];
+	char word[16];
+	char value[KN_MESSAGE_AREA_MAX + 1];
 	size_t count;
 	size_t i;
-	enum kn_message_store_error src;
+	enum kn_message_index_filter filter;
+	const char *filter_value;
+	enum kn_message_index_error irc;
 	enum kn_bbs_shell_error rc;
 
-	src = kn_message_store_list(snapshot->store, messages, BBS_LIST_MAX,
-	    &count);
-	if (src != KN_MESSAGE_STORE_OK)
+	filter = KN_MESSAGE_INDEX_ALL;
+	filter_value = NULL;
+	if (args != NULL && args[0] != '\0') {
+		if (pop_word(&args, word, sizeof(word)) != KN_BBS_SHELL_OK)
+			return append_format(buf, bufsiz, offset,
+			    "ERR invalid-list\r\n");
+		for (i = 0; word[i] != '\0'; i++)
+			word[i] = (char)toupper((unsigned char)word[i]);
+		if (strcmp(word, "PRIVATE") == 0)
+			filter = KN_MESSAGE_INDEX_PRIVATE;
+		else if (strcmp(word, "BULLETINS") == 0)
+			filter = KN_MESSAGE_INDEX_BULLETIN;
+		else if (strcmp(word, "AREA") == 0)
+			filter = KN_MESSAGE_INDEX_AREA;
+		else if (strcmp(word, "TO") == 0)
+			filter = KN_MESSAGE_INDEX_TO;
+		else if (strcmp(word, "FROM") == 0)
+			filter = KN_MESSAGE_INDEX_FROM;
+		else
+			return append_format(buf, bufsiz, offset,
+			    "ERR invalid-list\r\n");
+		if (filter == KN_MESSAGE_INDEX_AREA ||
+		    filter == KN_MESSAGE_INDEX_TO ||
+		    filter == KN_MESSAGE_INDEX_FROM) {
+			if (pop_word(&args, value, sizeof(value)) !=
+			    KN_BBS_SHELL_OK)
+				return append_format(buf, bufsiz, offset,
+				    "ERR invalid-list\r\n");
+			filter_value = value;
+		}
+		while (*args == ' ' || *args == '\t')
+			args++;
+		if (*args != '\0')
+			return append_format(buf, bufsiz, offset,
+			    "ERR invalid-list\r\n");
+	}
+
+	irc = kn_message_index_list(snapshot->store, filter, filter_value,
+	    messages, BBS_LIST_MAX, &count);
+	if (irc != KN_MESSAGE_INDEX_OK)
 		return append_format(buf, bufsiz, offset,
-		    "ERR store-error code=%s\r\n",
-		    kn_message_store_error_name(src));
+		    "ERR index-error code=%s\r\n",
+		    kn_message_index_error_name(irc));
 
 	rc = append_format(buf, bufsiz, offset, "OK LIST count=%llu\r\n",
 	    (unsigned long long)count);
@@ -245,6 +279,9 @@ command_read(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 		return append_format(buf, bufsiz, offset,
 		    "ERR store-error code=%s\r\n",
 		    kn_message_store_error_name(src));
+	if (kn_message_store_mark_read(snapshot->store, id) ==
+	    KN_MESSAGE_STORE_OK)
+		message.read = 1;
 
 	rc = append_format(buf, bufsiz, offset, "OK READ\r\n");
 	if (rc != KN_BBS_SHELL_OK)
@@ -263,7 +300,6 @@ command_read(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
 	}
-
 	return append_format(buf, bufsiz, offset, "END\r\n");
 }
 
@@ -301,20 +337,6 @@ command_send(const char *args, struct kn_bbs_shell_session *session,
 	}
 	return append_format(buf, bufsiz, offset,
 	    "OK SEND enter-body end-with-dot\r\n");
-}
-
-static uint8_t
-dest_seen(const struct kn_message *messages, size_t upto, const char *area)
-{
-	size_t i;
-
-	for (i = 0; i < upto; i++) {
-		if (messages[i].type == KN_MESSAGE_TYPE_BULLETIN &&
-		    strcmp(messages[i].area, area) == 0)
-			return 1;
-	}
-
-	return 0;
 }
 
 static enum kn_bbs_shell_error
@@ -380,9 +402,10 @@ format_message_line(const struct kn_message *message, char *buf, size_t bufsiz,
 	}
 
 	rc = append_format(buf, bufsiz, offset,
-	    "MSG id=%llu type=%s from=%s to=",
+	    "MSG id=%llu type=%s read=%s from=%s to=",
 	    (unsigned long long)message->id,
-	    kn_message_type_name(message->type), from);
+	    kn_message_type_name(message->type),
+	    message->read != 0 ? "yes" : "no", from);
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 	rc = append_safe(buf, bufsiz, offset, dest);
@@ -627,11 +650,13 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 
 	if (strcmp(word, "HELP") == 0)
 		rc = append_format(out, out_len, &offset,
-		    "OK HELP HELP AREAS LIST READ SEND KILL EXIT BYE QUIT\r\n");
+		    "OK HELP HELP AREAS LIST READ SEND KILL EXIT BYE QUIT "
+		    "LIST-PRIVATE LIST-BULLETINS LIST-AREA LIST-TO "
+		    "LIST-FROM\r\n");
 	else if (strcmp(word, "AREAS") == 0)
 		rc = command_areas(snapshot, out, out_len, &offset);
 	else if (strcmp(word, "LIST") == 0)
-		rc = command_list(snapshot, out, out_len, &offset);
+		rc = command_list(args, snapshot, out, out_len, &offset);
 	else if (strcmp(word, "READ") == 0)
 		rc = command_read(args, snapshot, out, out_len, &offset);
 	else if (strcmp(word, "SEND") == 0)
