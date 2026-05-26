@@ -1,0 +1,21 @@
+#!/bin/sh
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/packaging/netbsd/kilonoded
+
+# PROVIDE: kilonoded
+# REQUIRE: NETWORKING
+
+. /etc/rc.subr
+
+name="kilonoded"
+rcvar=$name
+
+: ${kilonoded:="NO"}
+: ${kilonoded_config:="/usr/local/etc/kilonode/kilonode.conf"}
+: ${kilonoded_command:="/usr/local/bin/kilonoded"}
+
+command="${kilonoded_command}"
+command_args="--config ${kilonoded_config} --foreground"
+
+load_rc_config "$name"
+run_rc_command "$1"

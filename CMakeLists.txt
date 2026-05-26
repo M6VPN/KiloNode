@@ -7,6 +7,7 @@ project(KiloNode VERSION 0.1.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 include(cmake/KiloNodeHardening.cmake)
+include(cmake/KiloNodeInstall.cmake)
 include(cmake/KiloNodeSanitizers.cmake)
 include(cmake/KiloNodeWarnings.cmake)
 
@@ -86,16 +87,7 @@ add_executable(kilonodectl src/tools/kilonodectl.c)
 target_link_libraries(kilonodectl PRIVATE packetcore)
 kilonode_target_defaults(kilonodectl)
 
-install(TARGETS
-	kilonode
-	kilonode-monitor
-	kilonode-msg
-	kilonode-store
-	kilonode-user
-	kilonodectl
-	kilonoded
-	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+kilonode_install_all()
 
 enable_testing()
 

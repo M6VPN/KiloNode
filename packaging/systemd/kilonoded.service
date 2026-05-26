@@ -1,0 +1,25 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/packaging/systemd/kilonoded.service
+
+[Unit]
+Description=KiloNode packet node and local BBS daemon
+Documentation=man:kilonoded(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kilonode
+Group=kilonode
+ExecStart=/usr/local/bin/kilonoded --config /etc/kilonode/kilonode.conf --foreground
+Restart=on-failure
+RuntimeDirectory=kilonode
+StateDirectory=kilonode
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kilonode /run/kilonode
+
+[Install]
+WantedBy=multi-user.target

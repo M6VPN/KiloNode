@@ -1,0 +1,63 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonode-monitor.1
+.Dd May 26, 2026
+.Dt KILONODE-MONITOR 1
+.Os
+.Sh NAME
+.Nm kilonode-monitor
+.Nd read KISS streams and print AX.25 monitor lines
+.Sh SYNOPSIS
+.Nm
+.Fl -stdio
+.Nm
+.Fl -tcp-connect Ar host Ar port
+.Nm
+.Fl -tcp-listen Ar host Ar port
+.Nm
+.Fl -serial Ar device Ar baud
+.Nm
+.Fl -pty
+.Nm
+.Fl -unix-connect Ar path
+.Nm
+.Fl -unix-listen Ar path
+.Sh DESCRIPTION
+.Nm
+reads KISS byte streams from one local transport, decodes KISS frames, attempts
+AX.25 decode for data frames, and prints deterministic monitor lines.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -stdio
+Read from standard input.
+.It Fl -tcp-connect Ar host Ar port
+Connect to a TCP KISS endpoint.
+.It Fl -tcp-listen Ar host Ar port
+Listen for one TCP KISS client.
+.It Fl -serial Ar device Ar baud
+Open a serial KISS device.
+.It Fl -pty
+Create a PTY transport and print the slave path to stderr.
+.It Fl -unix-connect Ar path
+Connect to a Unix socket KISS endpoint.
+.It Fl -unix-listen Ar path
+Listen for one Unix socket KISS client.
+.It Fl -max-frame Ar bytes
+Set the maximum KISS frame size.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa /tmp/kilonode/kiss.sock
+Example Unix socket path.
+.El
+.Sh EXAMPLES
+.Dl kilonode-monitor --stdio < sample.kiss
+.Dl kilonode-monitor --tcp-listen 127.0.0.1 8001
+.Sh SECURITY NOTES
+Treat captured packet data as hostile. Avoid binding listeners to public
+interfaces unless the surrounding system is intentionally isolated.
+.Sh SEE ALSO
+.Xr kilonoded 8
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

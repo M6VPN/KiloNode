@@ -1,0 +1,58 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonode-store.1
+.Dd May 26, 2026
+.Dt KILONODE-STORE 1
+.Os
+.Sh NAME
+.Nm kilonode-store
+.Nd check and maintain a KiloNode message store
+.Sh SYNOPSIS
+.Nm
+.Fl -store Ar path
+.Ar command
+.Op Ar arguments
+.Sh DESCRIPTION
+.Nm
+performs read-only checks and safe maintenance operations for a
+KiloNode-native message store.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -store Ar path
+Use the message store rooted at
+.Ar path .
+.It Fl -help
+Show command usage.
+.El
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm check
+Report integrity findings.
+.It Cm repair
+Apply safe repairs.
+.It Cm reindex
+Rebuild indexes.
+.It Cm stats
+Print store counts.
+.It Cm purge-deleted
+Physically remove soft-deleted messages.
+.It Cm export Ar dest
+Create a KiloNode-native directory snapshot.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa var/messages/.kilonode-store.lock
+Store lock file.
+.El
+.Sh EXAMPLES
+.Dl kilonode-store --store /tmp/kilonode-msg-test check
+.Dl kilonode-store --store /tmp/kilonode-msg-test export /tmp/kilonode-msg-export
+.Sh SECURITY NOTES
+Maintenance commands should run as the same user that owns the store. Export
+destinations should not be inside the source store.
+.Sh SEE ALSO
+.Xr kilonode-msg 1 ,
+.Xr kilonode-user 1
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

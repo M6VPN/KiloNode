@@ -1,0 +1,58 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonodectl.1
+.Dd May 26, 2026
+.Dt KILONODECTL 1
+.Os
+.Sh NAME
+.Nm kilonodectl
+.Nd query a local KiloNode daemon control socket
+.Sh SYNOPSIS
+.Nm
+.Fl -socket Ar path
+.Ar command
+.Op Ar arguments
+.Sh DESCRIPTION
+.Nm
+connects to the local Unix-domain control socket exposed by
+.Xr kilonoded 8
+and sends one read-only command.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -socket Ar path
+Use the control socket at
+.Ar path .
+.It Fl -help
+Show command usage.
+.El
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm ping
+Check daemon reachability.
+.It Cm status
+Show daemon status.
+.It Cm ports
+Show configured ports.
+.It Cm stats
+Show daemon counters.
+.It Cm heard Op Fl -port Ar name
+Show heard AX.25 stations.
+.It Cm bbs status | stats | areas | users | messages | message Ar id
+Show read-only local BBS state.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa /tmp/kilonode/control.sock
+Example local control socket path.
+.El
+.Sh EXAMPLES
+.Dl kilonodectl --socket /tmp/kilonode/control.sock status
+.Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
+.Sh SECURITY NOTES
+The control protocol is local-only in this pass. Use filesystem permissions to
+limit access to the socket.
+.Sh SEE ALSO
+.Xr kilonoded 8
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

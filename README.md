@@ -18,6 +18,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Setup](#setup)
 - [Usage](#usage)
 - [Build Profiles](#build-profiles)
+- [Install](#install)
 - [Compatibility](#compatibility)
 - [License](#license)
 
@@ -93,6 +94,43 @@ Project checks:
 ./scripts/check-portability.sh
 ./scripts/check-format.sh
 ```
+
+## Install
+
+Install into a local prefix:
+
+```sh
+./scripts/install-local.sh --prefix /tmp/kilonode-install
+```
+
+Or install a built tree directly:
+
+```sh
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DKILONODE_HARDENING=ON
+cmake --build build-release
+cmake --install build-release --prefix /tmp/kilonode-install
+```
+
+Dry-run removal of installed files:
+
+```sh
+./scripts/uninstall-local.sh --prefix /tmp/kilonode-install --dry-run
+```
+
+Packaging checks:
+
+```sh
+./scripts/check-packaging.sh
+```
+
+Recommended runtime paths:
+
+- Linux: `/etc/kilonode`, `/run/kilonode`, `/var/lib/kilonode`
+- OpenBSD: `/etc/kilonode`, `/var/run/kilonode`, `/var/kilonode`
+- FreeBSD and NetBSD: `/usr/local/etc/kilonode`, `/var/run/kilonode`, `/var/db/kilonode`
+
+Service examples live under `packaging/`. They are examples for packagers and
+are not installed into system service directories automatically.
 
 ## Compatibility
 

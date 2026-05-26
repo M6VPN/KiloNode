@@ -16,7 +16,7 @@ check_file()
 			header_one="/* KiloNode - Developed by M6VPN (M6VPN@tuta.com) */"
 			header_two="/* ${header_path} */"
 			;;
-		*.sh|*.cmake|CMakeLists.txt|*.conf)
+		*.sh|*.cmake|CMakeLists.txt|*.conf|*.service|*.rc|packaging/freebsd/kilonoded|packaging/netbsd/kilonoded)
 			header_one="# KiloNode - Developed by M6VPN (M6VPN@tuta.com)"
 			header_two="# ${header_path}"
 			;;
@@ -25,7 +25,7 @@ check_file()
 			;;
 	esac
 
-	if [ "${file##*.}" = "sh" ]; then
+	if [ "$(sed -n '1p' "$file" | cut -c 1-2)" = "#!" ]; then
 		line_one="$(sed -n '2p' "$file")"
 		line_two="$(sed -n '3p' "$file")"
 	else
@@ -42,9 +42,11 @@ check_file()
 while IFS= read -r file; do
 	check_file "$file"
 done <<EOF
-$(find CMakeLists.txt cmake docs/examples include scripts src tests -type f \
+$(find CMakeLists.txt cmake docs/examples include packaging scripts src tests -type f \
 	\( -name 'CMakeLists.txt' -o -name '*.cmake' -o -name '*.conf' -o \
-	-name '*.c' -o -name '*.h' -o -name '*.sh' \) | sort)
+	-name '*.c' -o -name '*.h' -o -name '*.sh' -o -name '*.service' -o \
+	-name '*.rc' -o -path 'packaging/freebsd/kilonoded' -o \
+	-path 'packaging/netbsd/kilonoded' \) | sort)
 EOF
 
 exit "$status"

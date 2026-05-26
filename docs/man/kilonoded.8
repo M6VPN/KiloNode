@@ -1,0 +1,50 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonoded.8
+.Dd May 26, 2026
+.Dt KILONODED 8
+.Os
+.Sh NAME
+.Nm kilonoded
+.Nd KiloNode local packet node and BBS daemon
+.Sh SYNOPSIS
+.Nm
+.Fl -config Ar path
+.Op Fl -check-config
+.Op Fl -foreground
+.Sh DESCRIPTION
+.Nm
+reads a KiloNode-native config file, opens enabled local KISS transports, feeds
+KISS frames into the AX.25 monitor path, and exposes local control and shell
+interfaces when configured.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -config Ar path
+Read the daemon config from
+.Ar path .
+.It Fl -check-config
+Parse and validate the config, then exit.
+.It Fl -foreground
+Run in the foreground. Background daemon mode is not implemented yet.
+.It Fl -help
+Show command usage.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa /etc/kilonode/kilonode.conf
+Suggested Linux and OpenBSD config path.
+.It Pa /usr/local/etc/kilonode/kilonode.conf
+Suggested FreeBSD and NetBSD config path.
+.El
+.Sh EXAMPLES
+.Dl kilonoded --config /etc/kilonode/kilonode.conf --foreground
+.Dl kilonoded --config packaging/examples/kilonode-minimal.conf --check-config
+.Sh SECURITY NOTES
+Run with the least privileges practical. Keep shell listeners bound to localhost
+unless a later authenticated public access mode is added.
+.Sh SEE ALSO
+.Xr kilonodectl 1 ,
+.Xr kilonode-monitor 1
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

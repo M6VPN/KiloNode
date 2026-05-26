@@ -1,0 +1,66 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonode-user.1
+.Dd May 26, 2026
+.Dt KILONODE-USER 1
+.Os
+.Sh NAME
+.Nm kilonode-user
+.Nd manage local KiloNode BBS users and read state
+.Sh SYNOPSIS
+.Nm
+.Fl -store Ar path
+.Ar command
+.Op Ar arguments
+.Sh DESCRIPTION
+.Nm
+manages KiloNode-native local BBS user records and per-user read-state files.
+It does not manage passwords.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -store Ar path
+Use the message store rooted at
+.Ar path .
+.It Fl -help
+Show command usage.
+.El
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm init
+Initialize user and read-state directories.
+.It Cm create Ar callsign
+Create a user.
+.It Cm show Ar callsign
+Show one user.
+.It Cm list
+List users.
+.It Cm seen Ar callsign
+Update last-seen and login counters.
+.It Cm disable Ar callsign
+Disable a user.
+.It Cm enable Ar callsign
+Enable a user.
+.It Cm mark-read Ar callsign Ar id
+Mark a message read.
+.It Cm is-read Ar callsign Ar id
+Check read state.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa var/messages/users
+User records.
+.It Pa var/messages/read
+Read-state files.
+.El
+.Sh EXAMPLES
+.Dl kilonode-user --store /tmp/kilonode-msg-test create M6VPN-1
+.Dl kilonode-user --store /tmp/kilonode-msg-test list
+.Sh SECURITY NOTES
+Passwords and authentication are deferred. Local filesystem permissions are the
+main protection for user files in this pass.
+.Sh SEE ALSO
+.Xr kilonode-msg 1 ,
+.Xr kilonode-store 1
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

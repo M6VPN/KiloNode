@@ -1,0 +1,12 @@
+#!/bin/ksh
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/packaging/openbsd/kilonoded.rc
+
+daemon="/usr/local/bin/kilonoded"
+daemon_flags="--config /etc/kilonode/kilonode.conf --foreground"
+
+. /etc/rc.d/rc.subr
+
+rc_reload=NO
+
+rc_cmd $1

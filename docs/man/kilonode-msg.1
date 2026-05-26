@@ -1,0 +1,59 @@
+.\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+.\" kilonode/docs/man/kilonode-msg.1
+.Dd May 26, 2026
+.Dt KILONODE-MSG 1
+.Os
+.Sh NAME
+.Nm kilonode-msg
+.Nd manage a local KiloNode message store
+.Sh SYNOPSIS
+.Nm
+.Fl -store Ar path
+.Ar command
+.Op Ar arguments
+.Sh DESCRIPTION
+.Nm
+is a local developer and admin tool for KiloNode-native message stores.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -store Ar path
+Use the message store rooted at
+.Ar path .
+.It Fl -help
+Show command usage.
+.El
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm init
+Initialize store directories.
+.It Cm create-private Ar from Ar to Ar subject Ar bodyfile
+Create a private message.
+.It Cm create-bulletin Ar from Ar area Ar subject Ar bodyfile
+Create a bulletin.
+.It Cm list
+List non-deleted messages.
+.It Cm read Ar id
+Read message metadata and body.
+.It Cm delete Ar id
+Soft-delete a message.
+.It Cm reindex
+Rebuild message indexes.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa var/messages
+Example local store path.
+.El
+.Sh EXAMPLES
+.Dl kilonode-msg --store /tmp/kilonode-msg-test init
+.Dl kilonode-msg --store /tmp/kilonode-msg-test list
+.Sh SECURITY NOTES
+Do not point the store at untrusted shared directories. Message contents are
+treated as hostile input.
+.Sh SEE ALSO
+.Xr kilonode-store 1 ,
+.Xr kilonode-user 1
+.Sh AUTHORS
+KiloNode is developed by M6VPN.
+.Sh LICENSE
+ISC License.

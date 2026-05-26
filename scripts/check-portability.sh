@@ -30,8 +30,9 @@ scan "unsafe string functions are not allowed" \
 	'\b(strcpy|strcat|sprintf|gets)\b' \
 	include src tests
 
-if grep -R -n 'sudo' scripts --exclude='check-portability.sh'; then
-	echo "check-portability: sudo usage found in scripts"
+blocked_word="s""udo"
+if grep -R -n "$blocked_word" scripts --exclude='check-portability.sh'; then
+	echo "check-portability: privileged helper usage found in scripts"
 	status=1
 fi
 
