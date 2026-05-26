@@ -5,7 +5,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(KiloNode VERSION 0.1.0 LANGUAGES C)
 
-option(KILONODE_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+include(GNUInstallDirs)
+include(cmake/KiloNodeHardening.cmake)
+include(cmake/KiloNodeSanitizers.cmake)
+include(cmake/KiloNodeWarnings.cmake)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -13,30 +16,9 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 function(kilonode_target_defaults target_name)
 	target_compile_features(${target_name} PRIVATE c_std_17)
-
-	if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
-		target_compile_options(${target_name} PRIVATE
-			-Wall
-			-Wextra
-			-Wpedantic
-			-Wconversion
-			-Wshadow
-			-Wstrict-prototypes
-			-fstack-protector-strong
-		)
-	endif()
-
-	if(KILONODE_SANITIZE)
-		if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
-			target_compile_options(${target_name} PRIVATE
-				-fsanitize=address,undefined
-				-fno-omit-frame-pointer
-			)
-			target_link_options(${target_name} PRIVATE
-				-fsanitize=address,undefined
-			)
-		endif()
-	endif()
+	kilonode_apply_warnings(${target_name})
+	kilonode_apply_sanitizers(${target_name})
+	kilonode_apply_hardening(${target_name})
 endfunction()
 
 add_library(packetcore STATIC
@@ -103,6 +85,17 @@ kilonode_target_defaults(kilonoded)
 add_executable(kilonodectl src/tools/kilonodectl.c)
 target_link_libraries(kilonodectl PRIVATE packetcore)
 kilonode_target_defaults(kilonodectl)
+
+install(TARGETS
+	kilonode
+	kilonode-monitor
+	kilonode-msg
+	kilonode-store
+	kilonode-user
+	kilonodectl
+	kilonoded
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 enable_testing()
 

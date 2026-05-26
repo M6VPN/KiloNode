@@ -1,0 +1,49 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/.github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  linux-gcc-debug:
+    name: Linux GCC Debug
+    runs-on: ubuntu-latest
+    env:
+      CC: gcc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check headers
+        run: ./scripts/check-headers.sh
+      - name: Check portability
+        run: ./scripts/check-portability.sh
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DKILONODE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  linux-clang-debug:
+    name: Linux Clang Debug
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check headers
+        run: ./scripts/check-headers.sh
+      - name: Check portability
+        run: ./scripts/check-portability.sh
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DKILONODE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

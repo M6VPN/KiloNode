@@ -45,6 +45,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Shell input rate limit | tested | Per-session command rate window |
 | BBS body size enforcement | tested | Oversized multiline SEND bodies are rejected before storage |
 | Control command size limit | tested | Overlong local control commands are rejected |
+| CI normal build | tested | GCC and Clang GitHub Actions workflow |
+| CI sanitizer build | tested | ASan and UBSan workflow |
+| Hardened release build | tested | Optional CMake hardening profile |
+| Platform portability policy | partial | Linux tested, BSD targets documented |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |

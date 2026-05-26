@@ -364,6 +364,7 @@ open_config_port(struct daemon_port *port, const struct kn_config_port *config)
 	port->config = config;
 	kn_port_stats_init(&port->stats, config);
 	kn_transport_reset(&port->transport);
+	rc = KN_TRANSPORT_ERR_INVALID_CONFIG;
 
 	if (kn_kiss_stream_init(&port->parser,
 	    config->max_frame) != KN_KISS_STREAM_OK)

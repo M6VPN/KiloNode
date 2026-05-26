@@ -1,0 +1,41 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/.github/workflows/portable-build.yml
+
+name: Portable Build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ubuntu-c17-strict:
+    name: Ubuntu C17 Strict
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check headers
+        run: ./scripts/check-headers.sh
+      - name: Check portability
+        run: ./scripts/check-portability.sh
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DKILONODE_WARNINGS_AS_ERRORS=ON -DCMAKE_C_EXTENSIONS=OFF
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  ubuntu-release-hardened:
+    name: Ubuntu Release Hardened
+    runs-on: ubuntu-latest
+    env:
+      CC: gcc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DKILONODE_HARDENING=ON -DKILONODE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-release

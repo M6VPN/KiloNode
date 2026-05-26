@@ -1,0 +1,46 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/.github/workflows/sanitizers.yml
+
+name: Sanitizers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  clang-asan-ubsan:
+    name: Clang ASan UBSan
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug -DKILONODE_SANITIZE_ADDRESS=ON -DKILONODE_SANITIZE_UNDEFINED=ON -DKILONODE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-sanitize
+      - name: Test
+        run: ctest --test-dir build-sanitize --output-on-failure
+
+  gcc-asan-ubsan:
+    name: GCC ASan UBSan
+    runs-on: ubuntu-latest
+    env:
+      CC: gcc
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug -DKILONODE_SANITIZE_ADDRESS=ON -DKILONODE_SANITIZE_UNDEFINED=ON -DKILONODE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-sanitize
+      - name: Test
+        run: ctest --test-dir build-sanitize --output-on-failure
