@@ -46,6 +46,9 @@ add_library(packetcore STATIC
 	src/proto/ax25.c
 	src/proto/kiss.c
 	src/proto/kiss_stream.c
+	src/transport/transport.c
+	src/transport/transport_stdio.c
+	src/transport/transport_tcp.c
 )
 set_target_properties(packetcore PROPERTIES OUTPUT_NAME packetcore)
 target_include_directories(packetcore PUBLIC include)
@@ -54,6 +57,10 @@ kilonode_target_defaults(packetcore)
 add_executable(kilonode src/tools/kilonode.c)
 target_link_libraries(kilonode PRIVATE packetcore)
 kilonode_target_defaults(kilonode)
+
+add_executable(kilonode-monitor src/tools/kilonode-monitor.c)
+target_link_libraries(kilonode-monitor PRIVATE packetcore)
+kilonode_target_defaults(kilonode-monitor)
 
 enable_testing()
 
@@ -86,3 +93,8 @@ add_executable(test_monitor tests/test_monitor.c)
 target_link_libraries(test_monitor PRIVATE packetcore)
 kilonode_target_defaults(test_monitor)
 add_test(NAME monitor COMMAND test_monitor)
+
+add_executable(test_transport tests/test_transport.c)
+target_link_libraries(test_transport PRIVATE packetcore)
+kilonode_target_defaults(test_transport)
+add_test(NAME transport COMMAND test_transport)
