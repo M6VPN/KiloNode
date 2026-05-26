@@ -15,33 +15,8 @@
 #include "kilonode/transport.h"
 #include "kilonode/transport_unix.h"
 
-static enum kn_transport_error accept_one(struct kn_transport *);
 static enum kn_transport_error sockaddr_from_path(const char *,
 	struct sockaddr_un *);
-
-static enum kn_transport_error
-accept_one(struct kn_transport *transport)
-{
-	int fd;
-
-	for (;;) {
-		fd = accept(transport->listen_fd, NULL, NULL);
-		if (fd >= 0)
-			break;
-		if (errno == EINTR)
-			continue;
-		transport->last_errno = errno;
-		return KN_TRANSPORT_ERR_ACCEPT;
-	}
-
-	(void)close(transport->listen_fd);
-	transport->listen_fd = -1;
-	transport->read_fd = fd;
-	transport->write_fd = fd;
-	transport->open = 1;
-
-	return KN_TRANSPORT_OK;
-}
 
 enum kn_transport_error
 kn_transport_unix_connect_open(struct kn_transport *transport, const char *path)
@@ -111,11 +86,10 @@ kn_transport_unix_listen_open(struct kn_transport *transport, const char *path)
 
 	transport->kind = KN_TRANSPORT_KIND_UNIX_SERVER;
 	transport->listen_fd = fd;
-	rc = accept_one(transport);
-	if (rc != KN_TRANSPORT_OK)
-		kn_transport_close(transport);
-
-	return rc;
+	transport->read_fd = -1;
+	transport->write_fd = -1;
+	transport->open = 1;
+	return KN_TRANSPORT_OK;
 }
 
 uint8_t

@@ -7,11 +7,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KISS stream parsing | tested | Incremental parser with escape and size checks |
 | AX.25 monitor decode | tested | Diagnostic UI frame formatting |
 | KISS stdin/stdout | implemented | Live monitor can read stdin KISS streams |
-| KISS TCP client | partial | Blocking monitor client, no reconnect or auth |
-| KISS TCP server | partial | Blocking single-client monitor server |
-| KISS serial | implemented | Monitor mode plus validation tests, no hardware CI |
-| KISS PTY | implemented | PTY creation and transfer tests where supported |
-| Unix socket KISS | implemented | Local stream socket client/server tests |
+| KISS TCP client | partial | Configured daemon and monitor support, no reconnect or auth |
+| KISS TCP server | partial | Configured daemon and monitor support, single-client only |
+| KISS serial | partial | Configured daemon and monitor support, no hardware CI |
+| KISS PTY | implemented | Configured daemon and monitor support with PTY tests |
+| Unix socket KISS | implemented | Configured daemon and monitor support with local tests |
 | KiloTNC | partial | Serial KISS can consume it, dedicated tests pending |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |

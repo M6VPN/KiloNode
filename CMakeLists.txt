@@ -42,6 +42,8 @@ endfunction()
 add_library(packetcore STATIC
 	src/core/buffer.c
 	src/core/callsign.c
+	src/core/config.c
+	src/daemon/daemon.c
 	src/monitor/monitor.c
 	src/proto/ax25.c
 	src/proto/kiss.c
@@ -65,6 +67,10 @@ add_executable(kilonode-monitor src/tools/kilonode-monitor.c)
 target_link_libraries(kilonode-monitor PRIVATE packetcore)
 kilonode_target_defaults(kilonode-monitor)
 
+add_executable(kilonoded src/tools/kilonoded.c)
+target_link_libraries(kilonoded PRIVATE packetcore)
+kilonode_target_defaults(kilonoded)
+
 enable_testing()
 
 add_executable(test_buffer tests/test_buffer.c)
@@ -81,6 +87,16 @@ add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)
 kilonode_target_defaults(test_callsign)
 add_test(NAME callsign COMMAND test_callsign)
+
+add_executable(test_config tests/test_config.c)
+target_link_libraries(test_config PRIVATE packetcore)
+kilonode_target_defaults(test_config)
+add_test(NAME config COMMAND test_config)
+
+add_executable(test_daemon_config tests/test_daemon_config.c)
+target_link_libraries(test_daemon_config PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_config)
+add_test(NAME daemon_config COMMAND test_daemon_config)
 
 add_executable(test_kiss tests/test_kiss.c)
 target_link_libraries(test_kiss PRIVATE packetcore)

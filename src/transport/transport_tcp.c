@@ -16,32 +16,7 @@
 #include "kilonode/transport.h"
 #include "kilonode/transport_tcp.h"
 
-static enum kn_transport_error accept_one(struct kn_transport *);
 static int socket_open(const struct addrinfo *);
-
-static enum kn_transport_error
-accept_one(struct kn_transport *transport)
-{
-	int fd;
-
-	for (;;) {
-		fd = accept(transport->listen_fd, NULL, NULL);
-		if (fd >= 0)
-			break;
-		if (errno == EINTR)
-			continue;
-		transport->last_errno = errno;
-		return KN_TRANSPORT_ERR_ACCEPT;
-	}
-
-	(void)close(transport->listen_fd);
-	transport->listen_fd = -1;
-	transport->read_fd = fd;
-	transport->write_fd = fd;
-	transport->open = 1;
-
-	return KN_TRANSPORT_OK;
-}
 
 enum kn_transport_error
 kn_transport_tcp_connect_open(struct kn_transport *transport, const char *host,
@@ -98,7 +73,6 @@ kn_transport_tcp_listen_open(struct kn_transport *transport, const char *host,
 	struct addrinfo hints;
 	struct addrinfo *result;
 	struct addrinfo *rp;
-	enum kn_transport_error rc;
 	int fd;
 	int gai_rc;
 	int yes;
@@ -133,10 +107,10 @@ kn_transport_tcp_listen_open(struct kn_transport *transport, const char *host,
 			freeaddrinfo(result);
 			transport->kind = KN_TRANSPORT_KIND_TCP_SERVER;
 			transport->listen_fd = fd;
-			rc = accept_one(transport);
-			if (rc != KN_TRANSPORT_OK)
-				kn_transport_close(transport);
-			return rc;
+			transport->read_fd = -1;
+			transport->write_fd = -1;
+			transport->open = 1;
+			return KN_TRANSPORT_OK;
 		}
 
 		transport->last_errno = errno;

@@ -5,6 +5,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
 | AX.25 UI frame encode/decode | tested | Address lists, PID, digipeaters, and binary payloads |
+| Native KiloNode config | tested | Clean-room parser for node and KISS port blocks |
+| BPQ-style config import | planned | Future compatibility tool, not native syntax |
+| Foreground daemon | implemented | `kilonoded --foreground` with signal shutdown |
+| Multi-port daemon monitor | partial | Poll loop over enabled KISS ports, no reconnect |
 | Telnet user access | planned | Local node shell target |
 | BBS mailbox | planned | Message store not started |
 | NET/ROM node behaviour | planned | Black-box tests required |

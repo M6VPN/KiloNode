@@ -45,6 +45,7 @@ struct kn_transport {
 
 void kn_transport_close(struct kn_transport *);
 const char *kn_transport_error_name(enum kn_transport_error);
+int kn_transport_fd(const struct kn_transport *);
 const char *kn_transport_kind_name(enum kn_transport_kind);
 uint8_t kn_transport_kind_valid(enum kn_transport_kind);
 enum kn_transport_error kn_transport_read(struct kn_transport *, uint8_t *,
