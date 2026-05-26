@@ -8,6 +8,10 @@
 #include "kilonode/config.h"
 
 static int expect_error(const char *, enum kn_config_error);
+static int test_access_block(void);
+static int test_access_duplicate_block(void);
+static int test_access_omitted_defaults(void);
+static int test_access_unknown_key(void);
 static int test_bbs_disabled_block(void);
 static int test_bbs_duplicate_block(void);
 static int test_bbs_enabled_block(void);
@@ -27,6 +31,9 @@ static int test_invalid_max_frame(void);
 static int test_invalid_bbs_max_body(void);
 static int test_invalid_shell_max_clients(void);
 static int test_invalid_shell_port(void);
+static int test_invalid_access_default_policy(void);
+static int test_invalid_access_line_bytes(void);
+static int test_invalid_access_rate_window(void);
 static int test_line_number_error(void);
 static int test_minimal_valid_config(void);
 static int test_missing_control_path(void);
@@ -57,6 +64,20 @@ main(void)
 	if (test_quoted_string() != 0)
 		return 1;
 	if (test_comment_handling() != 0)
+		return 1;
+	if (test_access_omitted_defaults() != 0)
+		return 1;
+	if (test_access_block() != 0)
+		return 1;
+	if (test_access_duplicate_block() != 0)
+		return 1;
+	if (test_access_unknown_key() != 0)
+		return 1;
+	if (test_invalid_access_default_policy() != 0)
+		return 1;
+	if (test_invalid_access_line_bytes() != 0)
+		return 1;
+	if (test_invalid_access_rate_window() != 0)
 		return 1;
 	if (test_control_block() != 0)
 		return 1;
@@ -122,6 +143,88 @@ main(void)
 		return 1;
 
 	return 0;
+}
+
+static int
+test_access_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"default-policy deny\n"
+		"allow-localhost true\n"
+		"max-line-bytes 128\n"
+		"max-command-bytes 128\n"
+		"max-clients 2\n"
+		"idle-timeout-seconds 60\n"
+		"input-rate-lines 5\n"
+		"input-rate-window-seconds 10\n"
+		"bbs-max-body-bytes 1024\n"
+		"control-max-command-bytes 128\n"
+		"control-max-response-lines 20\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.access.policy.default_policy != KN_ACCESS_POLICY_DENY)
+		return 1;
+	if (config.access.policy.max_line_bytes != 128)
+		return 1;
+	if (config.access.policy.input_rate_window_seconds != 10)
+		return 1;
+	return config.access.policy.control_max_response_lines == 20 ? 0 : 1;
+}
+
+static int
+test_access_duplicate_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"max-line-bytes 128\n"
+		"}\n"
+		"access {\n"
+		"max-line-bytes 128\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_access_omitted_defaults(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.access.has_block != 0)
+		return 1;
+	if (config.access.policy.max_line_bytes != KN_ACCESS_LINE_MAX)
+		return 1;
+	return config.access.policy.allow_localhost == 1 ? 0 : 1;
+}
+
+static int
+test_access_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"bad value\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
 }
 
 static int
@@ -421,6 +524,48 @@ test_invalid_max_frame(void)
 		"port kiss0 {\n"
 		"type stdio\n"
 		"max-frame 10\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_access_default_policy(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"default-policy maybe\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_access_line_bytes(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"max-line-bytes 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_access_rate_window(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"access {\n"
+		"input-rate-window-seconds 0\n"
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);

@@ -8,9 +8,11 @@
 
 #include <stdint.h>
 
+#include "kilonode/access_policy.h"
 #include "kilonode/bbs_shell.h"
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
+#include "kilonode/session_limits.h"
 #include "kilonode/stats.h"
 
 #define KN_NODE_SHELL_BANNER_MAX   128
@@ -41,7 +43,9 @@ struct kn_node_shell_session {
 	char line[KN_NODE_SHELL_LINE_MAX];
 	size_t line_len;
 	uint64_t connected_at;
+	uint64_t last_activity;
 	uint64_t command_count;
+	struct kn_session_rate rate;
 	char remote[KN_NODE_SHELL_REMOTE_MAX];
 	uint8_t closed;
 	uint8_t discard_line;
@@ -52,6 +56,7 @@ struct kn_node_shell_state {
 	int listen_fd;
 	struct kn_node_shell_session sessions[KN_NODE_SHELL_MAX_CLIENTS];
 	size_t max_clients;
+	struct kn_access_policy policy;
 };
 
 struct kn_node_shell_snapshot {
@@ -63,6 +68,7 @@ struct kn_node_shell_snapshot {
 	size_t heard_count;
 	const struct kn_node_shell_user *users;
 	size_t user_count;
+	const struct kn_access_policy *policy;
 	struct kn_bbs_shell_snapshot bbs;
 };
 
@@ -81,7 +87,10 @@ enum kn_node_shell_error kn_node_shell_accept(struct kn_node_shell_state *,
 	const char *);
 enum kn_node_shell_error kn_node_shell_process_session(
 	struct kn_node_shell_session *, const struct kn_node_shell_snapshot *);
+void kn_node_shell_prune_idle(struct kn_node_shell_state *, uint64_t);
 void kn_node_shell_session_close(struct kn_node_shell_session *);
+void kn_node_shell_set_policy(struct kn_node_shell_state *,
+	const struct kn_access_policy *);
 void kn_node_shell_snapshot_users(const struct kn_node_shell_state *,
 	struct kn_node_shell_user *, size_t, size_t *);
 

@@ -21,6 +21,7 @@
 enum parser_block {
 	BLOCK_NONE = 0,
 	BLOCK_NODE,
+	BLOCK_ACCESS,
 	BLOCK_BBS,
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
@@ -35,6 +36,8 @@ struct parser {
 };
 
 static enum kn_config_error config_validate(struct kn_config *);
+static enum kn_config_error access_key_set(struct kn_config *, char **, size_t,
+	size_t);
 static enum kn_config_error bbs_key_set(struct kn_config *, char **, size_t,
 	size_t);
 static enum kn_config_error copy_field(char *, size_t, const char *,
@@ -67,6 +70,10 @@ config_validate(struct kn_config *config)
 	if (config->node.has_callsign == 0)
 		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
 		    "missing node callsign");
+	if (kn_access_policy_validate(&config->access.policy) !=
+	    KN_ACCESS_POLICY_OK)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid access policy");
 
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
@@ -191,6 +198,7 @@ kn_config_init(struct kn_config *config)
 		return;
 
 	memset(config, 0, sizeof(*config));
+	kn_access_policy_defaults(&config->access.policy);
 	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
@@ -369,6 +377,99 @@ key_seen(uint8_t *seen, struct kn_config *config, size_t line_no)
 }
 
 static enum kn_config_error
+access_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid access key");
+
+	if (strcmp(tokens[0], "default-policy") == 0) {
+		if (key_seen(&config->access.has_default_policy, config,
+		    line_no) != 0)
+			return config->error;
+		if (kn_access_policy_parse_default(tokens[1],
+		    &config->access.policy.default_policy) == 0)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid access default-policy");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "allow-localhost") == 0) {
+		if (key_seen(&config->access.has_allow_localhost, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->access.policy.allow_localhost) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid access allow-localhost");
+		return KN_CONFIG_OK;
+	}
+
+#define ACCESS_SIZE_KEY(name, seen, field, min, max, message) do { \
+	if (strcmp(tokens[0], (name)) == 0) { \
+		if (key_seen(&(seen), config, line_no) != 0) \
+			return config->error; \
+		errno = 0; \
+		value = strtoul(tokens[1], &end, 10); \
+		if (errno != 0 || *end != '\0' || \
+		    value < (unsigned long)(min) || \
+		    value > (unsigned long)(max)) \
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, \
+			    line_no, (message)); \
+		(field) = (size_t)value; \
+		return KN_CONFIG_OK; \
+	} \
+} while (0)
+
+	ACCESS_SIZE_KEY("max-line-bytes",
+	    config->access.has_max_line_bytes,
+	    config->access.policy.max_line_bytes, 1, KN_ACCESS_LINE_MAX,
+	    "invalid access max-line-bytes");
+	ACCESS_SIZE_KEY("max-command-bytes",
+	    config->access.has_max_command_bytes,
+	    config->access.policy.max_command_bytes, 1, KN_ACCESS_COMMAND_MAX,
+	    "invalid access max-command-bytes");
+	ACCESS_SIZE_KEY("max-clients",
+	    config->access.has_max_clients,
+	    config->access.policy.max_clients, 1,
+	    KN_CONFIG_SHELL_MAX_CLIENTS, "invalid access max-clients");
+	ACCESS_SIZE_KEY("idle-timeout-seconds",
+	    config->access.has_idle_timeout_seconds,
+	    config->access.policy.idle_timeout_seconds, 1, UINT32_MAX,
+	    "invalid access idle-timeout");
+	ACCESS_SIZE_KEY("input-rate-lines",
+	    config->access.has_input_rate_lines,
+	    config->access.policy.input_rate_lines, 1, UINT32_MAX,
+	    "invalid access input-rate-lines");
+	ACCESS_SIZE_KEY("input-rate-window-seconds",
+	    config->access.has_input_rate_window_seconds,
+	    config->access.policy.input_rate_window_seconds, 1, UINT32_MAX,
+	    "invalid access input-rate-window");
+	ACCESS_SIZE_KEY("bbs-max-body-bytes",
+	    config->access.has_bbs_max_body_bytes,
+	    config->access.policy.bbs_max_body_bytes, 1, KN_MESSAGE_BODY_MAX,
+	    "invalid access bbs-max-body-bytes");
+	ACCESS_SIZE_KEY("control-max-command-bytes",
+	    config->access.has_control_max_command_bytes,
+	    config->access.policy.control_max_command_bytes, 1,
+	    KN_ACCESS_COMMAND_MAX, "invalid access control-max-command-bytes");
+	ACCESS_SIZE_KEY("control-max-response-lines",
+	    config->access.has_control_max_response_lines,
+	    config->access.policy.control_max_response_lines, 1,
+	    KN_ACCESS_CONTROL_LINES_MAX,
+	    "invalid access control-max-response-lines");
+
+#undef ACCESS_SIZE_KEY
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown access key");
+}
+
+static enum kn_config_error
 bbs_key_set(struct kn_config *config, char **tokens, size_t token_count,
 	size_t line_no)
 {
@@ -479,6 +580,10 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 	if (parser->block == BLOCK_NODE)
 		return node_key_set(parser->config, tokens, token_count, line_no);
 
+	if (parser->block == BLOCK_ACCESS)
+		return access_key_set(parser->config, tokens, token_count,
+		    line_no);
+
 	if (parser->block == BLOCK_BBS)
 		return bbs_key_set(parser->config, tokens, token_count, line_no);
 
@@ -527,6 +632,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
 			    line_no, "invalid node block");
 		parser->block = BLOCK_NODE;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "access") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid access block");
+		if (parser->config->access.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate access block");
+		parser->config->access.has_block = 1;
+		parser->block = BLOCK_ACCESS;
 		return KN_CONFIG_OK;
 	}
 

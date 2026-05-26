@@ -12,7 +12,7 @@
 #include "kilonode/message_store.h"
 #include "kilonode/stats.h"
 
-#define KN_CONTROL_COMMAND_MAX 64
+#define KN_CONTROL_COMMAND_MAX 512
 #define KN_CONTROL_LINE_MAX    256
 #define KN_CONTROL_QUEUE_MAX   4096
 
@@ -35,6 +35,8 @@ struct kn_control_snapshot {
 	size_t heard_count;
 	uint8_t bbs_enabled;
 	struct kn_message_store *bbs_store;
+	size_t control_max_command_bytes;
+	size_t control_max_response_lines;
 };
 
 struct kn_control_socket {

@@ -23,6 +23,7 @@
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
 #include "kilonode/node_shell.h"
+#include "kilonode/session_limits.h"
 #include "kilonode/stats.h"
 
 #define KILONODE_VERSION "0.1.0"
@@ -369,6 +370,13 @@ kn_node_shell_format_command(const char *line,
 	out[0] = '\0';
 	*close_session = 0;
 	len = strlen(line);
+	if (snapshot->policy != NULL &&
+	    kn_access_policy_check_command(snapshot->policy, len) !=
+	    KN_ACCESS_POLICY_OK) {
+		(void)snprintf(out, out_len,
+		    "ERR command-too-long\r\n%s", KN_NODE_SHELL_PROMPT);
+		return KN_NODE_SHELL_OK;
+	}
 	if (len >= sizeof(command)) {
 		(void)snprintf(out, out_len,
 		    "ERR line-too-long\r\n%s", KN_NODE_SHELL_PROMPT);
@@ -510,6 +518,7 @@ kn_node_shell_init(struct kn_node_shell_state *state)
 	memset(state, 0, sizeof(*state));
 	state->listen_fd = -1;
 	state->max_clients = 0;
+	kn_access_policy_defaults(&state->policy);
 	for (i = 0; i < KN_NODE_SHELL_MAX_CLIENTS; i++)
 		state->sessions[i].fd = -1;
 }
@@ -535,6 +544,9 @@ kn_node_shell_open(const struct kn_config_shell *config,
 	kn_node_shell_init(state);
 	state->listen_fd = fd;
 	state->max_clients = config->max_clients;
+	kn_access_policy_defaults(&state->policy);
+	if (state->policy.max_clients < state->max_clients)
+		state->max_clients = state->policy.max_clients;
 	return KN_NODE_SHELL_OK;
 }
 
@@ -599,7 +611,15 @@ kn_node_shell_accept(struct kn_node_shell_state *state, const char *banner)
 	memset(session, 0, sizeof(*session));
 	session->fd = fd;
 	session->connected_at = (uint64_t)time(NULL);
+	session->last_activity = session->connected_at;
+	kn_session_rate_init(&session->rate);
 	remote_string(&addr, session->remote, sizeof(session->remote));
+	if (kn_access_policy_check_remote(&state->policy,
+	    session->remote) != KN_ACCESS_POLICY_OK) {
+		(void)write_all(fd, "ERR access-denied\r\n", 19);
+		kn_node_shell_session_close(session);
+		return KN_NODE_SHELL_OK;
+	}
 	if (send_greeting(fd, banner) != KN_NODE_SHELL_OK) {
 		kn_node_shell_session_close(session);
 		return KN_NODE_SHELL_ERR_IO;
@@ -619,9 +639,19 @@ kn_node_shell_process_session(struct kn_node_shell_session *session,
 	ssize_t nread;
 	uint8_t close_session;
 	enum kn_node_shell_error rc;
+	uint64_t now;
 
 	if (session == NULL || snapshot == NULL || session->fd < 0)
 		return KN_NODE_SHELL_ERR_INVALID_ARGUMENT;
+
+	now = (uint64_t)time(NULL);
+	if (snapshot->policy != NULL &&
+	    kn_session_idle_expired(session->last_activity, now,
+	    snapshot->policy->idle_timeout_seconds) != 0) {
+		(void)write_all(session->fd, "ERR idle-timeout\r\n", 18);
+		kn_node_shell_session_close(session);
+		return KN_NODE_SHELL_OK;
+	}
 
 	for (;;) {
 		nread = read(session->fd, buf, sizeof(buf));
@@ -648,7 +678,18 @@ kn_node_shell_process_session(struct kn_node_shell_session *session,
 				session->discard_line = 0;
 				if (rc != KN_NODE_SHELL_OK)
 					return rc;
-				continue;
+				kn_node_shell_session_close(session);
+				return KN_NODE_SHELL_OK;
+			}
+			if (snapshot->policy != NULL &&
+			    kn_session_rate_check(&session->rate,
+			    snapshot->policy->input_rate_lines,
+			    snapshot->policy->input_rate_window_seconds,
+			    now) != KN_SESSION_LIMIT_OK) {
+				(void)write_all(session->fd,
+				    "ERR rate-limit\r\n", 16);
+				kn_node_shell_session_close(session);
+				return KN_NODE_SHELL_OK;
 			}
 			session->line[session->line_len] = '\0';
 			if (session->line_len != 0)
@@ -666,11 +707,15 @@ kn_node_shell_process_session(struct kn_node_shell_session *session,
 				kn_node_shell_session_close(session);
 				return KN_NODE_SHELL_OK;
 			}
+			session->last_activity = now;
 			continue;
 		}
 		if (session->discard_line != 0)
 			continue;
-		if (session->line_len + 1 >= sizeof(session->line)) {
+		if (session->line_len + 1 >= sizeof(session->line) ||
+		    (snapshot->policy != NULL &&
+		    kn_access_policy_check_line(snapshot->policy,
+		    session->line_len + 1) != KN_ACCESS_POLICY_OK)) {
 			session->line_len = 0;
 			session->discard_line = 1;
 			continue;
@@ -685,6 +730,23 @@ kn_node_shell_process_session(struct kn_node_shell_session *session,
 }
 
 void
+kn_node_shell_prune_idle(struct kn_node_shell_state *state, uint64_t now)
+{
+	size_t i;
+
+	if (state == NULL)
+		return;
+	for (i = 0; i < state->max_clients; i++) {
+		if (state->sessions[i].fd < 0 ||
+		    state->sessions[i].closed != 0)
+			continue;
+		if (kn_session_idle_expired(state->sessions[i].last_activity,
+		    now, state->policy.idle_timeout_seconds) != 0)
+			kn_node_shell_session_close(&state->sessions[i]);
+	}
+}
+
+void
 kn_node_shell_session_close(struct kn_node_shell_session *session)
 {
 	if (session == NULL)
@@ -695,6 +757,17 @@ kn_node_shell_session_close(struct kn_node_shell_session *session)
 	session->line_len = 0;
 	session->discard_line = 0;
 	kn_bbs_shell_reset(&session->bbs);
+}
+
+void
+kn_node_shell_set_policy(struct kn_node_shell_state *state,
+	const struct kn_access_policy *policy)
+{
+	if (state == NULL || policy == NULL)
+		return;
+	state->policy = *policy;
+	if (state->policy.max_clients < state->max_clients)
+		state->max_clients = state->policy.max_clients;
 }
 
 void

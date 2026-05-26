@@ -21,6 +21,7 @@ static int test_bbs_status_disabled(void);
 static int test_bbs_unknown_command(void);
 static int test_bbs_users_disabled(void);
 static int test_control_character_command(void);
+static int test_control_policy_command_limit(void);
 static int test_help_response(void);
 static int test_heard_empty_response(void);
 static int test_heard_malformed_command(void);
@@ -33,6 +34,7 @@ static int test_overlong_command(void);
 static int test_ping_response(void);
 static int test_ports_one_port(void);
 static int test_ports_zero_ports(void);
+static int test_response_line_cap(void);
 static int test_stats_response(void);
 static int test_status_response(void);
 static int test_unknown_command(void);
@@ -91,6 +93,10 @@ main(void)
 		return 1;
 	if (test_overlong_command() != 0)
 		return 1;
+	if (test_control_policy_command_limit() != 0)
+		return 1;
+	if (test_response_line_cap() != 0)
+		return 1;
 	if (test_control_character_command() != 0)
 		return 1;
 
@@ -113,6 +119,8 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->heard_count = 0;
 	snapshot->bbs_enabled = 0;
 	snapshot->bbs_store = NULL;
+	snapshot->control_max_command_bytes = 0;
+	snapshot->control_max_response_lines = 0;
 }
 
 static int
@@ -264,6 +272,22 @@ test_control_character_command(void)
 		return 1;
 
 	return strcmp(out, "ERR invalid-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_control_policy_command_limit(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.control_max_command_bytes = 3;
+	if (kn_control_protocol_handle("PING", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_OVERLONG_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR overlong-command\n") == 0 ? 0 : 1;
 }
 
 static int
@@ -531,6 +555,29 @@ test_ports_zero_ports(void)
 		return 1;
 
 	return strcmp(out, "END\n") == 0 ? 0 : 1;
+}
+
+static int
+test_response_line_cap(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_heard_entry entry;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(&entry, 0, sizeof(entry));
+	(void)kn_callsign_parse("M6VPN-1", &entry.source);
+	(void)kn_callsign_parse("CQ", &entry.last_destination);
+	memcpy(entry.port_name, "kiss0", 6);
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.heard = &entry;
+	snapshot.heard_count = 1;
+	snapshot.control_max_response_lines = 1;
+	if (kn_control_protocol_handle("HEARD", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR response-line-limit\n") == 0 ? 0 : 1;
 }
 
 static int

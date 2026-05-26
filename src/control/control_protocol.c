@@ -17,6 +17,7 @@
 
 static enum kn_control_error append_format(char *, size_t, size_t *,
 	const char *, ...);
+static enum kn_control_error cap_response_lines(char *, size_t, size_t);
 static uint8_t command_clean(const char *);
 static void format_digipeaters(const struct kn_heard_entry *, char *, size_t);
 static enum kn_control_error format_bbs(const struct kn_control_snapshot *,
@@ -30,6 +31,9 @@ static enum kn_control_error format_stats(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_status(const struct kn_control_snapshot *,
 	char *, size_t);
+static enum kn_control_error return_with_cap(
+	const struct kn_control_snapshot *, char *, size_t,
+	enum kn_control_error);
 
 static enum kn_control_error
 append_format(char *buf, size_t bufsiz, size_t *offset, const char *fmt, ...)
@@ -51,6 +55,27 @@ append_format(char *buf, size_t bufsiz, size_t *offset, const char *fmt, ...)
 	return KN_CONTROL_OK;
 }
 
+static enum kn_control_error
+cap_response_lines(char *buf, size_t bufsiz, size_t max_lines)
+{
+	size_t i;
+	size_t lines;
+
+	if (max_lines == 0)
+		return KN_CONTROL_OK;
+	lines = 0;
+	for (i = 0; buf[i] != '\0'; i++) {
+		if (buf[i] == '\n')
+			lines++;
+	}
+	if (lines <= max_lines)
+		return KN_CONTROL_OK;
+	if (snprintf(buf, bufsiz, "ERR response-line-limit\n") < 0 ||
+	    strlen("ERR response-line-limit\n") >= bufsiz)
+		return KN_CONTROL_ERR_IO;
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
 static uint8_t
 command_clean(const char *command)
 {
@@ -63,6 +88,16 @@ command_clean(const char *command)
 	}
 
 	return 1;
+}
+
+static enum kn_control_error
+return_with_cap(const struct kn_control_snapshot *snapshot, char *out,
+	size_t out_len, enum kn_control_error rc)
+{
+	if (rc != KN_CONTROL_OK)
+		return rc;
+	return cap_response_lines(out, out_len,
+	    snapshot->control_max_response_lines);
 }
 
 static void
@@ -269,7 +304,9 @@ kn_control_protocol_handle(const char *command,
 
 	out[0] = '\0';
 
-	if (strlen(command) >= KN_CONTROL_COMMAND_MAX) {
+	if (strlen(command) >= KN_CONTROL_COMMAND_MAX ||
+	    (snapshot->control_max_command_bytes != 0 &&
+	    strlen(command) > snapshot->control_max_command_bytes)) {
 		(void)snprintf(out, out_len, "ERR overlong-command\n");
 		return KN_CONTROL_ERR_OVERLONG_COMMAND;
 	}
@@ -285,20 +322,26 @@ kn_control_protocol_handle(const char *command,
 	}
 
 	if (strcmp(command, "PING") == 0)
-		return (snprintf(out, out_len, "OK PONG\n") < (int)out_len) ?
-		    KN_CONTROL_OK : KN_CONTROL_ERR_IO;
+		return return_with_cap(snapshot, out, out_len,
+		    (snprintf(out, out_len, "OK PONG\n") < (int)out_len) ?
+		    KN_CONTROL_OK : KN_CONTROL_ERR_IO);
 	if (strcmp(command, "VERSION") == 0)
-		return (snprintf(out, out_len, "OK VERSION KiloNode %s\n",
+		return return_with_cap(snapshot, out, out_len,
+		    (snprintf(out, out_len, "OK VERSION KiloNode %s\n",
 		    KILONODE_VERSION) < (int)out_len) ?
-		    KN_CONTROL_OK : KN_CONTROL_ERR_IO;
+		    KN_CONTROL_OK : KN_CONTROL_ERR_IO);
 	if (strcmp(command, "STATUS") == 0)
-		return format_status(snapshot, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_status(snapshot, out, out_len));
 	if (strcmp(command, "PORTS") == 0)
-		return format_ports(snapshot, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_ports(snapshot, out, out_len));
 	if (strcmp(command, "STATS") == 0)
-		return format_stats(snapshot, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_stats(snapshot, out, out_len));
 	if (strcmp(command, "HEARD") == 0)
-		return format_heard(snapshot, NULL, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_heard(snapshot, NULL, out, out_len));
 	if (strncmp(command, "HEARD PORT ", 11) == 0) {
 		if (command[11] == '\0' ||
 		    strlen(command + 11) >= KN_HEARD_PORT_MAX ||
@@ -307,7 +350,8 @@ kn_control_protocol_handle(const char *command,
 			    "ERR invalid-heard-command\n");
 			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 		}
-		return format_heard(snapshot, command + 11, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_heard(snapshot, command + 11, out, out_len));
 	}
 	if (strcmp(command, "HEARD CLEAR") == 0) {
 		(void)snprintf(out, out_len, "ERR not-implemented\n");
@@ -322,12 +366,15 @@ kn_control_protocol_handle(const char *command,
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 	}
 	if (strncmp(command, "BBS ", 4) == 0)
-		return format_bbs(snapshot, command + 4, out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_bbs(snapshot, command + 4, out, out_len));
 	if (strcmp(command, "HELP") == 0)
-		return format_help(out, out_len);
+		return return_with_cap(snapshot, out, out_len,
+		    format_help(out, out_len));
 	if (strcmp(command, "QUIT") == 0)
-		return (snprintf(out, out_len, "OK BYE\n") < (int)out_len) ?
-		    KN_CONTROL_OK : KN_CONTROL_ERR_IO;
+		return return_with_cap(snapshot, out, out_len,
+		    (snprintf(out, out_len, "OK BYE\n") < (int)out_len) ?
+		    KN_CONTROL_OK : KN_CONTROL_ERR_IO);
 
 	(void)snprintf(out, out_len, "ERR unknown-command\n");
 	return KN_CONTROL_ERR_UNKNOWN_COMMAND;

@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include "kilonode/access_policy.h"
 #include "kilonode/bbs_user.h"
 #include "kilonode/message.h"
 #include "kilonode/message_store.h"
@@ -41,6 +42,7 @@ struct kn_bbs_shell_session {
 
 struct kn_bbs_shell_snapshot {
 	struct kn_message_store *store;
+	const struct kn_access_policy *policy;
 	uint8_t enabled;
 	size_t max_body_bytes;
 };

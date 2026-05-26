@@ -52,10 +52,12 @@ add_library(packetcore STATIC
 	src/bbs/message.c
 	src/bbs/message_index.c
 	src/bbs/message_store.c
+	src/core/access_policy.c
 	src/core/buffer.c
 	src/core/callsign.c
 	src/core/config.c
 	src/core/heard.c
+	src/core/session_limits.c
 	src/core/stats.c
 	src/daemon/daemon.c
 	src/monitor/monitor.c
@@ -123,6 +125,11 @@ add_executable(test_config tests/test_config.c)
 target_link_libraries(test_config PRIVATE packetcore)
 kilonode_target_defaults(test_config)
 add_test(NAME config COMMAND test_config)
+
+add_executable(test_access_policy tests/test_access_policy.c)
+target_link_libraries(test_access_policy PRIVATE packetcore)
+kilonode_target_defaults(test_access_policy)
+add_test(NAME access_policy COMMAND test_access_policy)
 
 add_executable(test_control_protocol tests/test_control_protocol.c)
 target_link_libraries(test_control_protocol PRIVATE packetcore)
@@ -233,6 +240,11 @@ add_executable(test_stats tests/test_stats.c)
 target_link_libraries(test_stats PRIVATE packetcore)
 kilonode_target_defaults(test_stats)
 add_test(NAME stats COMMAND test_stats)
+
+add_executable(test_session_limits tests/test_session_limits.c)
+target_link_libraries(test_session_limits PRIVATE packetcore)
+kilonode_target_defaults(test_session_limits)
+add_test(NAME session_limits COMMAND test_session_limits)
 
 add_executable(test_transport tests/test_transport.c)
 target_link_libraries(test_transport PRIVATE packetcore)

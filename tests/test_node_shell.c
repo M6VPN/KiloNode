@@ -38,6 +38,7 @@ static int test_help_bbs_enabled(void);
 static int test_help_command(void);
 static int test_info_command(void);
 static int test_lowercase_command(void);
+static int test_policy_command_too_long(void);
 static int test_overlong_line(void);
 static int test_ports_zero_and_one(void);
 static int test_quit_command(void);
@@ -79,6 +80,8 @@ main(void)
 	if (test_empty_line() != 0)
 		return 1;
 	if (test_overlong_line() != 0)
+		return 1;
+	if (test_policy_command_too_long() != 0)
 		return 1;
 	if (test_control_characters_sanitized() != 0)
 		return 1;
@@ -446,6 +449,27 @@ test_overlong_line(void)
 		return 1;
 
 	return strstr(out, "ERR line-too-long") != NULL ? 0 : 1;
+}
+
+static int
+test_policy_command_too_long(void)
+{
+	struct kn_node_shell_snapshot snapshot;
+	struct kn_config_node node;
+	struct kn_daemon_stats daemon;
+	struct kn_access_policy policy;
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+
+	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
+	kn_access_policy_defaults(&policy);
+	policy.max_command_bytes = 3;
+	snapshot.policy = &policy;
+	if (run_command("HELP", &snapshot, out, sizeof(out),
+	    &close_session) != 0)
+		return 1;
+
+	return strstr(out, "ERR command-too-long") != NULL ? 0 : 1;
 }
 
 static int

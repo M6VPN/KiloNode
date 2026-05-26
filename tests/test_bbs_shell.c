@@ -24,6 +24,8 @@ static int test_bye_closes(void);
 static int test_empty_line(void);
 static int test_help(void);
 static int test_kill_missing(void);
+static int test_policy_body_limit(void);
+static int test_policy_line_limit(void);
 static int test_read_missing(void);
 static int test_unknown_command(void);
 
@@ -37,6 +39,10 @@ main(void)
 	if (test_read_missing() != 0)
 		return 1;
 	if (test_kill_missing() != 0)
+		return 1;
+	if (test_policy_line_limit() != 0)
+		return 1;
+	if (test_policy_body_limit() != 0)
 		return 1;
 	if (test_bye_closes() != 0)
 		return 1;
@@ -130,6 +136,7 @@ test_areas_empty(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
@@ -160,6 +167,7 @@ test_bye_closes(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
@@ -189,6 +197,7 @@ test_empty_line(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
@@ -218,6 +227,7 @@ test_help(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
@@ -248,6 +258,7 @@ test_kill_missing(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
@@ -257,6 +268,79 @@ test_kill_missing(void)
 	    run_bbs("KILL 99", &session, &snapshot, out, sizeof(out),
 	    &close_session, &exit_bbs) == 0 &&
 	    strstr(out, "ERR store-error") != NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
+test_policy_body_limit(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	struct kn_access_policy policy;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+	uint8_t exit_bbs;
+	int rc;
+
+	if (make_store(dir, sizeof(dir)) != 0)
+		return 1;
+	kn_message_store_init(&store);
+	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
+	memcpy(session.identity, "M6VPN-1", 8);
+	kn_access_policy_defaults(&policy);
+	policy.bbs_max_body_bytes = 4;
+	snapshot.store = &store;
+	snapshot.policy = &policy;
+	snapshot.enabled = 1;
+	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
+	rc = kn_message_store_open(&store, dir, KN_MESSAGE_BODY_MAX) ==
+	    KN_MESSAGE_STORE_OK &&
+	    run_bbs("SEND PRIVATE N0CALL Test", &session, &snapshot, out,
+	    sizeof(out), &close_session, &exit_bbs) == 0 &&
+	    run_bbs("12345", &session, &snapshot, out, sizeof(out),
+	    &close_session, &exit_bbs) == 0 &&
+	    run_bbs(".", &session, &snapshot, out, sizeof(out),
+	    &close_session, &exit_bbs) == 0 &&
+	    strstr(out, "ERR body-too-large") != NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
+test_policy_line_limit(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	struct kn_access_policy policy;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+	uint8_t exit_bbs;
+	int rc;
+
+	if (make_store(dir, sizeof(dir)) != 0)
+		return 1;
+	kn_message_store_init(&store);
+	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
+	kn_access_policy_defaults(&policy);
+	policy.max_line_bytes = 3;
+	snapshot.store = &store;
+	snapshot.policy = &policy;
+	snapshot.enabled = 1;
+	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
+	rc = kn_message_store_open(&store, dir, KN_MESSAGE_BODY_MAX) ==
+	    KN_MESSAGE_STORE_OK &&
+	    run_bbs("HELP", &session, &snapshot, out, sizeof(out),
+	    &close_session, &exit_bbs) == 0 &&
+	    strstr(out, "ERR line-too-long") != NULL ? 0 : 1;
 	kn_message_store_close(&store);
 	cleanup_store(dir);
 	return rc;
@@ -278,6 +362,7 @@ test_read_missing(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
@@ -308,6 +393,7 @@ test_unknown_command(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memset(&snapshot, 0, sizeof(snapshot));
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;

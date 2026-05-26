@@ -53,7 +53,7 @@ static enum kn_daemon_error open_config_port(struct daemon_port *,
 static int control_handle(struct kn_control_socket *,
 	const struct kn_daemon_stats *, const struct daemon_port *, size_t,
 	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
-	uint8_t);
+	uint8_t, const struct kn_access_policy *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t);
 static void shell_snapshot_init(struct kn_node_shell_snapshot *,
@@ -193,9 +193,12 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
+		kn_node_shell_set_policy(&shell, &config->access.policy);
 	}
 
 	while (daemon_stop == 0) {
+		if (shell_enabled != 0)
+			kn_node_shell_prune_idle(&shell, (uint64_t)time(NULL));
 		poll_count = 0;
 		for (i = 0; i < port_count; i++) {
 			if (ports[i].active == 0)
@@ -305,7 +308,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		    (pollfds[control_poll].revents & POLLIN) != 0) {
 			if (control_handle(&control, &daemon_stats, ports,
 			    port_count, &heard, config->heard.enabled,
-			    &bbs_store, bbs_enabled) != 0) {
+			    &bbs_store, bbs_enabled,
+			    &config->access.policy) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -422,18 +426,23 @@ control_handle(struct kn_control_socket *control,
 	const struct kn_daemon_stats *daemon_stats, const struct daemon_port *ports,
 	size_t port_count, const struct kn_heard_table *heard,
 	uint8_t heard_enabled, struct kn_message_store *bbs_store,
-	uint8_t bbs_enabled)
+	uint8_t bbs_enabled, const struct kn_access_policy *policy)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
 	char command[KN_CONTROL_COMMAND_MAX];
 	char response[KN_CONTROL_QUEUE_MAX];
+	size_t command_max;
 	size_t command_len;
 	size_t i;
 	enum kn_control_error control_rc;
 
+	command_max = sizeof(command);
+	if (policy != NULL && policy->control_max_command_bytes + 1 <
+	    command_max)
+		command_max = policy->control_max_command_bytes + 1;
 	control_rc = kn_control_socket_read_command(control, command,
-	    sizeof(command), &command_len);
+	    command_max, &command_len);
 	if (control_rc == KN_CONTROL_ERR_OVERLONG_COMMAND) {
 		(void)kn_control_socket_write(control->client_fd,
 		    "ERR overlong-command\n", 21);
@@ -460,6 +469,15 @@ control_handle(struct kn_control_socket *control,
 	}
 	snapshot.bbs_enabled = bbs_enabled;
 	snapshot.bbs_store = bbs_enabled != 0 ? bbs_store : NULL;
+	if (policy != NULL) {
+		snapshot.control_max_command_bytes =
+		    policy->control_max_command_bytes;
+		snapshot.control_max_response_lines =
+		    policy->control_max_response_lines;
+	} else {
+		snapshot.control_max_command_bytes = 0;
+		snapshot.control_max_response_lines = 0;
+	}
 	control_rc = kn_control_protocol_handle(command, &snapshot, response,
 	    sizeof(response));
 	(void)control_rc;
@@ -546,14 +564,21 @@ shell_snapshot_init(struct kn_node_shell_snapshot *snapshot,
 	}
 	snapshot->users = users;
 	snapshot->user_count = *user_count;
+	snapshot->policy = &config->access.policy;
 	if (bbs_enabled != 0) {
 		snapshot->bbs.store = bbs_store;
+		snapshot->bbs.policy = &config->access.policy;
 		snapshot->bbs.enabled = 1;
-		snapshot->bbs.max_body_bytes = config->bbs.max_body_bytes;
+		snapshot->bbs.max_body_bytes = config->bbs.max_body_bytes <
+		    config->access.policy.bbs_max_body_bytes ?
+		    config->bbs.max_body_bytes :
+		    config->access.policy.bbs_max_body_bytes;
 	} else {
 		snapshot->bbs.store = NULL;
+		snapshot->bbs.policy = &config->access.policy;
 		snapshot->bbs.enabled = 0;
-		snapshot->bbs.max_body_bytes = config->bbs.max_body_bytes;
+		snapshot->bbs.max_body_bytes =
+		    config->access.policy.bbs_max_body_bytes;
 	}
 }
 

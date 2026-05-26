@@ -40,6 +40,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KiloNode-native BBS control areas | tested | Indexed bulletin area summaries |
 | KiloNode-native BBS control users | tested | Local user summaries, no passwords |
 | KiloNode-native BBS control message summaries | tested | Filtered message summaries and bounded previews |
+| KiloNode-native access policy | tested | Native policy block for local shell, BBS, and control limits |
+| Shell idle timeout | tested | Inactive local shell sessions close cleanly |
+| Shell input rate limit | tested | Per-session command rate window |
+| BBS body size enforcement | tested | Oversized multiline SEND bodies are rejected before storage |
+| Control command size limit | tested | Overlong local control commands are rejected |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |
@@ -69,6 +74,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQ/LinBPQ mailbox import | planned | Not implemented |
 | BPQ/LinBPQ mailbox export | planned | Not implemented |
 | BPQ/LinBPQ remote sysop status commands | planned | Not implemented |
+| BPQ/LinBPQ sysop authentication compatibility | planned | Not implemented |
+| BPQ/LinBPQ user/password compatibility | planned | Not implemented |
+| RF BBS access control | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
 | BBS forwarding queue | planned | Not implemented |
 | BBS forwarding queues | planned | Not implemented |

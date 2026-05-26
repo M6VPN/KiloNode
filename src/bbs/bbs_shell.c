@@ -680,10 +680,16 @@ store_line(struct kn_bbs_shell_session *session, const char *line,
 	size_t i;
 
 	max = snapshot->max_body_bytes;
+	if (snapshot->policy != NULL &&
+	    snapshot->policy->bbs_max_body_bytes < max)
+		max = snapshot->policy->bbs_max_body_bytes;
 	if (max == 0 || max > KN_MESSAGE_BODY_MAX)
 		max = KN_MESSAGE_BODY_MAX;
 	len = strlen(line);
-	if (session->body_len + len + 1 > max ||
+	if ((snapshot->policy != NULL &&
+	    kn_access_policy_body_growth(snapshot->policy, session->body_len,
+	    len + 1) != KN_ACCESS_POLICY_OK) ||
+	    session->body_len + len + 1 > max ||
 	    session->body_len + len + 1 > sizeof(session->body)) {
 		session->body_overflow = 1;
 		return KN_BBS_SHELL_OK;
@@ -745,6 +751,25 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 	*exit_bbs = 0;
 	offset = 0;
 	len = strlen(line);
+	if (snapshot->policy != NULL &&
+	    kn_access_policy_check_line(snapshot->policy, len) !=
+	    KN_ACCESS_POLICY_OK) {
+		kn_bbs_shell_reset(session);
+		rc = append_format(out, out_len, &offset,
+		    "ERR line-too-long\r\n");
+		if (rc != KN_BBS_SHELL_OK)
+			return rc;
+		return append_prompt(out, out_len, &offset);
+	}
+	if (snapshot->policy != NULL &&
+	    kn_access_policy_check_command(snapshot->policy, len) !=
+	    KN_ACCESS_POLICY_OK) {
+		rc = append_format(out, out_len, &offset,
+		    "ERR command-too-long\r\n");
+		if (rc != KN_BBS_SHELL_OK)
+			return rc;
+		return append_session_prompt(session, out, out_len, &offset);
+	}
 	if (len >= sizeof(command)) {
 		rc = append_format(out, out_len, &offset,
 		    "ERR line-too-long\r\n");

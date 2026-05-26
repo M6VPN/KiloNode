@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include "kilonode/access_policy.h"
 #include "kilonode/callsign.h"
 #include "kilonode/transport.h"
 
@@ -28,6 +29,22 @@
 #define KN_CONFIG_SHELL_BANNER_MAX      128
 #define KN_CONFIG_SHELL_MAX_CLIENTS     16
 #define KN_CONFIG_SHELL_MAX_CLIENTS_MIN 1
+
+struct kn_config_access {
+	struct kn_access_policy policy;
+	uint8_t has_block;
+	uint8_t has_default_policy;
+	uint8_t has_allow_localhost;
+	uint8_t has_max_line_bytes;
+	uint8_t has_max_command_bytes;
+	uint8_t has_max_clients;
+	uint8_t has_idle_timeout_seconds;
+	uint8_t has_input_rate_lines;
+	uint8_t has_input_rate_window_seconds;
+	uint8_t has_bbs_max_body_bytes;
+	uint8_t has_control_max_command_bytes;
+	uint8_t has_control_max_response_lines;
+};
 
 enum kn_config_error {
 	KN_CONFIG_OK = 0,
@@ -128,6 +145,7 @@ struct kn_config_port {
 
 struct kn_config {
 	struct kn_config_node node;
+	struct kn_config_access access;
 	struct kn_config_control control;
 	struct kn_config_bbs bbs;
 	struct kn_config_heard heard;
