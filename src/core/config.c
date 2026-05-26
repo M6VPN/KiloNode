@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "kilonode/config.h"
+#include "kilonode/control.h"
 #include "kilonode/kiss_stream.h"
 #include "kilonode/transport_serial.h"
 #include "kilonode/transport_tcp.h"
@@ -20,6 +21,7 @@
 enum parser_block {
 	BLOCK_NONE = 0,
 	BLOCK_NODE,
+	BLOCK_CONTROL,
 	BLOCK_PORT
 };
 
@@ -56,6 +58,11 @@ config_validate(struct kn_config *config)
 	if (config->node.has_callsign == 0)
 		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
 		    "missing node callsign");
+
+	if (config->control.has_block != 0 && config->control.enabled != 0 &&
+	    config->control.has_path == 0)
+		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
+		    "missing control path");
 
 	for (i = 0; i < config->port_count; i++) {
 		port = &config->ports[i];
@@ -359,6 +366,37 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 	if (parser->block == BLOCK_NODE)
 		return node_key_set(parser->config, tokens, token_count, line_no);
 
+	if (parser->block == BLOCK_CONTROL) {
+		if (token_count != 2)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid control key");
+		if (strcmp(tokens[0], "enabled") == 0) {
+			if (key_seen(&parser->config->control.has_enabled,
+			    parser->config, line_no) != 0)
+				return parser->config->error;
+			if (parse_bool(tokens[1],
+			    &parser->config->control.enabled) != KN_CONFIG_OK)
+				return set_error(parser->config,
+				    KN_CONFIG_ERR_INVALID_VALUE, line_no,
+				    "invalid control enabled value");
+			return KN_CONFIG_OK;
+		}
+		if (strcmp(tokens[0], "path") == 0) {
+			if (key_seen(&parser->config->control.has_path,
+			    parser->config, line_no) != 0)
+				return parser->config->error;
+			if (kn_control_socket_path_valid(tokens[1]) == 0)
+				return set_error(parser->config,
+				    KN_CONFIG_ERR_INVALID_VALUE, line_no,
+				    "invalid control path");
+			return copy_field(parser->config->control.path,
+			    sizeof(parser->config->control.path), tokens[1],
+			    parser->config, line_no);
+		}
+		return set_error(parser->config, KN_CONFIG_ERR_UNKNOWN_KEY,
+		    line_no, "unknown control key");
+	}
+
 	if (parser->block == BLOCK_PORT)
 		return port_key_set(parser, tokens, token_count, line_no);
 
@@ -367,6 +405,20 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
 			    line_no, "invalid node block");
 		parser->block = BLOCK_NODE;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "control") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid control block");
+		if (parser->config->control.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate control block");
+		parser->config->control.has_block = 1;
+		parser->config->control.enabled = 0;
+		parser->block = BLOCK_CONTROL;
 		return KN_CONFIG_OK;
 	}
 

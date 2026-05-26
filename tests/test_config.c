@@ -9,12 +9,15 @@
 
 static int expect_error(const char *, enum kn_config_error);
 static int test_comment_handling(void);
+static int test_control_block(void);
+static int test_duplicate_control_block(void);
 static int test_duplicate_port_name(void);
 static int test_invalid_baud(void);
 static int test_invalid_callsign(void);
 static int test_invalid_max_frame(void);
 static int test_line_number_error(void);
 static int test_minimal_valid_config(void);
+static int test_missing_control_path(void);
 static int test_missing_node_callsign(void);
 static int test_missing_port_type(void);
 static int test_multiple_ports_disabled(void);
@@ -36,6 +39,10 @@ main(void)
 		return 1;
 	if (test_comment_handling() != 0)
 		return 1;
+	if (test_control_block() != 0)
+		return 1;
+	if (test_duplicate_control_block() != 0)
+		return 1;
 	if (test_duplicate_port_name() != 0)
 		return 1;
 	if (test_unknown_block() != 0)
@@ -53,6 +60,8 @@ main(void)
 	if (test_invalid_max_frame() != 0)
 		return 1;
 	if (test_line_number_error() != 0)
+		return 1;
+	if (test_missing_control_path() != 0)
 		return 1;
 
 	return 0;
@@ -80,6 +89,45 @@ test_comment_handling(void)
 		return 1;
 
 	return config.node.callsign.ssid == 1 ? 0 : 1;
+}
+
+static int
+test_control_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"control {\n"
+		"enabled true\n"
+		"path /tmp/kilonode/control.sock\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.control.enabled != 1)
+		return 1;
+
+	return strcmp(config.control.path, "/tmp/kilonode/control.sock") == 0 ?
+	    0 : 1;
+}
+
+static int
+test_duplicate_control_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"control {\n"
+		"enabled false\n"
+		"}\n"
+		"control {\n"
+		"enabled false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
 }
 
 static int
@@ -175,6 +223,20 @@ test_minimal_valid_config(void)
 		return 1;
 
 	return config.port_count == 0 ? 0 : 1;
+}
+
+static int
+test_missing_control_path(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"control {\n"
+		"enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_MISSING_REQUIRED);
 }
 
 static int

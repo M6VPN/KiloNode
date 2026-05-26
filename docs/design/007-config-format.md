@@ -20,6 +20,18 @@ node {
 `callsign` is required and uses the existing callsign and SSID validation.
 `alias` and `location` are optional.
 
+Control block:
+
+```text
+control {
+	enabled true
+	path /tmp/kilonode/control.sock
+}
+```
+
+The control block is optional. If omitted, control is disabled. If enabled,
+`path` is required.
+
 Port block:
 
 ```text
@@ -47,6 +59,7 @@ Validation rules:
 - Unknown top-level blocks are rejected.
 - Unknown keys are rejected.
 - Duplicate keys are rejected.
+- Duplicate control blocks are rejected.
 - Port names must be unique.
 - Disabled ports parse but are not opened.
 - `max-frame` must be between `KN_CONFIG_MAX_FRAME_MIN` and

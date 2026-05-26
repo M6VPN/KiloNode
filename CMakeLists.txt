@@ -40,9 +40,12 @@ function(kilonode_target_defaults target_name)
 endfunction()
 
 add_library(packetcore STATIC
+	src/control/control_protocol.c
+	src/control/control_socket.c
 	src/core/buffer.c
 	src/core/callsign.c
 	src/core/config.c
+	src/core/stats.c
 	src/daemon/daemon.c
 	src/monitor/monitor.c
 	src/proto/ax25.c
@@ -71,6 +74,10 @@ add_executable(kilonoded src/tools/kilonoded.c)
 target_link_libraries(kilonoded PRIVATE packetcore)
 kilonode_target_defaults(kilonoded)
 
+add_executable(kilonodectl src/tools/kilonodectl.c)
+target_link_libraries(kilonodectl PRIVATE packetcore)
+kilonode_target_defaults(kilonodectl)
+
 enable_testing()
 
 add_executable(test_buffer tests/test_buffer.c)
@@ -93,6 +100,16 @@ target_link_libraries(test_config PRIVATE packetcore)
 kilonode_target_defaults(test_config)
 add_test(NAME config COMMAND test_config)
 
+add_executable(test_control_protocol tests/test_control_protocol.c)
+target_link_libraries(test_control_protocol PRIVATE packetcore)
+kilonode_target_defaults(test_control_protocol)
+add_test(NAME control_protocol COMMAND test_control_protocol)
+
+add_executable(test_control_socket tests/test_control_socket.c)
+target_link_libraries(test_control_socket PRIVATE packetcore)
+kilonode_target_defaults(test_control_socket)
+add_test(NAME control_socket COMMAND test_control_socket)
+
 add_executable(test_daemon_config tests/test_daemon_config.c)
 target_link_libraries(test_daemon_config PRIVATE packetcore)
 kilonode_target_defaults(test_daemon_config)
@@ -112,6 +129,11 @@ add_executable(test_monitor tests/test_monitor.c)
 target_link_libraries(test_monitor PRIVATE packetcore)
 kilonode_target_defaults(test_monitor)
 add_test(NAME monitor COMMAND test_monitor)
+
+add_executable(test_stats tests/test_stats.c)
+target_link_libraries(test_stats PRIVATE packetcore)
+kilonode_target_defaults(test_stats)
+add_test(NAME stats COMMAND test_stats)
 
 add_executable(test_transport tests/test_transport.c)
 target_link_libraries(test_transport PRIVATE packetcore)

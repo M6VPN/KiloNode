@@ -57,6 +57,14 @@ struct kn_config_node {
 	uint8_t has_location;
 };
 
+struct kn_config_control {
+	char path[KN_CONFIG_PATH_MAX];
+	uint8_t enabled;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_path;
+};
+
 struct kn_config_port {
 	char name[KN_CONFIG_PORT_NAME_MAX];
 	enum kn_config_port_type type;
@@ -81,6 +89,7 @@ struct kn_config_port {
 
 struct kn_config {
 	struct kn_config_node node;
+	struct kn_config_control control;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;
 	enum kn_config_error error;
