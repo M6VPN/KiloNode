@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include "kilonode/bbs_shell.h"
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
 #include "kilonode/stats.h"
@@ -44,6 +45,7 @@ struct kn_node_shell_session {
 	char remote[KN_NODE_SHELL_REMOTE_MAX];
 	uint8_t closed;
 	uint8_t discard_line;
+	struct kn_bbs_shell_session bbs;
 };
 
 struct kn_node_shell_state {
@@ -61,10 +63,14 @@ struct kn_node_shell_snapshot {
 	size_t heard_count;
 	const struct kn_node_shell_user *users;
 	size_t user_count;
+	struct kn_bbs_shell_snapshot bbs;
 };
 
 void kn_node_shell_close(struct kn_node_shell_state *);
 enum kn_node_shell_error kn_node_shell_format_command(const char *,
+	const struct kn_node_shell_snapshot *, char *, size_t, uint8_t *);
+enum kn_node_shell_error kn_node_shell_format_session_command(
+	struct kn_node_shell_session *, const char *,
 	const struct kn_node_shell_snapshot *, char *, size_t, uint8_t *);
 int kn_node_shell_fd(const struct kn_node_shell_state *);
 void kn_node_shell_init(struct kn_node_shell_state *);

@@ -351,10 +351,16 @@ kn_node_shell_format_command(const char *line,
 		args++;
 
 	offset = 0;
-	if (strcmp(word, "HELP") == 0)
-		rc = append_format(out, out_len, &offset,
-		    "OK HELP HELP INFO PORTS HEARD USERS STATS BYE QUIT\r\n");
-	else if (strcmp(word, "INFO") == 0)
+	if (strcmp(word, "HELP") == 0) {
+		if (snapshot->bbs.enabled != 0 && snapshot->bbs.store != NULL)
+			rc = append_format(out, out_len, &offset,
+			    "OK HELP HELP INFO PORTS HEARD USERS STATS BBS "
+			    "BYE QUIT\r\n");
+		else
+			rc = append_format(out, out_len, &offset,
+			    "OK HELP HELP INFO PORTS HEARD USERS STATS "
+			    "BBS(unavailable) BYE QUIT\r\n");
+	} else if (strcmp(word, "INFO") == 0)
 		rc = command_info(snapshot, out, out_len, &offset);
 	else if (strcmp(word, "PORTS") == 0)
 		rc = command_ports(snapshot, out, out_len, &offset);
@@ -364,6 +370,13 @@ kn_node_shell_format_command(const char *line,
 		rc = command_stats(snapshot, out, out_len, &offset);
 	else if (strcmp(word, "HEARD") == 0) {
 		rc = command_heard(args, snapshot, out, out_len, &offset);
+	} else if (strcmp(word, "BBS") == 0) {
+		if (snapshot->bbs.enabled != 0 && snapshot->bbs.store != NULL)
+			rc = append_format(out, out_len, &offset,
+			    "OK BBS use-session-state\r\n");
+		else
+			rc = append_format(out, out_len, &offset,
+			    "ERR bbs-unavailable\r\n");
 	} else if (strcmp(word, "BYE") == 0 || strcmp(word, "QUIT") == 0) {
 		*close_session = 1;
 		return append_format(out, out_len, &offset, "BYE\r\n");
@@ -375,6 +388,66 @@ kn_node_shell_format_command(const char *line,
 		return rc;
 
 	return append_prompt(out, out_len, &offset);
+}
+
+enum kn_node_shell_error
+kn_node_shell_format_session_command(struct kn_node_shell_session *session,
+	const char *line, const struct kn_node_shell_snapshot *snapshot,
+	char *out, size_t out_len, uint8_t *close_session)
+{
+	char command[KN_NODE_SHELL_LINE_MAX];
+	size_t len;
+	size_t i;
+	uint8_t exit_bbs;
+
+	if (session == NULL || line == NULL || snapshot == NULL ||
+	    out == NULL || out_len == 0 || close_session == NULL)
+		return KN_NODE_SHELL_ERR_INVALID_ARGUMENT;
+
+	if (session->bbs.active != 0) {
+		if (kn_bbs_shell_format(&session->bbs, line, &snapshot->bbs,
+		    out, out_len, close_session, &exit_bbs) !=
+		    KN_BBS_SHELL_OK)
+			return KN_NODE_SHELL_ERR_IO;
+		if (exit_bbs != 0)
+			session->bbs.active = 0;
+		return KN_NODE_SHELL_OK;
+	}
+
+	len = strlen(line);
+	if (len < sizeof(command)) {
+		while (*line == ' ' || *line == '\t')
+			line++;
+		len = strlen(line);
+		while (len > 0 && (line[len - 1] == ' ' ||
+		    line[len - 1] == '\t'))
+			len--;
+		if (len == 3) {
+			for (i = 0; i < len; i++)
+				command[i] = (char)toupper(
+				    (unsigned char)line[i]);
+			command[len] = '\0';
+			if (strcmp(command, "BBS") == 0) {
+				if (snapshot->bbs.enabled == 0 ||
+				    snapshot->bbs.store == NULL) {
+					(void)snprintf(out, out_len,
+					    "ERR bbs-unavailable\r\n%s",
+					    KN_NODE_SHELL_PROMPT);
+					*close_session = 0;
+					return KN_NODE_SHELL_OK;
+				}
+				kn_bbs_shell_reset(&session->bbs);
+				session->bbs.active = 1;
+				(void)snprintf(out, out_len, "OK BBS\r\n%s",
+				    KN_BBS_SHELL_PROMPT);
+				*close_session = 0;
+				return KN_NODE_SHELL_OK;
+			}
+		}
+	}
+
+	return kn_node_shell_format_command(line, snapshot, out, out_len,
+	    close_session);
 }
 
 int
@@ -540,8 +613,9 @@ kn_node_shell_process_session(struct kn_node_shell_session *session,
 			session->line[session->line_len] = '\0';
 			if (session->line_len != 0)
 				session->command_count++;
-			rc = kn_node_shell_format_command(session->line,
-			    snapshot, response, sizeof(response), &close_session);
+			rc = kn_node_shell_format_session_command(session,
+			    session->line, snapshot, response, sizeof(response),
+			    &close_session);
 			session->line_len = 0;
 			if (rc != KN_NODE_SHELL_OK)
 				return rc;
@@ -580,6 +654,7 @@ kn_node_shell_session_close(struct kn_node_shell_session *session)
 	session->closed = 1;
 	session->line_len = 0;
 	session->discard_line = 0;
+	kn_bbs_shell_reset(&session->bbs);
 }
 
 void

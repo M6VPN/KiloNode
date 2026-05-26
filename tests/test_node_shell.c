@@ -8,6 +8,7 @@
 #include "kilonode/callsign.h"
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
+#include "kilonode/message_store.h"
 #include "kilonode/node_shell.h"
 
 static void snapshot_init(struct kn_node_shell_snapshot *,
@@ -16,11 +17,16 @@ static void snapshot_init(struct kn_node_shell_snapshot *,
 	struct kn_node_shell_user *, size_t);
 static int run_command(const char *, struct kn_node_shell_snapshot *, char *,
 	size_t, uint8_t *);
+static int run_session_command(struct kn_node_shell_session *, const char *,
+	struct kn_node_shell_snapshot *, char *, size_t, uint8_t *);
 static int test_bye_command(void);
+static int test_bbs_command_changes_mode(void);
 static int test_control_characters_sanitized(void);
 static int test_empty_line(void);
+static int test_exit_from_bbs_mode(void);
 static int test_heard_empty(void);
 static int test_heard_one_entry(void);
+static int test_help_bbs_enabled(void);
 static int test_help_command(void);
 static int test_info_command(void);
 static int test_lowercase_command(void);
@@ -35,6 +41,12 @@ int
 main(void)
 {
 	if (test_help_command() != 0)
+		return 1;
+	if (test_help_bbs_enabled() != 0)
+		return 1;
+	if (test_bbs_command_changes_mode() != 0)
+		return 1;
+	if (test_exit_from_bbs_mode() != 0)
 		return 1;
 	if (test_info_command() != 0)
 		return 1;
@@ -73,6 +85,7 @@ snapshot_init(struct kn_node_shell_snapshot *snapshot,
 	struct kn_heard_entry *heard, size_t heard_count,
 	struct kn_node_shell_user *users, size_t user_count)
 {
+	memset(snapshot, 0, sizeof(*snapshot));
 	memset(node, 0, sizeof(*node));
 	memset(daemon, 0, sizeof(*daemon));
 	(void)kn_callsign_parse("M6VPN-1", &node->callsign);
@@ -89,6 +102,9 @@ snapshot_init(struct kn_node_shell_snapshot *snapshot,
 	snapshot->heard_count = heard_count;
 	snapshot->users = users;
 	snapshot->user_count = user_count;
+	snapshot->bbs.enabled = 0;
+	snapshot->bbs.store = NULL;
+	snapshot->bbs.max_body_bytes = KN_MESSAGE_BODY_MAX;
 }
 
 static int
@@ -97,6 +113,15 @@ run_command(const char *command, struct kn_node_shell_snapshot *snapshot,
 {
 	return kn_node_shell_format_command(command, snapshot, out, out_len,
 	    close_session) == KN_NODE_SHELL_OK ? 0 : 1;
+}
+
+static int
+run_session_command(struct kn_node_shell_session *session, const char *command,
+	struct kn_node_shell_snapshot *snapshot, char *out, size_t out_len,
+	uint8_t *close_session)
+{
+	return kn_node_shell_format_session_command(session, command, snapshot,
+	    out, out_len, close_session) == KN_NODE_SHELL_OK ? 0 : 1;
 }
 
 static int
@@ -116,6 +141,31 @@ test_bye_command(void)
 		return 1;
 
 	return strcmp(out, "BYE\r\n") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_command_changes_mode(void)
+{
+	struct kn_node_shell_snapshot snapshot;
+	struct kn_config_node node;
+	struct kn_daemon_stats daemon;
+	struct kn_message_store store;
+	struct kn_node_shell_session session;
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+
+	memset(&session, 0, sizeof(session));
+	kn_message_store_init(&store);
+	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
+	snapshot.bbs.enabled = 1;
+	snapshot.bbs.store = &store;
+	if (run_session_command(&session, "BBS", &snapshot, out, sizeof(out),
+	    &close_session) != 0)
+		return 1;
+	if (session.bbs.active == 0)
+		return 1;
+
+	return strcmp(out, "OK BBS\r\n" KN_BBS_SHELL_PROMPT) == 0 ? 0 : 1;
 }
 
 static int
@@ -150,6 +200,34 @@ test_empty_line(void)
 		return 1;
 
 	return strcmp(out, KN_NODE_SHELL_PROMPT) == 0 ? 0 : 1;
+}
+
+static int
+test_exit_from_bbs_mode(void)
+{
+	struct kn_node_shell_snapshot snapshot;
+	struct kn_config_node node;
+	struct kn_daemon_stats daemon;
+	struct kn_message_store store;
+	struct kn_node_shell_session session;
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+
+	memset(&session, 0, sizeof(session));
+	kn_message_store_init(&store);
+	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
+	snapshot.bbs.enabled = 1;
+	snapshot.bbs.store = &store;
+	if (run_session_command(&session, "BBS", &snapshot, out, sizeof(out),
+	    &close_session) != 0)
+		return 1;
+	if (run_session_command(&session, "EXIT", &snapshot, out, sizeof(out),
+	    &close_session) != 0)
+		return 1;
+	if (session.bbs.active != 0)
+		return 1;
+
+	return strcmp(out, "OK EXIT\r\n" KN_NODE_SHELL_PROMPT) == 0 ? 0 : 1;
 }
 
 static int
@@ -196,6 +274,27 @@ test_heard_one_entry(void)
 }
 
 static int
+test_help_bbs_enabled(void)
+{
+	struct kn_node_shell_snapshot snapshot;
+	struct kn_config_node node;
+	struct kn_daemon_stats daemon;
+	struct kn_message_store store;
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	uint8_t close_session;
+
+	kn_message_store_init(&store);
+	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
+	snapshot.bbs.enabled = 1;
+	snapshot.bbs.store = &store;
+	if (run_command("HELP", &snapshot, out, sizeof(out),
+	    &close_session) != 0)
+		return 1;
+
+	return strstr(out, "STATS BBS BYE") != NULL ? 0 : 1;
+}
+
+static int
 test_help_command(void)
 {
 	struct kn_node_shell_snapshot snapshot;
@@ -210,8 +309,7 @@ test_help_command(void)
 		return 1;
 	if (close_session != 0)
 		return 1;
-	if (strstr(out, "OK HELP HELP INFO PORTS HEARD USERS STATS BYE QUIT") ==
-	    NULL)
+	if (strstr(out, "BBS(unavailable)") == NULL)
 		return 1;
 
 	return strstr(out, KN_NODE_SHELL_PROMPT) != NULL ? 0 : 1;

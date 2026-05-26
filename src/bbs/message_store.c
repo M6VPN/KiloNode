@@ -24,6 +24,7 @@
 
 static enum kn_message_store_error create_message(struct kn_message_store *,
 	struct kn_message *, const uint8_t *, size_t, uint64_t *);
+static enum kn_message_store_error ensure_parent_dirs(const char *);
 static enum kn_message_store_error ensure_store_dirs(const char *);
 static enum kn_message_store_error id_path(const struct kn_message_store *,
 	uint64_t, const char *, char *, size_t);
@@ -78,12 +79,43 @@ create_message(struct kn_message_store *store, struct kn_message *message,
 }
 
 static enum kn_message_store_error
+ensure_parent_dirs(const char *path)
+{
+	char copy[KN_MESSAGE_STORE_PATH_MAX];
+	size_t len;
+	size_t i;
+	enum kn_message_store_error rc;
+
+	len = strlen(path);
+	if (len >= sizeof(copy))
+		return KN_MESSAGE_STORE_ERR_BUFFER;
+	memcpy(copy, path, len + 1);
+
+	for (i = 1; i < len; i++) {
+		if (copy[i] != '/')
+			continue;
+		copy[i] = '\0';
+		if (copy[0] != '\0') {
+			rc = mkdir_one(copy);
+			if (rc != KN_MESSAGE_STORE_OK)
+				return rc;
+		}
+		copy[i] = '/';
+	}
+
+	return KN_MESSAGE_STORE_OK;
+}
+
+static enum kn_message_store_error
 ensure_store_dirs(const char *path)
 {
 	char meta[KN_MESSAGE_STORE_PATH_MAX];
 	char msg[KN_MESSAGE_STORE_PATH_MAX];
 	enum kn_message_store_error rc;
 
+	rc = ensure_parent_dirs(path);
+	if (rc != KN_MESSAGE_STORE_OK)
+		return rc;
 	rc = mkdir_one(path);
 	if (rc != KN_MESSAGE_STORE_OK)
 		return rc;

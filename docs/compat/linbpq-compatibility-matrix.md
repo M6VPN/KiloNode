@@ -29,14 +29,23 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Private message storage | tested | Create, list, read, and soft delete |
 | Bulletin storage | tested | Create, list, read, and soft delete |
 | Message deletion | partial | Soft delete only |
+| KiloNode-native local BBS shell | tested | Local node shell BBS mode |
+| Local LIST command | tested | Lists non-deleted message summaries |
+| Local READ command | tested | Reads metadata and body through BBS mode |
+| Local SEND PRIVATE command | tested | Creates private messages through BBS mode |
+| Local SEND BULLETIN command | tested | Creates bulletins through BBS mode |
+| Local KILL command | tested | Soft-deletes messages through BBS mode |
+| RF BBS access | planned | Not implemented |
+| BPQ/LinBPQ BBS command compatibility | planned | Not implemented |
 | BPQ mailbox command compatibility | planned | Not implemented |
 | BPQ/LinBPQ message import | planned | Not implemented |
+| BPQ/LinBPQ mailbox import/export | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
 | FBB forwarding compatibility | planned | Not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |
 | Telnet user access | partial | Local TCP shell only, no auth or public mode |
-| BBS mailbox | planned | Message store exists, user commands not implemented |
+| BBS mailbox | partial | Local BBS shell and store exist, RF access planned |
 | NET/ROM node behaviour | planned | Black-box tests required |
 | NET/ROM route table | planned | Routing state not implemented |
 | Node shell users | partial | Local shell sessions only |

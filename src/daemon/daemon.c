@@ -20,6 +20,7 @@
 #include "kilonode/ax25.h"
 #include "kilonode/heard.h"
 #include "kilonode/kiss_stream.h"
+#include "kilonode/message_store.h"
 #include "kilonode/monitor.h"
 #include "kilonode/node_shell.h"
 #include "kilonode/stats.h"
@@ -56,7 +57,8 @@ static void shell_snapshot_init(struct kn_node_shell_snapshot *,
 	const struct kn_config *, const struct kn_daemon_stats *,
 	const struct daemon_port *, size_t, const struct kn_heard_table *,
 	uint8_t, const struct kn_node_shell_state *,
-	struct kn_port_stats *, struct kn_node_shell_user *, size_t *);
+	struct kn_port_stats *, struct kn_node_shell_user *, size_t *,
+	struct kn_message_store *, uint8_t);
 static void signal_handler(int);
 
 static void
@@ -82,6 +84,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_control_socket control;
 	struct kn_daemon_stats daemon_stats;
 	struct kn_heard_table heard;
+	struct kn_message_store bbs_store;
 	struct kn_node_shell_state shell;
 	struct sigaction sa;
 	uint8_t read_buf[DAEMON_READ_BUFSIZ];
@@ -101,6 +104,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	enum kn_transport_error transport_rc;
 	enum kn_kiss_stream_error stream_rc;
 	uint8_t control_enabled;
+	uint8_t bbs_enabled;
 	uint8_t shell_enabled;
 
 	if (config == NULL)
@@ -108,6 +112,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 
 	memset(ports, 0, sizeof(ports));
 	kn_control_socket_init(&control);
+	kn_message_store_init(&bbs_store);
 	kn_node_shell_init(&shell);
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_handler;
@@ -124,6 +129,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 
 	control_enabled = config->control.has_block != 0 &&
 	    config->control.enabled != 0;
+	bbs_enabled = config->bbs.has_block != 0 && config->bbs.enabled != 0;
 	shell_enabled = config->shell.has_block != 0 &&
 	    config->shell.enabled != 0;
 
@@ -139,6 +145,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		    &config->ports[i]) != KN_DAEMON_OK) {
 			close_ports(ports, port_count);
 			kn_control_socket_close(&control);
+			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_TRANSPORT;
 		}
 		ports[port_count].stats.open = 1;
@@ -149,10 +156,20 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	if (port_count == 0 && control_enabled == 0 && shell_enabled == 0)
 		return KN_DAEMON_ERR_CONFIG;
 
+	if (bbs_enabled != 0) {
+		if (kn_message_store_open(&bbs_store, config->bbs.store_path,
+		    config->bbs.max_body_bytes) != KN_MESSAGE_STORE_OK) {
+			close_ports(ports, port_count);
+			kn_control_socket_close(&control);
+			return KN_DAEMON_ERR_RUNTIME;
+		}
+	}
+
 	if (control_enabled != 0) {
 		if (kn_control_socket_open(&control,
 		    config->control.path) != KN_CONTROL_OK) {
 			close_ports(ports, port_count);
+			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
 	}
@@ -162,6 +179,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		    &shell) != KN_NODE_SHELL_OK) {
 			close_ports(ports, port_count);
 			kn_control_socket_close(&control);
+			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
 	}
@@ -218,6 +236,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				break;
 			close_ports(ports, port_count);
 			kn_node_shell_close(&shell);
+			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
 
@@ -245,6 +264,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			if (transport_rc != KN_TRANSPORT_OK) {
 				close_ports(ports, port_count);
 				kn_node_shell_close(&shell);
+				kn_message_store_close(&bbs_store);
 				return KN_DAEMON_ERR_TRANSPORT;
 			}
 
@@ -264,6 +284,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
+				kn_message_store_close(&bbs_store);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 
@@ -276,6 +297,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
+				kn_message_store_close(&bbs_store);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 		}
@@ -286,6 +308,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
+				kn_message_store_close(&bbs_store);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 		}
@@ -296,12 +319,14 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			shell_snapshot_init(&shell_snapshot, config,
 			    &daemon_stats, ports, port_count, &heard,
 			    config->heard.enabled, &shell, shell_port_stats,
-			    shell_users, &shell_user_count);
+			    shell_users, &shell_user_count, &bbs_store,
+			    bbs_enabled);
 			if (kn_node_shell_process_session(shell_sessions[i],
 			    &shell_snapshot) != KN_NODE_SHELL_OK) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
+				kn_message_store_close(&bbs_store);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 		}
@@ -310,6 +335,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	close_ports(ports, port_count);
 	kn_control_socket_close(&control);
 	kn_node_shell_close(&shell);
+	kn_message_store_close(&bbs_store);
 	return KN_DAEMON_OK;
 }
 
@@ -481,7 +507,8 @@ shell_snapshot_init(struct kn_node_shell_snapshot *snapshot,
 	const struct kn_heard_table *heard, uint8_t heard_enabled,
 	const struct kn_node_shell_state *shell,
 	struct kn_port_stats *port_stats, struct kn_node_shell_user *users,
-	size_t *user_count)
+	size_t *user_count, struct kn_message_store *bbs_store,
+	uint8_t bbs_enabled)
 {
 	size_t i;
 
@@ -504,6 +531,15 @@ shell_snapshot_init(struct kn_node_shell_snapshot *snapshot,
 	}
 	snapshot->users = users;
 	snapshot->user_count = *user_count;
+	if (bbs_enabled != 0) {
+		snapshot->bbs.store = bbs_store;
+		snapshot->bbs.enabled = 1;
+		snapshot->bbs.max_body_bytes = config->bbs.max_body_bytes;
+	} else {
+		snapshot->bbs.store = NULL;
+		snapshot->bbs.enabled = 0;
+		snapshot->bbs.max_body_bytes = config->bbs.max_body_bytes;
+	}
 }
 
 static void

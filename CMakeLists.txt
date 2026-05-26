@@ -42,6 +42,7 @@ endfunction()
 add_library(packetcore STATIC
 	src/control/control_protocol.c
 	src/control/control_socket.c
+	src/bbs/bbs_shell.c
 	src/bbs/message.c
 	src/bbs/message_store.c
 	src/core/buffer.c
@@ -157,6 +158,16 @@ add_executable(test_message_store tests/test_message_store.c)
 target_link_libraries(test_message_store PRIVATE packetcore)
 kilonode_target_defaults(test_message_store)
 add_test(NAME message_store COMMAND test_message_store)
+
+add_executable(test_bbs_shell tests/test_bbs_shell.c)
+target_link_libraries(test_bbs_shell PRIVATE packetcore)
+kilonode_target_defaults(test_bbs_shell)
+add_test(NAME bbs_shell COMMAND test_bbs_shell)
+
+add_executable(test_bbs_shell_store tests/test_bbs_shell_store.c)
+target_link_libraries(test_bbs_shell_store PRIVATE packetcore)
+kilonode_target_defaults(test_bbs_shell_store)
+add_test(NAME bbs_shell_store COMMAND test_bbs_shell_store)
 
 add_executable(test_node_shell tests/test_node_shell.c)
 target_link_libraries(test_node_shell PRIVATE packetcore)
