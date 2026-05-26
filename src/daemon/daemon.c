@@ -14,6 +14,8 @@
 #include <unistd.h>
 
 #include "kilonode/buffer.h"
+#include "kilonode/bbs_read_state.h"
+#include "kilonode/bbs_user.h"
 #include "kilonode/config.h"
 #include "kilonode/control.h"
 #include "kilonode/daemon.h"
@@ -161,6 +163,14 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		    config->bbs.max_body_bytes) != KN_MESSAGE_STORE_OK) {
 			close_ports(ports, port_count);
 			kn_control_socket_close(&control);
+			return KN_DAEMON_ERR_RUNTIME;
+		}
+		if (kn_bbs_user_init_store(&bbs_store) != KN_BBS_USER_OK ||
+		    kn_bbs_read_state_init_store(&bbs_store) !=
+		    KN_BBS_READ_STATE_OK) {
+			close_ports(ports, port_count);
+			kn_control_socket_close(&control);
+			kn_message_store_close(&bbs_store);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
 	}

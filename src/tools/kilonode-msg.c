@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kilonode/bbs_read_state.h"
 #include "kilonode/message.h"
 #include "kilonode/message_index.h"
 #include "kilonode/message_store.h"
@@ -24,6 +25,8 @@ static int command_init(struct kn_message_store *, int, char **);
 static int command_list(struct kn_message_store *, int, char **);
 static int command_list_filter(struct kn_message_store *,
 	enum kn_message_index_filter, const char *, int, char **);
+static int command_list_unread(struct kn_message_store *, int, char **);
+static int command_mark_read(struct kn_message_store *, int, char **);
 static int command_read(struct kn_message_store *, int, char **);
 static int command_reindex(struct kn_message_store *, int, char **);
 static int id_parse(const char *, uint64_t *);
@@ -100,6 +103,10 @@ main(int argc, char *argv[])
 		rc = command_list_filter(&store, KN_MESSAGE_INDEX_FROM,
 		    argc - i > 1 ? argv[i + 1] : NULL, argc - i - 2,
 		    argv + i + 2);
+	else if (strcmp(command, "list-unread") == 0)
+		rc = command_list_unread(&store, argc - i - 1, argv + i + 1);
+	else if (strcmp(command, "mark-read") == 0)
+		rc = command_mark_read(&store, argc - i - 1, argv + i + 1);
 	else if (strcmp(command, "read") == 0)
 		rc = command_read(&store, argc - i - 1, argv + i + 1);
 	else if (strcmp(command, "delete") == 0)
@@ -242,9 +249,10 @@ command_delete(struct kn_message_store *store, int argc, char **argv)
 static int
 command_init(struct kn_message_store *store, int argc, char **argv)
 {
-	(void)store;
 	(void)argv;
 	if (argc != 0)
+		return 1;
+	if (kn_bbs_read_state_init_store(store) != KN_BBS_READ_STATE_OK)
 		return 1;
 	printf("initialized\n");
 	return 0;
@@ -282,6 +290,45 @@ command_list_filter(struct kn_message_store *store,
 }
 
 static int
+command_list_unread(struct kn_message_store *store, int argc, char **argv)
+{
+	struct kn_message messages[MSG_LIST_MAX];
+	size_t count;
+	size_t i;
+	uint8_t is_read;
+
+	if (argc != 1)
+		return 1;
+	if (kn_message_index_list(store, KN_MESSAGE_INDEX_ALL, NULL, messages,
+	    MSG_LIST_MAX, &count) != KN_MESSAGE_INDEX_OK)
+		return 1;
+	for (i = 0; i < count && i < MSG_LIST_MAX; i++) {
+		if (kn_bbs_read_state_is_read(store, argv[0], messages[i].id,
+		    &is_read) != KN_BBS_READ_STATE_OK)
+			return 1;
+		if (is_read == 0)
+			message_print(&messages[i]);
+	}
+	return 0;
+}
+
+static int
+command_mark_read(struct kn_message_store *store, int argc, char **argv)
+{
+	uint64_t id;
+
+	if (argc != 2 || id_parse(argv[1], &id) != 0)
+		return 1;
+	if (kn_bbs_read_state_init_store(store) != KN_BBS_READ_STATE_OK)
+		return 1;
+	if (kn_bbs_read_state_mark_read(store, argv[0], id) !=
+	    KN_BBS_READ_STATE_OK)
+		return 1;
+	printf("marked-read %s %llu\n", argv[0], (unsigned long long)id);
+	return 0;
+}
+
+static int
 command_read(struct kn_message_store *store, int argc, char **argv)
 {
 	struct kn_message message;
@@ -309,8 +356,6 @@ command_read(struct kn_message_store *store, int argc, char **argv)
 		    kn_message_store_error_name(rc));
 		return 1;
 	}
-	if (kn_message_store_mark_read(store, id) == KN_MESSAGE_STORE_OK)
-		message.read = 1;
 	message_print(&message);
 	(void)fwrite(body, 1, body_len, stdout);
 	free(body);
@@ -368,6 +413,8 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --store PATH list-area AREA\n", argv0);
 	fprintf(out, "       %s --store PATH list-to CALLSIGN\n", argv0);
 	fprintf(out, "       %s --store PATH list-from CALLSIGN\n", argv0);
+	fprintf(out, "       %s --store PATH list-unread CALLSIGN\n", argv0);
+	fprintf(out, "       %s --store PATH mark-read CALLSIGN ID\n", argv0);
 	fprintf(out, "       %s --store PATH read ID\n", argv0);
 	fprintf(out, "       %s --store PATH delete ID\n", argv0);
 }

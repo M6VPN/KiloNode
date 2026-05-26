@@ -70,6 +70,14 @@ cleanup_store(const char *dir)
 	(void)unlink(path);
 	(void)snprintf(path, sizeof(path), "%s/meta/next-id.tmp", dir);
 	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/all.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/private.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/bulletin.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index", dir);
+	(void)rmdir(path);
 	(void)snprintf(path, sizeof(path), "%s/meta", dir);
 	(void)rmdir(path);
 	(void)snprintf(path, sizeof(path), "%s/msg", dir);
@@ -122,6 +130,7 @@ test_areas_empty(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
@@ -216,8 +225,8 @@ test_help(void)
 	    KN_MESSAGE_STORE_OK &&
 	    run_bbs("HELP", &session, &snapshot, out, sizeof(out),
 	    &close_session, &exit_bbs) == 0 &&
-	    strstr(out, "OK HELP HELP AREAS LIST READ SEND KILL EXIT BYE QUIT") !=
-	    NULL ? 0 : 1;
+	    strstr(out, "WHOAMI USERS AREAS LIST UNREAD READ MARKREAD") != NULL ?
+	    0 : 1;
 	kn_message_store_close(&store);
 	cleanup_store(dir);
 	return rc;
@@ -239,6 +248,7 @@ test_kill_missing(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;
@@ -268,6 +278,7 @@ test_read_missing(void)
 		return 1;
 	kn_message_store_init(&store);
 	kn_bbs_shell_reset(&session);
+	memcpy(session.identity, "M6VPN-1", 8);
 	snapshot.store = &store;
 	snapshot.enabled = 1;
 	snapshot.max_body_bytes = KN_MESSAGE_BODY_MAX;

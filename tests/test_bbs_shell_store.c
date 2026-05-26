@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "kilonode/bbs_shell.h"
+#include "kilonode/bbs_user.h"
 #include "kilonode/node_shell.h"
 
 static void cleanup_store(const char *);
@@ -25,7 +26,9 @@ static int test_areas_after_bulletin(void);
 static int test_invalid_bulletin_area(void);
 static int test_invalid_private_destination(void);
 static int test_kill_hides_message(void);
+static int test_identity_commands(void);
 static int test_list_filters(void);
+static int test_markread_and_unread(void);
 static int test_overlarge_body(void);
 static int test_read_marks_read(void);
 static int test_read_sanitizes_body(void);
@@ -41,9 +44,13 @@ main(void)
 		return 1;
 	if (test_kill_hides_message() != 0)
 		return 1;
+	if (test_identity_commands() != 0)
+		return 1;
 	if (test_areas_after_bulletin() != 0)
 		return 1;
 	if (test_list_filters() != 0)
+		return 1;
+	if (test_markread_and_unread() != 0)
 		return 1;
 	if (test_read_marks_read() != 0)
 		return 1;
@@ -81,6 +88,30 @@ cleanup_store(const char *dir)
 	(void)unlink(path);
 	(void)snprintf(path, sizeof(path), "%s/meta/next-id.tmp", dir);
 	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/all.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/private.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/bulletin.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/area-GENERAL.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/to-N0CALL.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/from-M6VPN-1.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/read/M6VPN-1.read", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/read/M6VPN-1.read.tmp", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/read", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/users/M6VPN-1.user", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/users", dir);
+	(void)rmdir(path);
 	(void)snprintf(path, sizeof(path), "%s/meta", dir);
 	(void)rmdir(path);
 	(void)snprintf(path, sizeof(path), "%s/msg", dir);
@@ -123,6 +154,12 @@ open_shell(struct kn_message_store *store, struct kn_bbs_shell_session *session,
 		cleanup_store(dir);
 		return 1;
 	}
+	if (kn_bbs_user_init_store(store) != KN_BBS_USER_OK) {
+		kn_message_store_close(store);
+		cleanup_store(dir);
+		return 1;
+	}
+	memcpy(session->identity, "M6VPN-1", 8);
 
 	return 0;
 }
@@ -151,7 +188,7 @@ test_areas_after_bulletin(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND BULLETIN M6VPN-1 GENERAL \"Bulletin\"",
+	rc = run_bbs("SEND BULLETIN GENERAL \"Bulletin\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -175,7 +212,7 @@ test_invalid_bulletin_area(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND BULLETIN M6VPN-1 BAD! \"Subject\"",
+	rc = run_bbs("SEND BULLETIN BAD! \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    strstr(out, "ERR invalid-message") != NULL ? 0 : 1;
 	kn_message_store_close(&store);
@@ -196,9 +233,32 @@ test_invalid_private_destination(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 BAD! \"Subject\"",
+	rc = run_bbs("SEND PRIVATE BAD! \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    strstr(out, "ERR invalid-message") != NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
+test_identity_commands(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	int rc;
+
+	if (open_shell(&store, &session, &snapshot, dir,
+	    KN_MESSAGE_BODY_MAX) != 0)
+		return 1;
+	(void)kn_bbs_user_create(&store, "M6VPN-1", 100, NULL);
+	rc = run_bbs("WHOAMI", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "OK WHOAMI call=M6VPN-1") != NULL &&
+	    run_bbs("USERS", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "USER call=M6VPN-1") != NULL ? 0 : 1;
 	kn_message_store_close(&store);
 	cleanup_store(dir);
 	return rc;
@@ -217,7 +277,7 @@ test_kill_hides_message(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Subject\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -243,11 +303,11 @@ test_list_filters(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Private\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Private\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
-	    run_bbs("SEND BULLETIN M6VPN-1 GENERAL \"Bulletin\"",
+	    run_bbs("SEND BULLETIN GENERAL \"Bulletin\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -274,6 +334,34 @@ test_list_filters(void)
 }
 
 static int
+test_markread_and_unread(void)
+{
+	struct kn_message_store store;
+	struct kn_bbs_shell_session session;
+	struct kn_bbs_shell_snapshot snapshot;
+	char dir[256];
+	char out[KN_NODE_SHELL_RESPONSE_MAX];
+	int rc;
+
+	if (open_shell(&store, &session, &snapshot, dir,
+	    KN_MESSAGE_BODY_MAX) != 0)
+		return 1;
+	rc = run_bbs("SEND PRIVATE N0CALL \"Subject\"",
+	    &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    run_bbs("UNREAD", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "MSG id=1") != NULL &&
+	    run_bbs("MARKREAD 1", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "OK MARKREAD id=1") != NULL &&
+	    run_bbs("UNREAD", &session, &snapshot, out, sizeof(out)) == 0 &&
+	    strstr(out, "MSG id=1") == NULL ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
+}
+
+static int
 test_overlarge_body(void)
 {
 	struct kn_message_store store;
@@ -285,7 +373,7 @@ test_overlarge_body(void)
 
 	if (open_shell(&store, &session, &snapshot, dir, 8) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Subject\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("123456789", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -308,7 +396,7 @@ test_read_marks_read(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Subject\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -336,7 +424,7 @@ test_read_sanitizes_body(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Subject\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Subject\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("hello\001there", &session, &snapshot, out,
 	    sizeof(out)) == 0 &&
@@ -361,7 +449,7 @@ test_send_bulletin_and_list(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND BULLETIN M6VPN-1 GENERAL \"Bulletin\"",
+	rc = run_bbs("SEND BULLETIN GENERAL \"Bulletin\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("body", &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs(".", &session, &snapshot, out, sizeof(out)) == 0 &&
@@ -387,7 +475,7 @@ test_send_private_and_read(void)
 	if (open_shell(&store, &session, &snapshot, dir,
 	    KN_MESSAGE_BODY_MAX) != 0)
 		return 1;
-	rc = run_bbs("SEND PRIVATE M6VPN-1 N0CALL \"Test private\"",
+	rc = run_bbs("SEND PRIVATE N0CALL \"Test private\"",
 	    &session, &snapshot, out, sizeof(out)) == 0 &&
 	    run_bbs("Hello from KiloNode.", &session, &snapshot, out,
 	    sizeof(out)) == 0 &&

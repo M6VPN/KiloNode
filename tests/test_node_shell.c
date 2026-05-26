@@ -1,9 +1,15 @@
 /* KiloNode - Developed by M6VPN (M6VPN@tuta.com) */
 /* kilonode/tests/test_node_shell.c */
 
+#define _XOPEN_SOURCE 700
+
+#include <sys/stat.h>
 #include <sys/types.h>
 
+#include <errno.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "kilonode/callsign.h"
 #include "kilonode/config.h"
@@ -15,6 +21,8 @@ static void snapshot_init(struct kn_node_shell_snapshot *,
 	struct kn_config_node *, struct kn_daemon_stats *,
 	struct kn_port_stats *, size_t, struct kn_heard_entry *, size_t,
 	struct kn_node_shell_user *, size_t);
+static void cleanup_store(const char *);
+static int make_store(char *, size_t);
 static int run_command(const char *, struct kn_node_shell_snapshot *, char *,
 	size_t, uint8_t *);
 static int run_session_command(struct kn_node_shell_session *, const char *,
@@ -76,6 +84,58 @@ main(void)
 		return 1;
 
 	return 0;
+}
+
+static void
+cleanup_store(const char *dir)
+{
+	char path[512];
+
+	(void)snprintf(path, sizeof(path), "%s/users/M6VPN-1.user", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/users/M6VPN-1.user.tmp", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/users", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/read", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/index/all.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/private.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index/bulletin.idx", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/index", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/meta/next-id", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/meta/next-id.tmp", dir);
+	(void)unlink(path);
+	(void)snprintf(path, sizeof(path), "%s/meta", dir);
+	(void)rmdir(path);
+	(void)snprintf(path, sizeof(path), "%s/msg", dir);
+	(void)rmdir(path);
+	(void)rmdir(dir);
+}
+
+static int
+make_store(char *buf, size_t bufsiz)
+{
+	unsigned int i;
+	int needed;
+
+	for (i = 0; i < 100; i++) {
+		needed = snprintf(buf, bufsiz, "/tmp/kilonode-node-%ld-%u",
+		    (long)getpid(), i);
+		if (needed < 0 || (size_t)needed >= bufsiz)
+			return 1;
+		if (mkdir(buf, 0700) == 0)
+			return 0;
+		if (errno != EEXIST)
+			return 1;
+	}
+
+	return 1;
 }
 
 static void
@@ -151,21 +211,31 @@ test_bbs_command_changes_mode(void)
 	struct kn_daemon_stats daemon;
 	struct kn_message_store store;
 	struct kn_node_shell_session session;
+	char dir[256];
 	char out[KN_NODE_SHELL_RESPONSE_MAX];
 	uint8_t close_session;
+	int rc;
 
+	if (make_store(dir, sizeof(dir)) != 0)
+		return 1;
 	memset(&session, 0, sizeof(session));
 	kn_message_store_init(&store);
+	if (kn_message_store_open(&store, dir, KN_MESSAGE_BODY_MAX) !=
+	    KN_MESSAGE_STORE_OK) {
+		cleanup_store(dir);
+		return 1;
+	}
 	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
 	snapshot.bbs.enabled = 1;
 	snapshot.bbs.store = &store;
-	if (run_session_command(&session, "BBS", &snapshot, out, sizeof(out),
-	    &close_session) != 0)
-		return 1;
-	if (session.bbs.active == 0)
-		return 1;
-
-	return strcmp(out, "OK BBS\r\n" KN_BBS_SHELL_PROMPT) == 0 ? 0 : 1;
+	rc = run_session_command(&session, "BBS M6VPN-1", &snapshot, out,
+	    sizeof(out), &close_session) == 0 && session.bbs.active != 0 &&
+	    strcmp(session.bbs.identity, "M6VPN-1") == 0 &&
+	    strstr(out, "OK BBS call=M6VPN-1\r\nBBS M6VPN-1> ") != NULL ?
+	    0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
 }
 
 static int
@@ -210,24 +280,31 @@ test_exit_from_bbs_mode(void)
 	struct kn_daemon_stats daemon;
 	struct kn_message_store store;
 	struct kn_node_shell_session session;
+	char dir[256];
 	char out[KN_NODE_SHELL_RESPONSE_MAX];
 	uint8_t close_session;
+	int rc;
 
+	if (make_store(dir, sizeof(dir)) != 0)
+		return 1;
 	memset(&session, 0, sizeof(session));
 	kn_message_store_init(&store);
+	if (kn_message_store_open(&store, dir, KN_MESSAGE_BODY_MAX) !=
+	    KN_MESSAGE_STORE_OK) {
+		cleanup_store(dir);
+		return 1;
+	}
 	snapshot_init(&snapshot, &node, &daemon, NULL, 0, NULL, 0, NULL, 0);
 	snapshot.bbs.enabled = 1;
 	snapshot.bbs.store = &store;
-	if (run_session_command(&session, "BBS", &snapshot, out, sizeof(out),
-	    &close_session) != 0)
-		return 1;
-	if (run_session_command(&session, "EXIT", &snapshot, out, sizeof(out),
-	    &close_session) != 0)
-		return 1;
-	if (session.bbs.active != 0)
-		return 1;
-
-	return strcmp(out, "OK EXIT\r\n" KN_NODE_SHELL_PROMPT) == 0 ? 0 : 1;
+	rc = run_session_command(&session, "BBS M6VPN-1", &snapshot, out,
+	    sizeof(out), &close_session) == 0 &&
+	    run_session_command(&session, "EXIT", &snapshot, out, sizeof(out),
+	    &close_session) == 0 && session.bbs.active == 0 &&
+	    strcmp(out, "OK EXIT\r\n" KN_NODE_SHELL_PROMPT) == 0 ? 0 : 1;
+	kn_message_store_close(&store);
+	cleanup_store(dir);
+	return rc;
 }
 
 static int

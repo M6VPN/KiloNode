@@ -18,6 +18,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "kilonode/bbs_user.h"
 #include "kilonode/callsign.h"
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
@@ -33,6 +34,9 @@ static enum kn_node_shell_error append_safe(char *, size_t, size_t *,
 	const char *);
 static size_t active_count(const struct kn_node_shell_state *);
 static void close_fd(int *);
+static enum kn_node_shell_error command_bbs_enter(
+	struct kn_node_shell_session *, const char *,
+	const struct kn_node_shell_snapshot *, char *, size_t);
 static enum kn_node_shell_error command_heard(const char *,
 	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
 static enum kn_node_shell_error command_info(
@@ -116,6 +120,56 @@ close_fd(int *fd)
 		(void)close(*fd);
 		*fd = -1;
 	}
+}
+
+static enum kn_node_shell_error
+command_bbs_enter(struct kn_node_shell_session *session, const char *args,
+	const struct kn_node_shell_snapshot *snapshot, char *out, size_t out_len)
+{
+	struct kn_bbs_user user;
+	char call[KN_CALLSIGN_MAX + 4];
+	struct kn_callsign parsed;
+	enum kn_bbs_user_error urc;
+	int needed;
+
+	if (snapshot->bbs.enabled == 0 || snapshot->bbs.store == NULL) {
+		needed = snprintf(out, out_len, "ERR bbs-unavailable\r\n%s",
+		    KN_NODE_SHELL_PROMPT);
+		return needed < 0 || (size_t)needed >= out_len ?
+		    KN_NODE_SHELL_ERR_IO : KN_NODE_SHELL_OK;
+	}
+	while (*args == ' ' || *args == '\t')
+		args++;
+	if (*args == '\0') {
+		needed = snprintf(out, out_len,
+		    "ERR callsign-required\r\n%s", KN_NODE_SHELL_PROMPT);
+		return needed < 0 || (size_t)needed >= out_len ?
+		    KN_NODE_SHELL_ERR_IO : KN_NODE_SHELL_OK;
+	}
+	if (kn_callsign_parse(args, &parsed) != 0 ||
+	    kn_callsign_format(&parsed, call, sizeof(call)) != 0) {
+		needed = snprintf(out, out_len,
+		    "ERR invalid-callsign\r\n%s", KN_NODE_SHELL_PROMPT);
+		return needed < 0 || (size_t)needed >= out_len ?
+		    KN_NODE_SHELL_ERR_IO : KN_NODE_SHELL_OK;
+	}
+	urc = kn_bbs_user_init_store(snapshot->bbs.store);
+	if (urc == KN_BBS_USER_OK)
+		urc = kn_bbs_user_seen(snapshot->bbs.store, call,
+		    (uint64_t)time(NULL), &user);
+	if (urc != KN_BBS_USER_OK) {
+		needed = snprintf(out, out_len, "ERR bbs-user code=%s\r\n%s",
+		    kn_bbs_user_error_name(urc), KN_NODE_SHELL_PROMPT);
+		return needed < 0 || (size_t)needed >= out_len ?
+		    KN_NODE_SHELL_ERR_IO : KN_NODE_SHELL_OK;
+	}
+	kn_bbs_shell_reset(&session->bbs);
+	session->bbs.active = 1;
+	memcpy(session->bbs.identity, user.call, strlen(user.call) + 1);
+	needed = snprintf(out, out_len, "OK BBS call=%s\r\nBBS %s> ",
+	    user.call, user.call);
+	return needed < 0 || (size_t)needed >= out_len ?
+	    KN_NODE_SHELL_ERR_IO : KN_NODE_SHELL_OK;
 }
 
 static enum kn_node_shell_error
@@ -371,12 +425,8 @@ kn_node_shell_format_command(const char *line,
 	else if (strcmp(word, "HEARD") == 0) {
 		rc = command_heard(args, snapshot, out, out_len, &offset);
 	} else if (strcmp(word, "BBS") == 0) {
-		if (snapshot->bbs.enabled != 0 && snapshot->bbs.store != NULL)
-			rc = append_format(out, out_len, &offset,
-			    "OK BBS use-session-state\r\n");
-		else
-			rc = append_format(out, out_len, &offset,
-			    "ERR bbs-unavailable\r\n");
+		rc = append_format(out, out_len, &offset,
+		    "ERR use-session-command\r\n");
 	} else if (strcmp(word, "BYE") == 0 || strcmp(word, "QUIT") == 0) {
 		*close_session = 1;
 		return append_format(out, out_len, &offset, "BYE\r\n");
@@ -422,26 +472,16 @@ kn_node_shell_format_session_command(struct kn_node_shell_session *session,
 		while (len > 0 && (line[len - 1] == ' ' ||
 		    line[len - 1] == '\t'))
 			len--;
-		if (len == 3) {
-			for (i = 0; i < len; i++)
+		if (len >= 3) {
+			for (i = 0; i < len && line[i] != ' ' &&
+			    line[i] != '\t'; i++)
 				command[i] = (char)toupper(
 				    (unsigned char)line[i]);
-			command[len] = '\0';
+			command[i] = '\0';
 			if (strcmp(command, "BBS") == 0) {
-				if (snapshot->bbs.enabled == 0 ||
-				    snapshot->bbs.store == NULL) {
-					(void)snprintf(out, out_len,
-					    "ERR bbs-unavailable\r\n%s",
-					    KN_NODE_SHELL_PROMPT);
-					*close_session = 0;
-					return KN_NODE_SHELL_OK;
-				}
-				kn_bbs_shell_reset(&session->bbs);
-				session->bbs.active = 1;
-				(void)snprintf(out, out_len, "OK BBS\r\n%s",
-				    KN_BBS_SHELL_PROMPT);
 				*close_session = 0;
-				return KN_NODE_SHELL_OK;
+				return command_bbs_enter(session, line + i,
+				    snapshot, out, out_len);
 			}
 		}
 	}

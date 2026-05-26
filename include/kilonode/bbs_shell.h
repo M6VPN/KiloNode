@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include "kilonode/bbs_user.h"
 #include "kilonode/message.h"
 #include "kilonode/message_store.h"
 
@@ -32,6 +33,7 @@ struct kn_bbs_shell_session {
 	char pending_from[KN_CALLSIGN_MAX + 4];
 	char pending_dest[KN_MESSAGE_AREA_MAX + 1];
 	char pending_subject[KN_MESSAGE_SUBJECT_MAX + 1];
+	char identity[KN_CALLSIGN_MAX + 4];
 	uint8_t body[KN_MESSAGE_BODY_MAX];
 	size_t body_len;
 	uint8_t body_overflow;

@@ -43,7 +43,9 @@ add_library(packetcore STATIC
 	src/control/control_protocol.c
 	src/control/control_socket.c
 	src/bbs/bbs_area.c
+	src/bbs/bbs_read_state.c
 	src/bbs/bbs_shell.c
+	src/bbs/bbs_user.c
 	src/bbs/message.c
 	src/bbs/message_index.c
 	src/bbs/message_store.c
@@ -80,6 +82,10 @@ kilonode_target_defaults(kilonode-monitor)
 add_executable(kilonode-msg src/tools/kilonode-msg.c)
 target_link_libraries(kilonode-msg PRIVATE packetcore)
 kilonode_target_defaults(kilonode-msg)
+
+add_executable(kilonode-user src/tools/kilonode-user.c)
+target_link_libraries(kilonode-user PRIVATE packetcore)
+kilonode_target_defaults(kilonode-user)
 
 add_executable(kilonoded src/tools/kilonoded.c)
 target_link_libraries(kilonoded PRIVATE packetcore)
@@ -160,6 +166,16 @@ add_executable(test_bbs_area tests/test_bbs_area.c)
 target_link_libraries(test_bbs_area PRIVATE packetcore)
 kilonode_target_defaults(test_bbs_area)
 add_test(NAME bbs_area COMMAND test_bbs_area)
+
+add_executable(test_bbs_read_state tests/test_bbs_read_state.c)
+target_link_libraries(test_bbs_read_state PRIVATE packetcore)
+kilonode_target_defaults(test_bbs_read_state)
+add_test(NAME bbs_read_state COMMAND test_bbs_read_state)
+
+add_executable(test_bbs_user tests/test_bbs_user.c)
+target_link_libraries(test_bbs_user PRIVATE packetcore)
+kilonode_target_defaults(test_bbs_user)
+add_test(NAME bbs_user COMMAND test_bbs_user)
 
 add_executable(test_message_index tests/test_message_index.c)
 target_link_libraries(test_message_index PRIVATE packetcore)

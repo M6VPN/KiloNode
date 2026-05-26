@@ -38,13 +38,20 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | LIST AREA | tested | Indexed bulletin area filter |
 | LIST TO/FROM filters | tested | Indexed callsign filters |
 | Local READ command | tested | Reads metadata and body through BBS mode |
-| Read flag | tested | Global read flag, no per-user state |
+| Read flag | tested | Per-user read markers for local BBS identities |
 | Local SEND PRIVATE command | tested | Creates private messages through BBS mode |
 | Local SEND BULLETIN command | tested | Creates bulletins through BBS mode |
 | Local KILL command | tested | Soft-deletes messages through BBS mode |
-| Per-user read state | planned | Not implemented |
+| KiloNode-native BBS users | tested | Local callsign identities, no passwords |
+| Callsign identity in local BBS | tested | `BBS <callsign>` enters identity-aware mode |
+| Per-user read state | tested | Read files under the message store |
+| Unread list | tested | `UNREAD` lists messages unread by current identity |
+| BPQ/LinBPQ user compatibility | planned | Not implemented |
+| BPQ/LinBPQ topic/read-state compatibility | planned | Not implemented |
 | BPQ/LinBPQ topic compatibility | planned | Future black-box research |
 | RF BBS access | planned | Not implemented |
+| RF BBS login | planned | Not implemented |
+| BBS forwarding identity/state | planned | Not implemented |
 | BPQ/LinBPQ BBS command compatibility | planned | Not implemented |
 | BPQ mailbox command compatibility | planned | Not implemented |
 | BPQ/LinBPQ message import | planned | Not implemented |

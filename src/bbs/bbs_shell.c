@@ -11,7 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kilonode/bbs_read_state.h"
 #include "kilonode/bbs_shell.h"
+#include "kilonode/bbs_user.h"
 #include "kilonode/callsign.h"
 #include "kilonode/message_index.h"
 #include "kilonode/node_shell.h"
@@ -21,6 +23,8 @@
 static enum kn_bbs_shell_error append_format(char *, size_t, size_t *,
 	const char *, ...);
 static enum kn_bbs_shell_error append_prompt(char *, size_t, size_t *);
+static enum kn_bbs_shell_error append_session_prompt(
+	const struct kn_bbs_shell_session *, char *, size_t, size_t *);
 static enum kn_bbs_shell_error append_safe(char *, size_t, size_t *,
 	const char *);
 static enum kn_bbs_shell_error append_body(char *, size_t, size_t *,
@@ -30,17 +34,28 @@ static enum kn_bbs_shell_error command_areas(
 static enum kn_bbs_shell_error command_kill(const char *,
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_list(const char *,
-	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
+	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
+	char *, size_t, size_t *, uint8_t);
+static enum kn_bbs_shell_error command_markread(const char *,
+	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
+	char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_read(const char *,
-	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
+	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
+	char *, size_t, size_t *);
 static enum kn_bbs_shell_error command_send(const char *,
+	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
+	char *, size_t, size_t *);
+static enum kn_bbs_shell_error command_users(
+	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
+static enum kn_bbs_shell_error command_whoami(
 	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
 	char *, size_t, size_t *);
 static enum kn_bbs_shell_error finalize_body(
 	struct kn_bbs_shell_session *, const struct kn_bbs_shell_snapshot *,
 	char *, size_t, size_t *);
 static enum kn_bbs_shell_error format_message_line(
-	const struct kn_message *, char *, size_t, size_t *);
+	struct kn_message_store *, const char *, const struct kn_message *,
+	char *, size_t, size_t *);
 static enum kn_bbs_shell_error handle_pending_line(
 	struct kn_bbs_shell_session *, const char *,
 	const struct kn_bbs_shell_snapshot *, char *, size_t, size_t *);
@@ -76,6 +91,16 @@ static enum kn_bbs_shell_error
 append_prompt(char *buf, size_t bufsiz, size_t *offset)
 {
 	return append_format(buf, bufsiz, offset, "%s", KN_BBS_SHELL_PROMPT);
+}
+
+static enum kn_bbs_shell_error
+append_session_prompt(const struct kn_bbs_shell_session *session, char *buf,
+	size_t bufsiz, size_t *offset)
+{
+	if (session != NULL && session->identity[0] != '\0')
+		return append_format(buf, bufsiz, offset, "BBS %s> ",
+		    session->identity);
+	return append_prompt(buf, bufsiz, offset);
 }
 
 static enum kn_bbs_shell_error
@@ -183,14 +208,17 @@ command_kill(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 }
 
 static enum kn_bbs_shell_error
-command_list(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
-	char *buf, size_t bufsiz, size_t *offset)
+command_list(const char *args, struct kn_bbs_shell_session *session,
+	const struct kn_bbs_shell_snapshot *snapshot, char *buf, size_t bufsiz,
+	size_t *offset, uint8_t only_unread)
 {
 	struct kn_message messages[BBS_LIST_MAX];
 	char word[16];
 	char value[KN_MESSAGE_AREA_MAX + 1];
 	size_t count;
+	size_t shown;
 	size_t i;
+	uint8_t is_read;
 	enum kn_message_index_filter filter;
 	const char *filter_value;
 	enum kn_message_index_error irc;
@@ -244,18 +272,55 @@ command_list(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 	    (unsigned long long)count);
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
+	shown = 0;
 	for (i = 0; i < count && i < BBS_LIST_MAX; i++) {
-		rc = format_message_line(&messages[i], buf, bufsiz, offset);
+		if (only_unread != 0) {
+			if (kn_bbs_read_state_is_read(snapshot->store,
+			    session->identity, messages[i].id, &is_read) !=
+			    KN_BBS_READ_STATE_OK)
+				is_read = 0;
+			if (is_read != 0)
+				continue;
+		}
+		rc = format_message_line(snapshot->store, session->identity,
+		    &messages[i], buf, bufsiz, offset);
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
+		shown++;
 	}
+	(void)shown;
 
 	return append_format(buf, bufsiz, offset, "END\r\n");
 }
 
 static enum kn_bbs_shell_error
-command_read(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
-	char *buf, size_t bufsiz, size_t *offset)
+command_markread(const char *args, struct kn_bbs_shell_session *session,
+	const struct kn_bbs_shell_snapshot *snapshot, char *buf, size_t bufsiz,
+	size_t *offset)
+{
+	uint64_t id;
+	enum kn_bbs_read_state_error rrc;
+
+	if (session->identity[0] == '\0')
+		return append_format(buf, bufsiz, offset,
+		    "ERR identity-required\r\n");
+	if (parse_id(args, &id) == 0)
+		return append_format(buf, bufsiz, offset,
+		    "ERR invalid-id\r\n");
+	rrc = kn_bbs_read_state_mark_read(snapshot->store, session->identity,
+	    id);
+	if (rrc != KN_BBS_READ_STATE_OK)
+		return append_format(buf, bufsiz, offset,
+		    "ERR read-state code=%s\r\n",
+		    kn_bbs_read_state_error_name(rrc));
+	return append_format(buf, bufsiz, offset, "OK MARKREAD id=%llu\r\n",
+	    (unsigned long long)id);
+}
+
+static enum kn_bbs_shell_error
+command_read(const char *args, struct kn_bbs_shell_session *session,
+	const struct kn_bbs_shell_snapshot *snapshot, char *buf, size_t bufsiz,
+	size_t *offset)
 {
 	struct kn_message message;
 	uint8_t body[KN_MESSAGE_BODY_MAX];
@@ -264,6 +329,9 @@ command_read(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 	enum kn_message_store_error src;
 	enum kn_bbs_shell_error rc;
 
+	if (session->identity[0] == '\0')
+		return append_format(buf, bufsiz, offset,
+		    "ERR identity-required\r\n");
 	if (parse_id(args, &id) == 0)
 		return append_format(buf, bufsiz, offset,
 		    "ERR invalid-id\r\n");
@@ -279,14 +347,14 @@ command_read(const char *args, const struct kn_bbs_shell_snapshot *snapshot,
 		return append_format(buf, bufsiz, offset,
 		    "ERR store-error code=%s\r\n",
 		    kn_message_store_error_name(src));
-	if (kn_message_store_mark_read(snapshot->store, id) ==
-	    KN_MESSAGE_STORE_OK)
-		message.read = 1;
+	(void)kn_bbs_read_state_mark_read(snapshot->store, session->identity,
+	    id);
 
 	rc = append_format(buf, bufsiz, offset, "OK READ\r\n");
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
-	rc = format_message_line(&message, buf, bufsiz, offset);
+	rc = format_message_line(snapshot->store, session->identity, &message,
+	    buf, bufsiz, offset);
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 	rc = append_format(buf, bufsiz, offset, "BODY\r\n");
@@ -312,6 +380,9 @@ command_send(const char *args, struct kn_bbs_shell_session *session,
 	enum kn_bbs_shell_error rc;
 
 	(void)snapshot;
+	if (session->identity[0] == '\0')
+		return append_format(buf, bufsiz, offset,
+		    "ERR identity-required\r\n");
 	rc = parse_send_args(args, session);
 	if (rc != KN_BBS_SHELL_OK)
 		return append_format(buf, bufsiz, offset,
@@ -340,22 +411,83 @@ command_send(const char *args, struct kn_bbs_shell_session *session,
 }
 
 static enum kn_bbs_shell_error
+command_users(const struct kn_bbs_shell_snapshot *snapshot, char *buf,
+	size_t bufsiz, size_t *offset)
+{
+	struct kn_bbs_user users[KN_BBS_USER_LIST_MAX];
+	char summary[256];
+	size_t count;
+	size_t i;
+	enum kn_bbs_user_error urc;
+	enum kn_bbs_shell_error rc;
+
+	urc = kn_bbs_user_list(snapshot->store, users, KN_BBS_USER_LIST_MAX,
+	    &count);
+	if (urc != KN_BBS_USER_OK)
+		return append_format(buf, bufsiz, offset,
+		    "ERR user code=%s\r\n", kn_bbs_user_error_name(urc));
+	rc = append_format(buf, bufsiz, offset, "OK USERS count=%llu\r\n",
+	    (unsigned long long)count);
+	if (rc != KN_BBS_SHELL_OK)
+		return rc;
+	for (i = 0; i < count && i < KN_BBS_USER_LIST_MAX; i++) {
+		if (kn_bbs_user_format(&users[i], summary, sizeof(summary)) !=
+		    KN_BBS_USER_OK)
+			continue;
+		rc = append_format(buf, bufsiz, offset, "USER ");
+		if (rc != KN_BBS_SHELL_OK)
+			return rc;
+		rc = append_safe(buf, bufsiz, offset, summary);
+		if (rc != KN_BBS_SHELL_OK)
+			return rc;
+		rc = append_format(buf, bufsiz, offset, "\r\n");
+		if (rc != KN_BBS_SHELL_OK)
+			return rc;
+	}
+	return append_format(buf, bufsiz, offset, "END\r\n");
+}
+
+static enum kn_bbs_shell_error
+command_whoami(struct kn_bbs_shell_session *session,
+	const struct kn_bbs_shell_snapshot *snapshot, char *buf, size_t bufsiz,
+	size_t *offset)
+{
+	struct kn_bbs_user user;
+	char summary[256];
+	enum kn_bbs_user_error urc;
+
+	urc = kn_bbs_user_load(snapshot->store, session->identity, &user);
+	if (urc != KN_BBS_USER_OK)
+		return append_format(buf, bufsiz, offset,
+		    "ERR user code=%s\r\n", kn_bbs_user_error_name(urc));
+	if (kn_bbs_user_format(&user, summary, sizeof(summary)) !=
+	    KN_BBS_USER_OK)
+		return KN_BBS_SHELL_ERR_BUFFER;
+	return append_format(buf, bufsiz, offset, "OK WHOAMI %s\r\n",
+	    summary);
+}
+
+static enum kn_bbs_shell_error
 finalize_body(struct kn_bbs_shell_session *session,
 	const struct kn_bbs_shell_snapshot *snapshot, char *buf, size_t bufsiz,
 	size_t *offset)
 {
+	char identity[KN_CALLSIGN_MAX + 4];
 	uint64_t id;
 	enum kn_message_store_error src;
 
+	memcpy(identity, session->identity, sizeof(identity));
 	if (session->body_overflow != 0) {
 		kn_bbs_shell_reset(session);
 		session->active = 1;
+		memcpy(session->identity, identity, sizeof(session->identity));
 		return append_format(buf, bufsiz, offset,
 		    "ERR body-too-large\r\n");
 	}
 	if (session->body_len == 0) {
 		kn_bbs_shell_reset(session);
 		session->active = 1;
+		memcpy(session->identity, identity, sizeof(session->identity));
 		return append_format(buf, bufsiz, offset,
 		    "ERR empty-body\r\n");
 	}
@@ -373,6 +505,7 @@ finalize_body(struct kn_bbs_shell_session *session,
 
 	kn_bbs_shell_reset(session);
 	session->active = 1;
+	memcpy(session->identity, identity, sizeof(session->identity));
 	if (src != KN_MESSAGE_STORE_OK)
 		return append_format(buf, bufsiz, offset,
 		    "ERR store-error code=%s\r\n",
@@ -383,13 +516,15 @@ finalize_body(struct kn_bbs_shell_session *session,
 }
 
 static enum kn_bbs_shell_error
-format_message_line(const struct kn_message *message, char *buf, size_t bufsiz,
+format_message_line(struct kn_message_store *store, const char *identity,
+	const struct kn_message *message, char *buf, size_t bufsiz,
 	size_t *offset)
 {
 	char from[KN_CALLSIGN_MAX + 4];
 	char to[KN_CALLSIGN_MAX + 4];
 	const char *dest;
 	enum kn_bbs_shell_error rc;
+	uint8_t is_read;
 
 	if (kn_callsign_format(&message->from, from, sizeof(from)) != 0)
 		(void)snprintf(from, sizeof(from), "-");
@@ -401,11 +536,15 @@ format_message_line(const struct kn_message *message, char *buf, size_t bufsiz,
 		dest = message->area;
 	}
 
+	is_read = 0;
+	if (identity != NULL && identity[0] != '\0')
+		(void)kn_bbs_read_state_is_read(store, identity, message->id,
+		    &is_read);
 	rc = append_format(buf, bufsiz, offset,
 	    "MSG id=%llu type=%s read=%s from=%s to=",
 	    (unsigned long long)message->id,
 	    kn_message_type_name(message->type),
-	    message->read != 0 ? "yes" : "no", from);
+	    is_read != 0 ? "yes" : "no", from);
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 	rc = append_safe(buf, bufsiz, offset, dest);
@@ -439,7 +578,7 @@ handle_pending_line(struct kn_bbs_shell_session *session, const char *line,
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 
-	return append_prompt(buf, bufsiz, offset);
+	return append_session_prompt(session, buf, bufsiz, offset);
 }
 
 static uint8_t
@@ -475,10 +614,24 @@ parse_send_args(const char *args, struct kn_bbs_shell_session *session)
 	char subject[KN_MESSAGE_SUBJECT_MAX + 1];
 	size_t len;
 
-	if (pop_word(&args, type, sizeof(type)) != KN_BBS_SHELL_OK ||
-	    pop_word(&args, from, sizeof(from)) != KN_BBS_SHELL_OK ||
-	    pop_word(&args, dest, sizeof(dest)) != KN_BBS_SHELL_OK)
+	if (pop_word(&args, type, sizeof(type)) != KN_BBS_SHELL_OK)
 		return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
+	for (len = 0; type[len] != '\0'; len++)
+		type[len] = (char)toupper((unsigned char)type[len]);
+
+	if (strcmp(type, "PRIVATE") == 0) {
+		memcpy(from, session->identity, strlen(session->identity) + 1);
+		if (pop_word(&args, dest, sizeof(dest)) != KN_BBS_SHELL_OK)
+			return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
+		session->pending_type = KN_BBS_SHELL_PENDING_PRIVATE;
+	} else if (strcmp(type, "BULLETIN") == 0) {
+		memcpy(from, session->identity, strlen(session->identity) + 1);
+		if (pop_word(&args, dest, sizeof(dest)) != KN_BBS_SHELL_OK)
+			return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
+		session->pending_type = KN_BBS_SHELL_PENDING_BULLETIN;
+	} else {
+		return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
+	}
 	trim_copy(subject, sizeof(subject), args);
 	if (subject[0] == '\0')
 		return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
@@ -489,18 +642,6 @@ parse_send_args(const char *args, struct kn_bbs_shell_session *session)
 		memmove(subject, subject + 1, len - 2);
 		subject[len - 2] = '\0';
 	}
-	for (len = 0; type[len] != '\0'; len++)
-		type[len] = (char)toupper((unsigned char)type[len]);
-
-	memset(session, 0, sizeof(*session));
-	session->active = 1;
-	if (strcmp(type, "PRIVATE") == 0)
-		session->pending_type = KN_BBS_SHELL_PENDING_PRIVATE;
-	else if (strcmp(type, "BULLETIN") == 0)
-		session->pending_type = KN_BBS_SHELL_PENDING_BULLETIN;
-	else
-		return KN_BBS_SHELL_ERR_INVALID_ARGUMENT;
-
 	memcpy(session->pending_from, from, strlen(from) + 1);
 	memcpy(session->pending_dest, dest, strlen(dest) + 1);
 	memcpy(session->pending_subject, subject, strlen(subject) + 1);
@@ -609,7 +750,7 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 		    "ERR line-too-long\r\n");
 		if (rc != KN_BBS_SHELL_OK)
 			return rc;
-		return append_prompt(out, out_len, &offset);
+		return append_session_prompt(session, out, out_len, &offset);
 	}
 	memcpy(command, line, len + 1);
 	for (i = 0; command[i] != '\0'; i++) {
@@ -628,7 +769,7 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 	while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t'))
 		len--;
 	if (len == 0)
-		return append_prompt(out, out_len, &offset);
+		return append_session_prompt(session, out, out_len, &offset);
 	memcpy(command, line, len);
 	command[len] = '\0';
 	for (i = 0; command[i] != '\0'; i++) {
@@ -650,15 +791,28 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 
 	if (strcmp(word, "HELP") == 0)
 		rc = append_format(out, out_len, &offset,
-		    "OK HELP HELP AREAS LIST READ SEND KILL EXIT BYE QUIT "
+		    "OK HELP HELP WHOAMI USERS AREAS LIST UNREAD READ MARKREAD "
+		    "SEND KILL EXIT BYE QUIT "
 		    "LIST-PRIVATE LIST-BULLETINS LIST-AREA LIST-TO "
 		    "LIST-FROM\r\n");
+	else if (strcmp(word, "WHOAMI") == 0)
+		rc = command_whoami(session, snapshot, out, out_len, &offset);
+	else if (strcmp(word, "USERS") == 0)
+		rc = command_users(snapshot, out, out_len, &offset);
 	else if (strcmp(word, "AREAS") == 0)
 		rc = command_areas(snapshot, out, out_len, &offset);
 	else if (strcmp(word, "LIST") == 0)
-		rc = command_list(args, snapshot, out, out_len, &offset);
+		rc = command_list(args, session, snapshot, out, out_len,
+		    &offset, 0);
+	else if (strcmp(word, "UNREAD") == 0)
+		rc = command_list(args, session, snapshot, out, out_len,
+		    &offset, 1);
 	else if (strcmp(word, "READ") == 0)
-		rc = command_read(args, snapshot, out, out_len, &offset);
+		rc = command_read(args, session, snapshot, out, out_len,
+		    &offset);
+	else if (strcmp(word, "MARKREAD") == 0)
+		rc = command_markread(args, session, snapshot, out, out_len,
+		    &offset);
 	else if (strcmp(word, "SEND") == 0)
 		rc = command_send(args, session, snapshot, out, out_len,
 		    &offset);
@@ -679,7 +833,7 @@ kn_bbs_shell_format(struct kn_bbs_shell_session *session, const char *line,
 	if (rc != KN_BBS_SHELL_OK)
 		return rc;
 
-	return append_prompt(out, out_len, &offset);
+	return append_session_prompt(session, out, out_len, &offset);
 }
 
 void

@@ -41,8 +41,9 @@ Rebuild policy:
 - corrupt message metadata is skipped during rebuild
 - missing or invalid bodies cause that message to be skipped during rebuild
 
-Soft delete sets the metadata deleted flag and rebuilds indexes. READ sets the
-global read flag and rebuilds indexes. Per-user read state is not implemented.
+Soft delete sets the metadata deleted flag and rebuilds indexes. Per-user read
+state is stored separately under `read/`, so one user's READ command does not
+change the message metadata for other users.
 
 Limits:
 
@@ -57,7 +58,6 @@ compatibility.
 
 Deferred work:
 
-- per-user read state
 - expiry
 - compaction
 - forwarding queues
