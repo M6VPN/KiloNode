@@ -4,6 +4,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
+| AX.25 UI frame encode/decode | tested | Address lists, PID, digipeaters, and binary payloads |
 | Telnet user access | planned | Local node shell target |
 | BBS mailbox | planned | Message store not started |
 | NET/ROM node behaviour | planned | Black-box tests required |

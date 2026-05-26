@@ -60,6 +60,11 @@ target_link_libraries(test_buffer PRIVATE packetcore)
 kilonode_target_defaults(test_buffer)
 add_test(NAME buffer COMMAND test_buffer)
 
+add_executable(test_ax25 tests/test_ax25.c)
+target_link_libraries(test_ax25 PRIVATE packetcore)
+kilonode_target_defaults(test_ax25)
+add_test(NAME ax25 COMMAND test_ax25)
+
 add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)
 kilonode_target_defaults(test_callsign)
