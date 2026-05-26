@@ -6,12 +6,20 @@
 #include <string.h>
 
 #include "kilonode/control.h"
+#include "kilonode/heard.h"
 #include "kilonode/stats.h"
 
 static void snapshot_init(struct kn_control_snapshot *,
 	struct kn_daemon_stats *, struct kn_port_stats *, size_t);
 static int test_control_character_command(void);
 static int test_help_response(void);
+static int test_heard_empty_response(void);
+static int test_heard_malformed_command(void);
+static int test_heard_multiple_entries(void);
+static int test_heard_one_entry(void);
+static int test_heard_port_filter(void);
+static int test_heard_port_unknown(void);
+static int test_heard_port_overlong(void);
 static int test_overlong_command(void);
 static int test_ping_response(void);
 static int test_ports_one_port(void);
@@ -35,6 +43,20 @@ main(void)
 	if (test_ports_one_port() != 0)
 		return 1;
 	if (test_stats_response() != 0)
+		return 1;
+	if (test_heard_empty_response() != 0)
+		return 1;
+	if (test_heard_one_entry() != 0)
+		return 1;
+	if (test_heard_multiple_entries() != 0)
+		return 1;
+	if (test_heard_port_filter() != 0)
+		return 1;
+	if (test_heard_port_unknown() != 0)
+		return 1;
+	if (test_heard_malformed_command() != 0)
+		return 1;
+	if (test_heard_port_overlong() != 0)
 		return 1;
 	if (test_help_response() != 0)
 		return 1;
@@ -60,6 +82,8 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->daemon = daemon;
 	snapshot->ports = ports;
 	snapshot->port_count = port_count;
+	snapshot->heard = NULL;
+	snapshot->heard_count = 0;
 }
 
 static int
@@ -90,6 +114,184 @@ test_help_response(void)
 		return 1;
 
 	return strstr(out, "END\n") != NULL ? 0 : 1;
+}
+
+static int
+test_heard_empty_response(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("HEARD", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK HEARD count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_heard_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("HEARD BAD", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-heard-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_heard_multiple_entries(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_heard_entry entries[2];
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(entries, 0, sizeof(entries));
+	(void)kn_callsign_parse("M6VPN-1", &entries[0].source);
+	(void)kn_callsign_parse("CQ", &entries[0].last_destination);
+	memcpy(entries[0].port_name, "kiss0", 6);
+	entries[0].frame_count = 12;
+	entries[0].last_ui = 1;
+	entries[0].has_pid = 1;
+	entries[0].last_pid = 0xf0;
+	(void)kn_callsign_parse("N0CALL", &entries[1].source);
+	(void)kn_callsign_parse("APRS", &entries[1].last_destination);
+	memcpy(entries[1].port_name, "kiss1", 6);
+	entries[1].frame_count = 2;
+	entries[1].last_ui = 1;
+	entries[1].has_pid = 1;
+	entries[1].last_pid = 0xf0;
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.heard = entries;
+	snapshot.heard_count = 2;
+
+	if (kn_control_protocol_handle("HEARD", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK HEARD count=2\n") == NULL)
+		return 1;
+	if (strstr(out, "call=N0CALL") == NULL)
+		return 1;
+
+	return strstr(out, "END\n") != NULL ? 0 : 1;
+}
+
+static int
+test_heard_one_entry(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_heard_entry entry;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(&entry, 0, sizeof(entry));
+	(void)kn_callsign_parse("M6VPN-1", &entry.source);
+	(void)kn_callsign_parse("CQ", &entry.last_destination);
+	memcpy(entry.port_name, "kiss0", 6);
+	entry.frame_count = 12;
+	entry.last_ui = 1;
+	entry.has_pid = 1;
+	entry.last_pid = 0xf0;
+	entry.last_payload_len = 23;
+	entry.first_heard = 1710000000;
+	entry.last_heard = 1710000300;
+	(void)kn_callsign_parse("WIDE1-1", &entry.digipeaters[0].callsign);
+	entry.digipeater_count = 1;
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.heard = &entry;
+	snapshot.heard_count = 1;
+
+	if (kn_control_protocol_handle("HEARD", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK HEARD count=1\n") == NULL)
+		return 1;
+	if (strstr(out, "HEARD port=kiss0 call=M6VPN-1") == NULL)
+		return 1;
+	if (strstr(out, "via=WIDE1-1") == NULL)
+		return 1;
+
+	return strstr(out, "last_pid=0xf0") != NULL ? 0 : 1;
+}
+
+static int
+test_heard_port_filter(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_heard_entry entries[2];
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(entries, 0, sizeof(entries));
+	(void)kn_callsign_parse("M6VPN-1", &entries[0].source);
+	(void)kn_callsign_parse("CQ", &entries[0].last_destination);
+	memcpy(entries[0].port_name, "kiss0", 6);
+	(void)kn_callsign_parse("N0CALL", &entries[1].source);
+	(void)kn_callsign_parse("CQ", &entries[1].last_destination);
+	memcpy(entries[1].port_name, "kiss1", 6);
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.heard = entries;
+	snapshot.heard_count = 2;
+
+	if (kn_control_protocol_handle("HEARD PORT kiss1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK HEARD count=1\n") == NULL)
+		return 1;
+	if (strstr(out, "call=N0CALL") == NULL)
+		return 1;
+
+	return strstr(out, "call=M6VPN") == NULL ? 0 : 1;
+}
+
+static int
+test_heard_port_overlong(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char command[KN_CONTROL_COMMAND_MAX];
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(command, 'A', sizeof(command));
+	memcpy(command, "HEARD PORT ", 11);
+	command[sizeof(command) - 1] = '\0';
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle(command, &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-heard-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_heard_port_unknown(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_heard_entry entry;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	memset(&entry, 0, sizeof(entry));
+	(void)kn_callsign_parse("M6VPN-1", &entry.source);
+	(void)kn_callsign_parse("CQ", &entry.last_destination);
+	memcpy(entry.port_name, "kiss0", 6);
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.heard = &entry;
+	snapshot.heard_count = 1;
+
+	if (kn_control_protocol_handle("HEARD PORT kiss1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK HEARD count=0\nEND\n") == 0 ? 0 : 1;
 }
 
 static int

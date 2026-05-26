@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "kilonode/control.h"
+#include "kilonode/heard.h"
 #include "kilonode/stats.h"
 
 #define KILONODE_VERSION "0.1.0"
@@ -16,6 +17,9 @@
 static enum kn_control_error append_format(char *, size_t, size_t *,
 	const char *, ...);
 static uint8_t command_clean(const char *);
+static void format_digipeaters(const struct kn_heard_entry *, char *, size_t);
+static enum kn_control_error format_heard(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
 static enum kn_control_error format_help(char *, size_t);
 static enum kn_control_error format_ports(const struct kn_control_snapshot *,
 	char *, size_t);
@@ -58,6 +62,101 @@ command_clean(const char *command)
 	return 1;
 }
 
+static void
+format_digipeaters(const struct kn_heard_entry *entry, char *buf,
+	size_t bufsiz)
+{
+	char call[KN_CALLSIGN_MAX + 4];
+	size_t i;
+	size_t offset;
+	int needed;
+
+	if (bufsiz == 0)
+		return;
+
+	if (entry->digipeater_count == 0) {
+		(void)snprintf(buf, bufsiz, "-");
+		return;
+	}
+
+	offset = 0;
+	buf[0] = '\0';
+	for (i = 0; i < entry->digipeater_count; i++) {
+		if (kn_heard_format_callsign(&entry->digipeaters[i].callsign,
+		    call, sizeof(call)) != 0)
+			(void)snprintf(call, sizeof(call), "-");
+		needed = snprintf(buf + offset, bufsiz - offset, "%s%s",
+		    i == 0 ? "" : ",", call);
+		if (needed < 0 || (size_t)needed >= bufsiz - offset) {
+			buf[bufsiz - 1] = '\0';
+			return;
+		}
+		offset += (size_t)needed;
+	}
+}
+
+static enum kn_control_error
+format_heard(const struct kn_control_snapshot *snapshot, const char *port_name,
+	char *buf, size_t bufsiz)
+{
+	char call[KN_CALLSIGN_MAX + 4];
+	char dest[KN_CALLSIGN_MAX + 4];
+	char path[128];
+	char pid[16];
+	const struct kn_heard_entry *entry;
+	size_t count;
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	count = 0;
+	for (i = 0; i < snapshot->heard_count; i++) {
+		entry = &snapshot->heard[i];
+		if (port_name == NULL || strcmp(entry->port_name, port_name) == 0)
+			count++;
+	}
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset, "OK HEARD count=%llu\n",
+	    (unsigned long long)count);
+	if (rc != KN_CONTROL_OK)
+		return rc;
+
+	for (i = 0; i < snapshot->heard_count; i++) {
+		entry = &snapshot->heard[i];
+		if (port_name != NULL && strcmp(entry->port_name, port_name) != 0)
+			continue;
+		if (kn_heard_format_callsign(&entry->source, call,
+		    sizeof(call)) != 0)
+			(void)snprintf(call, sizeof(call), "-");
+		if (kn_heard_format_callsign(&entry->last_destination, dest,
+		    sizeof(dest)) != 0)
+			(void)snprintf(dest, sizeof(dest), "-");
+		format_digipeaters(entry, path, sizeof(path));
+		if (entry->has_pid != 0)
+			(void)snprintf(pid, sizeof(pid), "0x%02x",
+			    (unsigned int)entry->last_pid);
+		else
+			(void)snprintf(pid, sizeof(pid), "none");
+		rc = append_format(buf, bufsiz, &offset,
+		    "HEARD port=%s call=%s last_dest=%s frames=%llu "
+		    "via=%s last_ui=%s last_pid=%s last_payload=%llu "
+		    "first=%llu last=%llu\n",
+		    entry->port_name, call, dest,
+		    (unsigned long long)entry->frame_count,
+		    path,
+		    entry->last_ui != 0 ? "true" : "false",
+		    pid,
+		    (unsigned long long)entry->last_payload_len,
+		    (unsigned long long)entry->first_heard,
+		    (unsigned long long)entry->last_heard);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
 static enum kn_control_error
 format_help(char *buf, size_t bufsiz)
 {
@@ -65,7 +164,8 @@ format_help(char *buf, size_t bufsiz)
 	enum kn_control_error rc;
 
 	offset = 0;
-	rc = append_format(buf, bufsiz, &offset, "OK HELP PING VERSION STATUS PORTS STATS HELP QUIT\n");
+	rc = append_format(buf, bufsiz, &offset,
+	    "OK HELP PING VERSION STATUS PORTS STATS HEARD HELP QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -182,6 +282,26 @@ kn_control_protocol_handle(const char *command,
 		return format_ports(snapshot, out, out_len);
 	if (strcmp(command, "STATS") == 0)
 		return format_stats(snapshot, out, out_len);
+	if (strcmp(command, "HEARD") == 0)
+		return format_heard(snapshot, NULL, out, out_len);
+	if (strncmp(command, "HEARD PORT ", 11) == 0) {
+		if (command[11] == '\0' ||
+		    strlen(command + 11) >= KN_HEARD_PORT_MAX ||
+		    strchr(command + 11, ' ') != NULL) {
+			(void)snprintf(out, out_len,
+			    "ERR invalid-heard-command\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		return format_heard(snapshot, command + 11, out, out_len);
+	}
+	if (strcmp(command, "HEARD CLEAR") == 0) {
+		(void)snprintf(out, out_len, "ERR not-implemented\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "HEARD ", 6) == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-heard-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
 	if (strcmp(command, "HELP") == 0)
 		return format_help(out, out_len);
 	if (strcmp(command, "QUIT") == 0)

@@ -7,6 +7,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KISS stream parsing | tested | Incremental parser with escape and size checks |
 | AX.25 monitor decode | tested | Diagnostic UI frame formatting |
 | Live transport stats | implemented | Query with `kilonodectl stats` and `ports` |
+| Heard tracking | tested | Decoded AX.25 frames from any configured KISS transport |
 | KISS stdin/stdout | implemented | Live monitor can read stdin KISS streams |
 | KISS TCP client | partial | Configured daemon and monitor support, no reconnect or auth |
 | KISS TCP server | partial | Configured daemon and monitor support, single-client only |

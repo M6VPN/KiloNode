@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "kilonode/buffer.h"
@@ -17,6 +18,7 @@
 #include "kilonode/control.h"
 #include "kilonode/daemon.h"
 #include "kilonode/ax25.h"
+#include "kilonode/heard.h"
 #include "kilonode/kiss_stream.h"
 #include "kilonode/monitor.h"
 #include "kilonode/stats.h"
@@ -45,8 +47,10 @@ static void close_ports(struct daemon_port *, size_t);
 static enum kn_daemon_error open_config_port(struct daemon_port *,
 	const struct kn_config_port *);
 static int control_handle(struct kn_control_socket *,
-	const struct kn_daemon_stats *, const struct daemon_port *, size_t);
-static int pop_frames(struct daemon_port *, struct kn_daemon_stats *);
+	const struct kn_daemon_stats *, const struct daemon_port *, size_t,
+	const struct kn_heard_table *, uint8_t);
+static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
+	struct kn_heard_table *, uint8_t);
 static void signal_handler(int);
 
 static void
@@ -69,6 +73,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct pollfd pollfds[KN_CONFIG_PORT_MAX + 1];
 	struct kn_control_socket control;
 	struct kn_daemon_stats daemon_stats;
+	struct kn_heard_table heard;
 	struct sigaction sa;
 	uint8_t read_buf[DAEMON_READ_BUFSIZ];
 	size_t i;
@@ -92,6 +97,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	daemon_stop = 0;
 
 	kn_daemon_stats_init(&daemon_stats, config->port_count, 0);
+	kn_heard_init(&heard, config->heard.max_entries);
 	for (i = 0; i < config->port_count; i++) {
 		if (config->ports[i].enabled != 0)
 			daemon_stats.enabled_ports++;
@@ -195,7 +201,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				    ports[i].config->name, (int)stream_rc);
 			}
 
-			if (pop_frames(&ports[i], &daemon_stats) != 0) {
+			if (pop_frames(&ports[i], &daemon_stats, &heard,
+			    config->heard.enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				return KN_DAEMON_ERR_RUNTIME;
@@ -206,7 +213,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		if (control_enabled != 0 &&
 		    (pollfds[active_count].revents & POLLIN) != 0) {
 			if (control_handle(&control, &daemon_stats, ports,
-			    port_count) != 0) {
+			    port_count, &heard, config->heard.enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				return KN_DAEMON_ERR_RUNTIME;
@@ -288,7 +295,8 @@ open_config_port(struct daemon_port *port, const struct kn_config_port *config)
 static int
 control_handle(struct kn_control_socket *control,
 	const struct kn_daemon_stats *daemon_stats, const struct daemon_port *ports,
-	size_t port_count)
+	size_t port_count, const struct kn_heard_table *heard,
+	uint8_t heard_enabled)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -317,6 +325,13 @@ control_handle(struct kn_control_socket *control,
 	snapshot.daemon = daemon_stats;
 	snapshot.ports = port_stats;
 	snapshot.port_count = port_count;
+	if (heard_enabled != 0) {
+		snapshot.heard = kn_heard_entries(heard);
+		snapshot.heard_count = kn_heard_count(heard);
+	} else {
+		snapshot.heard = NULL;
+		snapshot.heard_count = 0;
+	}
 	control_rc = kn_control_protocol_handle(command, &snapshot, response,
 	    sizeof(response));
 	(void)control_rc;
@@ -331,7 +346,8 @@ control_handle(struct kn_control_socket *control,
 }
 
 static int
-pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats)
+pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
+	struct kn_heard_table *heard, uint8_t heard_enabled)
 {
 	struct kn_kiss_stream_frame frame;
 	char line[DAEMON_LINE_BUFSIZ];
@@ -348,11 +364,16 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats)
 		kn_stats_add_kiss_frame(daemon_stats, &port->stats);
 		if (frame.command == 0 &&
 		    kn_ax25_frame_decode(frame.payload,
-		    frame.payload_len, &ax25) == KN_AX25_OK)
+		    frame.payload_len, &ax25) == KN_AX25_OK) {
 			kn_stats_add_ax25_frame(daemon_stats, &port->stats);
-		else if (frame.command == 0)
+			if (heard_enabled != 0) {
+				(void)kn_heard_update(heard, port->config->name,
+				    &ax25, (uint64_t)time(NULL));
+			}
+		} else if (frame.command == 0) {
 			kn_stats_add_malformed_ax25(daemon_stats, &port->stats,
 			    "ax25");
+		}
 
 		monitor_rc = kn_monitor_format_kiss(line, sizeof(line),
 		    frame.port, frame.command, frame.payload, frame.payload_len);

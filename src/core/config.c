@@ -22,6 +22,7 @@ enum parser_block {
 	BLOCK_NONE = 0,
 	BLOCK_NODE,
 	BLOCK_CONTROL,
+	BLOCK_HEARD,
 	BLOCK_PORT
 };
 
@@ -34,6 +35,8 @@ struct parser {
 static enum kn_config_error config_validate(struct kn_config *);
 static enum kn_config_error copy_field(char *, size_t, const char *,
 	struct kn_config *, size_t);
+static enum kn_config_error heard_key_set(struct kn_config *, char **, size_t,
+	size_t);
 static uint8_t key_seen(uint8_t *, struct kn_config *, size_t);
 static enum kn_config_error line_parse(struct parser *, char *, size_t);
 static enum kn_config_error node_key_set(struct kn_config *, char **, size_t,
@@ -167,6 +170,8 @@ kn_config_init(struct kn_config *config)
 		return;
 
 	memset(config, 0, sizeof(*config));
+	config->heard.enabled = 1;
+	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
 }
 
 enum kn_config_error
@@ -341,6 +346,45 @@ key_seen(uint8_t *seen, struct kn_config *config, size_t line_no)
 }
 
 static enum kn_config_error
+heard_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid heard key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->heard.has_enabled, config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->heard.enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid heard enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-entries") == 0) {
+		if (key_seen(&config->heard.has_max_entries, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_HEARD_MIN ||
+		    value > KN_CONFIG_HEARD_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid heard max-entries");
+		config->heard.max_entries = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown heard key");
+}
+
+static enum kn_config_error
 line_parse(struct parser *parser, char *line, size_t line_no)
 {
 	char *tokens[TOKEN_MAX];
@@ -397,6 +441,9 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 		    line_no, "unknown control key");
 	}
 
+	if (parser->block == BLOCK_HEARD)
+		return heard_key_set(parser->config, tokens, token_count, line_no);
+
 	if (parser->block == BLOCK_PORT)
 		return port_key_set(parser, tokens, token_count, line_no);
 
@@ -419,6 +466,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 		parser->config->control.has_block = 1;
 		parser->config->control.enabled = 0;
 		parser->block = BLOCK_CONTROL;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "heard") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid heard block");
+		if (parser->config->heard.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate heard block");
+		parser->config->heard.has_block = 1;
+		parser->block = BLOCK_HEARD;
 		return KN_CONFIG_OK;
 	}
 

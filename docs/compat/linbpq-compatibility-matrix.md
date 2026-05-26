@@ -12,11 +12,16 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Native control socket | implemented | Local Unix socket, read-only commands |
 | kilonodectl status | implemented | Local status, ports, stats, and ping commands |
 | Runtime port stats | implemented | Basic global and per-port counters |
+| Heard list | tested | Per-port AX.25 source observation state |
+| Heard list via control socket | tested | `kilonodectl heard` and port filtering |
+| BPQ-compatible MHEARD command | planned | Node shell not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |
 | Telnet user access | planned | Local node shell target |
 | BBS mailbox | planned | Message store not started |
 | NET/ROM node behaviour | planned | Black-box tests required |
+| NET/ROM route table | planned | Routing state not implemented |
+| Node shell users | planned | User sessions not implemented |
 | FBB forwarding | planned | Later BBS interop target |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |

@@ -11,6 +11,9 @@ static int expect_error(const char *, enum kn_config_error);
 static int test_comment_handling(void);
 static int test_control_block(void);
 static int test_duplicate_control_block(void);
+static int test_duplicate_heard_block(void);
+static int test_heard_block(void);
+static int test_invalid_heard_max_entries(void);
 static int test_duplicate_port_name(void);
 static int test_invalid_baud(void);
 static int test_invalid_callsign(void);
@@ -42,6 +45,12 @@ main(void)
 	if (test_control_block() != 0)
 		return 1;
 	if (test_duplicate_control_block() != 0)
+		return 1;
+	if (test_heard_block() != 0)
+		return 1;
+	if (test_duplicate_heard_block() != 0)
+		return 1;
+	if (test_invalid_heard_max_entries() != 0)
 		return 1;
 	if (test_duplicate_port_name() != 0)
 		return 1;
@@ -131,6 +140,44 @@ test_duplicate_control_block(void)
 }
 
 static int
+test_duplicate_heard_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"heard {\n"
+		"enabled true\n"
+		"}\n"
+		"heard {\n"
+		"enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_heard_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"heard {\n"
+		"enabled true\n"
+		"max-entries 64\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.heard.enabled != 1)
+		return 1;
+
+	return config.heard.max_entries == 64 ? 0 : 1;
+}
+
+static int
 test_duplicate_port_name(void)
 {
 	const char text[] =
@@ -169,6 +216,20 @@ test_invalid_callsign(void)
 	const char text[] =
 		"node {\n"
 		"callsign bad\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_heard_max_entries(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"heard {\n"
+		"max-entries 9999\n"
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);

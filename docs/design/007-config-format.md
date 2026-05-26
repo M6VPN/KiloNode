@@ -32,6 +32,18 @@ control {
 The control block is optional. If omitted, control is disabled. If enabled,
 `path` is required.
 
+Heard block:
+
+```text
+heard {
+	enabled true
+	max-entries 256
+}
+```
+
+The heard block is optional. If omitted, heard tracking is enabled with a
+256-entry limit. `max-entries` must be between 1 and 256.
+
 Port block:
 
 ```text
@@ -60,6 +72,7 @@ Validation rules:
 - Unknown keys are rejected.
 - Duplicate keys are rejected.
 - Duplicate control blocks are rejected.
+- Duplicate heard blocks are rejected.
 - Port names must be unique.
 - Disabled ports parse but are not opened.
 - `max-frame` must be between `KN_CONFIG_MAX_FRAME_MIN` and

@@ -9,6 +9,8 @@
 #include "kilonode/transport.h"
 
 static int test_disabled_port_mapping(void);
+static int test_heard_default_mapping(void);
+static int test_heard_max_entries_mapping(void);
 static int test_max_frame_mapping(void);
 static int test_serial_mapping(void);
 static int test_tcp_connect_mapping(void);
@@ -29,6 +31,10 @@ main(void)
 	if (test_disabled_port_mapping() != 0)
 		return 1;
 	if (test_max_frame_mapping() != 0)
+		return 1;
+	if (test_heard_default_mapping() != 0)
+		return 1;
+	if (test_heard_max_entries_mapping() != 0)
 		return 1;
 
 	return 0;
@@ -51,6 +57,44 @@ test_disabled_port_mapping(void)
 		return 1;
 
 	return config.ports[0].enabled == 0 ? 0 : 1;
+}
+
+static int
+test_heard_default_mapping(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.heard.enabled != 1)
+		return 1;
+
+	return config.heard.max_entries == KN_CONFIG_HEARD_MAX ? 0 : 1;
+}
+
+static int
+test_heard_max_entries_mapping(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"heard {\n"
+		"enabled true\n"
+		"max-entries 32\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.heard.enabled != 1)
+		return 1;
+
+	return config.heard.max_entries == 32 ? 0 : 1;
 }
 
 static int

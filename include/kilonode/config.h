@@ -14,6 +14,8 @@
 #define KN_CONFIG_ALIAS_MAX     16
 #define KN_CONFIG_ERROR_MAX     160
 #define KN_CONFIG_HOST_MAX      128
+#define KN_CONFIG_HEARD_MAX     256
+#define KN_CONFIG_HEARD_MIN     1
 #define KN_CONFIG_LINE_MAX      512
 #define KN_CONFIG_LOCATION_MAX  128
 #define KN_CONFIG_MAX_FRAME_MAX 65535
@@ -65,6 +67,14 @@ struct kn_config_control {
 	uint8_t has_path;
 };
 
+struct kn_config_heard {
+	size_t max_entries;
+	uint8_t enabled;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_max_entries;
+};
+
 struct kn_config_port {
 	char name[KN_CONFIG_PORT_NAME_MAX];
 	enum kn_config_port_type type;
@@ -90,6 +100,7 @@ struct kn_config_port {
 struct kn_config {
 	struct kn_config_node node;
 	struct kn_config_control control;
+	struct kn_config_heard heard;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;
 	enum kn_config_error error;

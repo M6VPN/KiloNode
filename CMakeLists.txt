@@ -45,6 +45,7 @@ add_library(packetcore STATIC
 	src/core/buffer.c
 	src/core/callsign.c
 	src/core/config.c
+	src/core/heard.c
 	src/core/stats.c
 	src/daemon/daemon.c
 	src/monitor/monitor.c
@@ -114,6 +115,16 @@ add_executable(test_daemon_config tests/test_daemon_config.c)
 target_link_libraries(test_daemon_config PRIVATE packetcore)
 kilonode_target_defaults(test_daemon_config)
 add_test(NAME daemon_config COMMAND test_daemon_config)
+
+add_executable(test_daemon_heard tests/test_daemon_heard.c)
+target_link_libraries(test_daemon_heard PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_heard)
+add_test(NAME daemon_heard COMMAND test_daemon_heard)
+
+add_executable(test_heard tests/test_heard.c)
+target_link_libraries(test_heard PRIVATE packetcore)
+kilonode_target_defaults(test_heard)
+add_test(NAME heard COMMAND test_heard)
 
 add_executable(test_kiss tests/test_kiss.c)
 target_link_libraries(test_kiss PRIVATE packetcore)

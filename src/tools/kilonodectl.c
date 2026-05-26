@@ -15,6 +15,7 @@
 #define CTL_RESPONSE_BUFSIZ 512
 
 static const char *command_map(const char *);
+static int command_set(char *, size_t, const char *);
 static int run_command(const char *, const char *);
 static void usage(FILE *, const char *);
 
@@ -22,11 +23,12 @@ int
 main(int argc, char *argv[])
 {
 	const char *socket_path;
-	const char *command;
+	char command[KN_CONTROL_COMMAND_MAX];
 	int i;
+	int needed;
 
 	socket_path = NULL;
-	command = NULL;
+	command[0] = '\0';
 
 	for (i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--help") == 0) {
@@ -41,18 +43,34 @@ main(int argc, char *argv[])
 			socket_path = argv[++i];
 			continue;
 		}
-		if (command != NULL) {
+		if (command[0] != '\0') {
 			usage(stderr, argv[0]);
 			return 1;
 		}
-		command = command_map(argv[i]);
-		if (command == NULL) {
+		if (strcmp(argv[i], "heard") == 0) {
+			if (i + 2 < argc && strcmp(argv[i + 1], "--port") == 0) {
+				needed = snprintf(command, sizeof(command),
+				    "HEARD PORT %s", argv[i + 2]);
+				if (needed < 0 ||
+				    (size_t)needed >= sizeof(command)) {
+					usage(stderr, argv[0]);
+					return 1;
+				}
+				i += 2;
+				continue;
+			}
+			if (command_set(command, sizeof(command), "HEARD") != 0)
+				return 1;
+			continue;
+		}
+		if (command_set(command, sizeof(command),
+		    command_map(argv[i])) != 0) {
 			usage(stderr, argv[0]);
 			return 1;
 		}
 	}
 
-	if (socket_path == NULL || command == NULL) {
+	if (socket_path == NULL || command[0] == '\0') {
 		usage(stderr, argv[0]);
 		return 1;
 	}
@@ -77,6 +95,21 @@ command_map(const char *input)
 		return "HELP";
 
 	return NULL;
+}
+
+static int
+command_set(char *dst, size_t dst_len, const char *command)
+{
+	int needed;
+
+	if (command == NULL)
+		return 1;
+
+	needed = snprintf(dst, dst_len, "%s", command);
+	if (needed < 0 || (size_t)needed >= dst_len)
+		return 1;
+
+	return 0;
 }
 
 static int
@@ -139,5 +172,7 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH status\n", argv0);
 	fprintf(out, "       %s --socket PATH ports\n", argv0);
 	fprintf(out, "       %s --socket PATH stats\n", argv0);
+	fprintf(out, "       %s --socket PATH heard\n", argv0);
+	fprintf(out, "       %s --socket PATH heard --port NAME\n", argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }
