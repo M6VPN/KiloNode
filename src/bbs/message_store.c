@@ -15,6 +15,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "kilonode/bbs_store_lock.h"
 #include "kilonode/callsign.h"
 #include "kilonode/message.h"
 #include "kilonode/message_index.h"
@@ -52,7 +53,9 @@ static enum kn_message_store_error
 create_message(struct kn_message_store *store, struct kn_message *message,
 	const uint8_t *body, size_t body_len, uint64_t *id_out)
 {
+	struct kn_bbs_store_lock lock;
 	enum kn_message_store_error rc;
+	enum kn_bbs_store_lock_error lrc;
 
 	if (store == NULL || message == NULL || body == NULL || id_out == NULL ||
 	    store->open == 0)
@@ -62,26 +65,35 @@ create_message(struct kn_message_store *store, struct kn_message *message,
 	if (body_len > store->max_body_bytes)
 		return KN_MESSAGE_STORE_ERR_BODY_TOO_LARGE;
 
+	kn_bbs_store_lock_init(&lock);
+	lrc = kn_bbs_store_lock_exclusive(&lock, store->path);
+	if (lrc != KN_BBS_STORE_LOCK_OK)
+		return KN_MESSAGE_STORE_ERR_IO;
+
 	message->id = store->next_id;
 	rc = write_body(store, message->id, body, body_len);
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 	rc = write_meta(store, message);
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 
-	if (store->next_id == UINT64_MAX)
-		return KN_MESSAGE_STORE_ERR_CORRUPT;
+	if (store->next_id == UINT64_MAX) {
+		rc = KN_MESSAGE_STORE_ERR_CORRUPT;
+		goto done;
+	}
 	store->next_id++;
 	rc = next_id_write(store);
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 	rc = index_error_map(kn_message_index_add(store, message));
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 
 	*id_out = message->id;
-	return KN_MESSAGE_STORE_OK;
+done:
+	kn_bbs_store_lock_release(&lock);
+	return rc;
 }
 
 static enum kn_message_store_error
@@ -582,20 +594,29 @@ kn_message_store_create_private(struct kn_message_store *store,
 enum kn_message_store_error
 kn_message_store_delete(struct kn_message_store *store, uint64_t id)
 {
+	struct kn_bbs_store_lock lock;
 	struct kn_message message;
 	enum kn_message_store_error rc;
+	enum kn_bbs_store_lock_error lrc;
 
 	rc = kn_message_store_read_metadata(store, id, &message);
 	if (rc != KN_MESSAGE_STORE_OK)
 		return rc;
+	kn_bbs_store_lock_init(&lock);
+	lrc = kn_bbs_store_lock_exclusive(&lock, store->path);
+	if (lrc != KN_BBS_STORE_LOCK_OK)
+		return KN_MESSAGE_STORE_ERR_IO;
 
 	message.deleted = 1;
 	message.updated = message.created;
 	rc = write_meta(store, &message);
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 
-	return index_error_map(kn_message_index_rebuild(store));
+	rc = index_error_map(kn_message_index_rebuild(store));
+done:
+	kn_bbs_store_lock_release(&lock);
+	return rc;
 }
 
 void
@@ -624,21 +645,30 @@ kn_message_store_list(struct kn_message_store *store, struct kn_message *msgs,
 enum kn_message_store_error
 kn_message_store_mark_read(struct kn_message_store *store, uint64_t id)
 {
+	struct kn_bbs_store_lock lock;
 	struct kn_message message;
 	enum kn_message_store_error rc;
+	enum kn_bbs_store_lock_error lrc;
 
 	rc = kn_message_store_read_metadata(store, id, &message);
 	if (rc != KN_MESSAGE_STORE_OK)
 		return rc;
 	if (message.read != 0)
 		return KN_MESSAGE_STORE_OK;
+	kn_bbs_store_lock_init(&lock);
+	lrc = kn_bbs_store_lock_exclusive(&lock, store->path);
+	if (lrc != KN_BBS_STORE_LOCK_OK)
+		return KN_MESSAGE_STORE_ERR_IO;
 	message.read = 1;
 	message.updated = message.created;
 	rc = write_meta(store, &message);
 	if (rc != KN_MESSAGE_STORE_OK)
-		return rc;
+		goto done;
 
-	return index_error_map(kn_message_index_rebuild(store));
+	rc = index_error_map(kn_message_index_rebuild(store));
+done:
+	kn_bbs_store_lock_release(&lock);
+	return rc;
 }
 
 enum kn_message_store_error

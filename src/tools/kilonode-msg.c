@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "kilonode/bbs_read_state.h"
+#include "kilonode/bbs_store_lock.h"
 #include "kilonode/message.h"
 #include "kilonode/message_index.h"
 #include "kilonode/message_store.h"
@@ -365,10 +366,19 @@ command_read(struct kn_message_store *store, int argc, char **argv)
 static int
 command_reindex(struct kn_message_store *store, int argc, char **argv)
 {
+	struct kn_bbs_store_lock lock;
+	enum kn_message_index_error rc;
+
 	(void)argv;
 	if (argc != 0)
 		return 1;
-	if (kn_message_index_rebuild(store) != KN_MESSAGE_INDEX_OK)
+	kn_bbs_store_lock_init(&lock);
+	if (kn_bbs_store_lock_exclusive(&lock, store->path) !=
+	    KN_BBS_STORE_LOCK_OK)
+		return 1;
+	rc = kn_message_index_rebuild(store);
+	kn_bbs_store_lock_release(&lock);
+	if (rc != KN_MESSAGE_INDEX_OK)
 		return 1;
 	printf("reindexed\n");
 	return 0;

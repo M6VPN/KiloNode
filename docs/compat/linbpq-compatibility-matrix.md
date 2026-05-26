@@ -30,6 +30,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Bulletin storage | tested | Create, list, read, and soft delete |
 | Message deletion | partial | Soft delete only |
 | KiloNode-native message indexes | tested | Index rebuild, filters, and corruption recovery |
+| KiloNode-native store check | tested | Integrity findings for native store files |
+| KiloNode-native store repair | tested | Safe directory, next-id, read-state, and index repair |
+| KiloNode-native store reindex | tested | Rebuilds native index files |
+| KiloNode-native store export | tested | Directory snapshot with manifest |
+| Soft-delete purge | tested | Removes messages already marked deleted |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |
@@ -56,8 +61,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQ mailbox command compatibility | planned | Not implemented |
 | BPQ/LinBPQ message import | planned | Not implemented |
 | BPQ/LinBPQ mailbox import/export | planned | Not implemented |
+| BPQ/LinBPQ mailbox import | planned | Not implemented |
+| BPQ/LinBPQ mailbox export | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
 | BBS forwarding queue | planned | Not implemented |
+| BBS forwarding queues | planned | Not implemented |
 | FBB forwarding compatibility | planned | Not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |

@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "kilonode/bbs_read_state.h"
+#include "kilonode/bbs_store_lock.h"
 #include "kilonode/callsign.h"
 
 static enum kn_bbs_read_state_error call_normalize(const char *, char *,
@@ -66,39 +67,55 @@ read_path(struct kn_message_store *store, const char *call, char *buf,
 static enum kn_bbs_read_state_error
 write_state(struct kn_message_store *store, const struct kn_bbs_read_state *state)
 {
+	struct kn_bbs_store_lock lock;
 	char path[KN_MESSAGE_STORE_PATH_MAX];
 	char tmp[KN_MESSAGE_STORE_PATH_MAX + 8];
 	FILE *fp;
 	size_t i;
 	int needed;
 	enum kn_bbs_read_state_error rc;
+	enum kn_bbs_store_lock_error lrc;
 
+	kn_bbs_store_lock_init(&lock);
+	lrc = kn_bbs_store_lock_exclusive(&lock, store->path);
+	if (lrc != KN_BBS_STORE_LOCK_OK)
+		return KN_BBS_READ_STATE_ERR_IO;
 	rc = read_path(store, state->call, path, sizeof(path));
 	if (rc != KN_BBS_READ_STATE_OK)
-		return rc;
+		goto done;
 	needed = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-	if (needed < 0 || (size_t)needed >= sizeof(tmp))
-		return KN_BBS_READ_STATE_ERR_BUFFER;
+	if (needed < 0 || (size_t)needed >= sizeof(tmp)) {
+		rc = KN_BBS_READ_STATE_ERR_BUFFER;
+		goto done;
+	}
 	fp = fopen(tmp, "w");
-	if (fp == NULL)
-		return KN_BBS_READ_STATE_ERR_IO;
+	if (fp == NULL) {
+		rc = KN_BBS_READ_STATE_ERR_IO;
+		goto done;
+	}
 	for (i = 0; i < state->count; i++) {
 		if (fprintf(fp, "%llu\n",
 		    (unsigned long long)state->ids[i]) < 0) {
 			(void)fclose(fp);
 			(void)unlink(tmp);
-			return KN_BBS_READ_STATE_ERR_IO;
+			rc = KN_BBS_READ_STATE_ERR_IO;
+			goto done;
 		}
 	}
 	if (fflush(fp) != 0 || fsync(fileno(fp)) != 0 || fclose(fp) != 0) {
 		(void)unlink(tmp);
-		return KN_BBS_READ_STATE_ERR_IO;
+		rc = KN_BBS_READ_STATE_ERR_IO;
+		goto done;
 	}
 	if (rename(tmp, path) != 0) {
 		(void)unlink(tmp);
-		return KN_BBS_READ_STATE_ERR_IO;
+		rc = KN_BBS_READ_STATE_ERR_IO;
+		goto done;
 	}
-	return KN_BBS_READ_STATE_OK;
+	rc = KN_BBS_READ_STATE_OK;
+done:
+	kn_bbs_store_lock_release(&lock);
+	return rc;
 }
 
 const char *

@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "kilonode/bbs_store_lock.h"
 #include "kilonode/bbs_user.h"
 
 #define USER_META_MAX 1024
@@ -465,10 +466,12 @@ kn_bbs_user_seen(struct kn_message_store *store, const char *call,
 enum kn_bbs_user_error
 kn_bbs_user_save(struct kn_message_store *store, const struct kn_bbs_user *user)
 {
+	struct kn_bbs_store_lock lock;
 	char path[KN_MESSAGE_STORE_PATH_MAX];
 	char buf[USER_META_MAX];
 	int needed;
 	enum kn_bbs_user_error rc;
+	enum kn_bbs_store_lock_error lrc;
 
 	if (store == NULL || user == NULL || store->open == 0)
 		return KN_BBS_USER_ERR_INVALID_ARGUMENT;
@@ -493,5 +496,11 @@ kn_bbs_user_save(struct kn_message_store *store, const struct kn_bbs_user *user)
 	    user->notes);
 	if (needed < 0 || (size_t)needed >= sizeof(buf))
 		return KN_BBS_USER_ERR_BUFFER;
-	return write_atomic(path, buf, (size_t)needed);
+	kn_bbs_store_lock_init(&lock);
+	lrc = kn_bbs_store_lock_exclusive(&lock, store->path);
+	if (lrc != KN_BBS_STORE_LOCK_OK)
+		return KN_BBS_USER_ERR_IO;
+	rc = write_atomic(path, buf, (size_t)needed);
+	kn_bbs_store_lock_release(&lock);
+	return rc;
 }
