@@ -25,14 +25,21 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | RF CONNECT command | planned | Packet transmit not implemented |
 | NET/ROM NODES/ROUTES | planned | Routing state not implemented |
 | BBS handoff | planned | Mailbox not implemented |
+| KiloNode-native message store | tested | Filesystem-backed local store |
+| Private message storage | tested | Create, list, read, and soft delete |
+| Bulletin storage | tested | Create, list, read, and soft delete |
+| Message deletion | partial | Soft delete only |
+| BPQ mailbox command compatibility | planned | Not implemented |
+| BPQ/LinBPQ message import | planned | Not implemented |
+| BBS forwarding | planned | Not implemented |
+| FBB forwarding compatibility | planned | Not implemented |
 | BPQ console compatibility | planned | Not implemented |
 | BPQ-style remote sysop commands | planned | Not implemented |
 | Telnet user access | partial | Local TCP shell only, no auth or public mode |
-| BBS mailbox | planned | Message store not started |
+| BBS mailbox | planned | Message store exists, user commands not implemented |
 | NET/ROM node behaviour | planned | Black-box tests required |
 | NET/ROM route table | planned | Routing state not implemented |
 | Node shell users | partial | Local shell sessions only |
-| FBB forwarding | planned | Later BBS interop target |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |
 | BPQEther | planned | Later Ethernet compatibility target |

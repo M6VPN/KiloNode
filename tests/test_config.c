@@ -8,6 +8,12 @@
 #include "kilonode/config.h"
 
 static int expect_error(const char *, enum kn_config_error);
+static int test_bbs_disabled_block(void);
+static int test_bbs_duplicate_block(void);
+static int test_bbs_enabled_block(void);
+static int test_bbs_omitted_disabled(void);
+static int test_bbs_quoted_path(void);
+static int test_bbs_unknown_key(void);
 static int test_comment_handling(void);
 static int test_control_block(void);
 static int test_duplicate_control_block(void);
@@ -18,11 +24,13 @@ static int test_duplicate_port_name(void);
 static int test_invalid_baud(void);
 static int test_invalid_callsign(void);
 static int test_invalid_max_frame(void);
+static int test_invalid_bbs_max_body(void);
 static int test_invalid_shell_max_clients(void);
 static int test_invalid_shell_port(void);
 static int test_line_number_error(void);
 static int test_minimal_valid_config(void);
 static int test_missing_control_path(void);
+static int test_missing_bbs_store_path(void);
 static int test_missing_node_callsign(void);
 static int test_missing_port_type(void);
 static int test_missing_shell_host(void);
@@ -76,6 +84,22 @@ main(void)
 		return 1;
 	if (test_invalid_max_frame() != 0)
 		return 1;
+	if (test_bbs_omitted_disabled() != 0)
+		return 1;
+	if (test_bbs_disabled_block() != 0)
+		return 1;
+	if (test_bbs_enabled_block() != 0)
+		return 1;
+	if (test_missing_bbs_store_path() != 0)
+		return 1;
+	if (test_bbs_duplicate_block() != 0)
+		return 1;
+	if (test_bbs_unknown_key() != 0)
+		return 1;
+	if (test_invalid_bbs_max_body() != 0)
+		return 1;
+	if (test_bbs_quoted_path() != 0)
+		return 1;
 	if (test_shell_omitted_disabled() != 0)
 		return 1;
 	if (test_shell_block() != 0)
@@ -106,6 +130,119 @@ expect_error(const char *text, enum kn_config_error expected)
 	struct kn_config config;
 
 	return kn_config_parse_text(text, &config) == expected ? 0 : 1;
+}
+
+static int
+test_bbs_disabled_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"enabled false\n"
+		"store-path ./var/messages\n"
+		"max-body-bytes 65536\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.bbs.enabled != 0)
+		return 1;
+	return strcmp(config.bbs.store_path, "./var/messages") == 0 ? 0 : 1;
+}
+
+static int
+test_bbs_duplicate_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"enabled false\n"
+		"}\n"
+		"bbs {\n"
+		"enabled false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_bbs_enabled_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"enabled true\n"
+		"store-path ./var/messages\n"
+		"max-body-bytes 4096\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.bbs.enabled != 1)
+		return 1;
+	if (strcmp(config.bbs.store_path, "./var/messages") != 0)
+		return 1;
+
+	return config.bbs.max_body_bytes == 4096 ? 0 : 1;
+}
+
+static int
+test_bbs_omitted_disabled(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.bbs.enabled != 0)
+		return 1;
+
+	return config.bbs.max_body_bytes == KN_CONFIG_BBS_BODY_MAX ? 0 : 1;
+}
+
+static int
+test_bbs_quoted_path(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"enabled false\n"
+		"store-path \"./var/messages test\"\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+
+	return strcmp(config.bbs.store_path, "./var/messages test") == 0 ?
+	    0 : 1;
+}
+
+static int
+test_bbs_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"bad value\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
 }
 
 static int
@@ -235,6 +372,21 @@ test_invalid_baud(void)
 }
 
 static int
+test_invalid_bbs_max_body(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
+		"enabled false\n"
+		"max-body-bytes 999999\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_invalid_callsign(void)
 {
 	const char text[] =
@@ -351,6 +503,20 @@ test_missing_control_path(void)
 		"callsign M6VPN-1\n"
 		"}\n"
 		"control {\n"
+		"enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_MISSING_REQUIRED);
+}
+
+static int
+test_missing_bbs_store_path(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"bbs {\n"
 		"enabled true\n"
 		"}\n";
 

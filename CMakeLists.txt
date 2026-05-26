@@ -42,6 +42,8 @@ endfunction()
 add_library(packetcore STATIC
 	src/control/control_protocol.c
 	src/control/control_socket.c
+	src/bbs/message.c
+	src/bbs/message_store.c
 	src/core/buffer.c
 	src/core/callsign.c
 	src/core/config.c
@@ -71,6 +73,10 @@ kilonode_target_defaults(kilonode)
 add_executable(kilonode-monitor src/tools/kilonode-monitor.c)
 target_link_libraries(kilonode-monitor PRIVATE packetcore)
 kilonode_target_defaults(kilonode-monitor)
+
+add_executable(kilonode-msg src/tools/kilonode-msg.c)
+target_link_libraries(kilonode-msg PRIVATE packetcore)
+kilonode_target_defaults(kilonode-msg)
 
 add_executable(kilonoded src/tools/kilonoded.c)
 target_link_libraries(kilonoded PRIVATE packetcore)
@@ -141,6 +147,16 @@ add_executable(test_monitor tests/test_monitor.c)
 target_link_libraries(test_monitor PRIVATE packetcore)
 kilonode_target_defaults(test_monitor)
 add_test(NAME monitor COMMAND test_monitor)
+
+add_executable(test_message tests/test_message.c)
+target_link_libraries(test_message PRIVATE packetcore)
+kilonode_target_defaults(test_message)
+add_test(NAME message COMMAND test_message)
+
+add_executable(test_message_store tests/test_message_store.c)
+target_link_libraries(test_message_store PRIVATE packetcore)
+kilonode_target_defaults(test_message_store)
+add_test(NAME message_store COMMAND test_message_store)
 
 add_executable(test_node_shell tests/test_node_shell.c)
 target_link_libraries(test_node_shell PRIVATE packetcore)

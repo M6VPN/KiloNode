@@ -60,6 +60,19 @@ The shell block is optional. If omitted, the local node shell is disabled. If
 enabled, `host` and `port` are required. `max-clients` must be between 1 and 16.
 `banner` is optional.
 
+BBS block:
+
+```text
+bbs {
+	enabled false
+	store-path ./var/messages
+	max-body-bytes 65536
+}
+```
+
+The BBS block is optional. If omitted, the message store is disabled. If
+enabled, `store-path` is required. `max-body-bytes` must be between 1 and 65536.
+
 Port block:
 
 ```text
@@ -90,6 +103,7 @@ Validation rules:
 - Duplicate control blocks are rejected.
 - Duplicate heard blocks are rejected.
 - Duplicate shell blocks are rejected.
+- Duplicate bbs blocks are rejected.
 - Port names must be unique.
 - Disabled ports parse but are not opened.
 - `max-frame` must be between `KN_CONFIG_MAX_FRAME_MIN` and

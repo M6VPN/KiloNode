@@ -18,6 +18,8 @@
 #define KN_CONFIG_HEARD_MIN     1
 #define KN_CONFIG_LINE_MAX      512
 #define KN_CONFIG_LOCATION_MAX  128
+#define KN_CONFIG_BBS_BODY_MAX  65536
+#define KN_CONFIG_BBS_BODY_MIN  1
 #define KN_CONFIG_MAX_FRAME_MAX 65535
 #define KN_CONFIG_MAX_FRAME_MIN 64
 #define KN_CONFIG_PATH_MAX      256
@@ -70,6 +72,16 @@ struct kn_config_control {
 	uint8_t has_path;
 };
 
+struct kn_config_bbs {
+	char store_path[KN_CONFIG_PATH_MAX];
+	size_t max_body_bytes;
+	uint8_t enabled;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_store_path;
+	uint8_t has_max_body_bytes;
+};
+
 struct kn_config_heard {
 	size_t max_entries;
 	uint8_t enabled;
@@ -117,6 +129,7 @@ struct kn_config_port {
 struct kn_config {
 	struct kn_config_node node;
 	struct kn_config_control control;
+	struct kn_config_bbs bbs;
 	struct kn_config_heard heard;
 	struct kn_config_shell shell;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];

@@ -21,6 +21,7 @@
 enum parser_block {
 	BLOCK_NONE = 0,
 	BLOCK_NODE,
+	BLOCK_BBS,
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
 	BLOCK_SHELL,
@@ -34,6 +35,8 @@ struct parser {
 };
 
 static enum kn_config_error config_validate(struct kn_config *);
+static enum kn_config_error bbs_key_set(struct kn_config *, char **, size_t,
+	size_t);
 static enum kn_config_error copy_field(char *, size_t, const char *,
 	struct kn_config *, size_t);
 static enum kn_config_error heard_key_set(struct kn_config *, char **, size_t,
@@ -64,6 +67,11 @@ config_validate(struct kn_config *config)
 	if (config->node.has_callsign == 0)
 		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
 		    "missing node callsign");
+
+	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
+	    config->bbs.has_store_path == 0)
+		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
+		    "missing bbs store path");
 
 	if (config->control.has_block != 0 && config->control.enabled != 0 &&
 	    config->control.has_path == 0)
@@ -183,6 +191,7 @@ kn_config_init(struct kn_config *config)
 		return;
 
 	memset(config, 0, sizeof(*config));
+	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
 	config->shell.max_clients = 4;
@@ -360,6 +369,52 @@ key_seen(uint8_t *seen, struct kn_config *config, size_t line_no)
 }
 
 static enum kn_config_error
+bbs_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid bbs key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->bbs.has_enabled, config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->bbs.enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid bbs enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "store-path") == 0) {
+		if (key_seen(&config->bbs.has_store_path, config, line_no) != 0)
+			return config->error;
+		return copy_field(config->bbs.store_path,
+		    sizeof(config->bbs.store_path), tokens[1], config, line_no);
+	}
+
+	if (strcmp(tokens[0], "max-body-bytes") == 0) {
+		if (key_seen(&config->bbs.has_max_body_bytes, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_BBS_BODY_MIN ||
+		    value > KN_CONFIG_BBS_BODY_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid bbs max-body-bytes");
+		config->bbs.max_body_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown bbs key");
+}
+
+static enum kn_config_error
 heard_key_set(struct kn_config *config, char **tokens, size_t token_count,
 	size_t line_no)
 {
@@ -424,6 +479,9 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 	if (parser->block == BLOCK_NODE)
 		return node_key_set(parser->config, tokens, token_count, line_no);
 
+	if (parser->block == BLOCK_BBS)
+		return bbs_key_set(parser->config, tokens, token_count, line_no);
+
 	if (parser->block == BLOCK_CONTROL) {
 		if (token_count != 2)
 			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
@@ -469,6 +527,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
 			    line_no, "invalid node block");
 		parser->block = BLOCK_NODE;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "bbs") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid bbs block");
+		if (parser->config->bbs.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate bbs block");
+		parser->config->bbs.has_block = 1;
+		parser->block = BLOCK_BBS;
 		return KN_CONFIG_OK;
 	}
 
