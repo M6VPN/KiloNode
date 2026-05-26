@@ -1,0 +1,16 @@
+build/
+build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+/kilonode
+/test_buffer
+/test_callsign
+/test_kiss
