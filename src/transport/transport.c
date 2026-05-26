@@ -70,6 +70,14 @@ kn_transport_kind_name(enum kn_transport_kind kind)
 		return "tcp-client";
 	case KN_TRANSPORT_KIND_TCP_SERVER:
 		return "tcp-server";
+	case KN_TRANSPORT_KIND_SERIAL:
+		return "serial";
+	case KN_TRANSPORT_KIND_PTY:
+		return "pty";
+	case KN_TRANSPORT_KIND_UNIX_CLIENT:
+		return "unix-client";
+	case KN_TRANSPORT_KIND_UNIX_SERVER:
+		return "unix-server";
 	}
 
 	return "unknown";
@@ -82,6 +90,10 @@ kn_transport_kind_valid(enum kn_transport_kind kind)
 	case KN_TRANSPORT_KIND_STDIO:
 	case KN_TRANSPORT_KIND_TCP_CLIENT:
 	case KN_TRANSPORT_KIND_TCP_SERVER:
+	case KN_TRANSPORT_KIND_SERIAL:
+	case KN_TRANSPORT_KIND_PTY:
+	case KN_TRANSPORT_KIND_UNIX_CLIENT:
+	case KN_TRANSPORT_KIND_UNIX_SERVER:
 		return 1;
 	case KN_TRANSPORT_KIND_NONE:
 		return 0;

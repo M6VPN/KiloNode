@@ -47,8 +47,11 @@ add_library(packetcore STATIC
 	src/proto/kiss.c
 	src/proto/kiss_stream.c
 	src/transport/transport.c
+	src/transport/transport_pty.c
+	src/transport/transport_serial.c
 	src/transport/transport_stdio.c
 	src/transport/transport_tcp.c
+	src/transport/transport_unix.c
 )
 set_target_properties(packetcore PROPERTIES OUTPUT_NAME packetcore)
 target_include_directories(packetcore PUBLIC include)
@@ -98,3 +101,18 @@ add_executable(test_transport tests/test_transport.c)
 target_link_libraries(test_transport PRIVATE packetcore)
 kilonode_target_defaults(test_transport)
 add_test(NAME transport COMMAND test_transport)
+
+add_executable(test_transport_serial tests/test_transport_serial.c)
+target_link_libraries(test_transport_serial PRIVATE packetcore)
+kilonode_target_defaults(test_transport_serial)
+add_test(NAME transport_serial COMMAND test_transport_serial)
+
+add_executable(test_transport_pty tests/test_transport_pty.c)
+target_link_libraries(test_transport_pty PRIVATE packetcore)
+kilonode_target_defaults(test_transport_pty)
+add_test(NAME transport_pty COMMAND test_transport_pty)
+
+add_executable(test_transport_unix tests/test_transport_unix.c)
+target_link_libraries(test_transport_unix PRIVATE packetcore)
+kilonode_target_defaults(test_transport_unix)
+add_test(NAME transport_unix COMMAND test_transport_unix)

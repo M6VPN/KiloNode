@@ -13,8 +13,11 @@
 #include "kilonode/kiss_stream.h"
 #include "kilonode/monitor.h"
 #include "kilonode/transport.h"
+#include "kilonode/transport_pty.h"
+#include "kilonode/transport_serial.h"
 #include "kilonode/transport_stdio.h"
 #include "kilonode/transport_tcp.h"
+#include "kilonode/transport_unix.h"
 
 #define MONITOR_LINE_BUFSIZ 512
 #define READ_BUFSIZ         2048
@@ -23,13 +26,20 @@ enum monitor_mode {
 	MONITOR_MODE_NONE = 0,
 	MONITOR_MODE_STDIO,
 	MONITOR_MODE_TCP_CONNECT,
-	MONITOR_MODE_TCP_LISTEN
+	MONITOR_MODE_TCP_LISTEN,
+	MONITOR_MODE_SERIAL,
+	MONITOR_MODE_PTY,
+	MONITOR_MODE_UNIX_CONNECT,
+	MONITOR_MODE_UNIX_LISTEN
 };
 
 struct monitor_args {
 	enum monitor_mode mode;
 	const char *host;
 	const char *port;
+	const char *path;
+	unsigned int baud;
+	uint8_t flow_control;
 	size_t max_frame;
 };
 
@@ -39,6 +49,7 @@ static int monitor_open_transport(const struct monitor_args *,
 static int monitor_pop_frames(struct kn_kiss_stream_parser *,
 	struct kn_buffer *);
 static int monitor_run(struct kn_transport *, size_t);
+static int parse_baud_arg(const char *, unsigned int *);
 static int parse_size_arg(const char *, size_t *);
 static void usage(FILE *, const char *);
 
@@ -102,6 +113,44 @@ monitor_args_parse(int argc, char **argv, struct monitor_args *args)
 			args->mode = MONITOR_MODE_TCP_LISTEN;
 			args->host = argv[++i];
 			args->port = argv[++i];
+		} else if (strcmp(argv[i], "--serial") == 0) {
+			if (args->mode != MONITOR_MODE_NONE || i + 2 >= argc) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			args->mode = MONITOR_MODE_SERIAL;
+			args->path = argv[++i];
+			if (parse_baud_arg(argv[++i], &args->baud) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+		} else if (strcmp(argv[i], "--serial-flow-control") == 0) {
+			if (i + 1 >= argc ||
+			    kn_transport_serial_flow_control_parse(argv[++i],
+			    &args->flow_control) == 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+		} else if (strcmp(argv[i], "--pty") == 0) {
+			if (args->mode != MONITOR_MODE_NONE) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			args->mode = MONITOR_MODE_PTY;
+		} else if (strcmp(argv[i], "--unix-connect") == 0) {
+			if (args->mode != MONITOR_MODE_NONE || i + 1 >= argc) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			args->mode = MONITOR_MODE_UNIX_CONNECT;
+			args->path = argv[++i];
+		} else if (strcmp(argv[i], "--unix-listen") == 0) {
+			if (args->mode != MONITOR_MODE_NONE || i + 1 >= argc) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			args->mode = MONITOR_MODE_UNIX_LISTEN;
+			args->path = argv[++i];
 		} else if (strcmp(argv[i], "--max-frame") == 0) {
 			if (i + 1 >= argc ||
 			    parse_size_arg(argv[++i], &args->max_frame) != 0) {
@@ -126,6 +175,7 @@ static int
 monitor_open_transport(const struct monitor_args *args,
 	struct kn_transport *transport)
 {
+	char slave_path[KN_TRANSPORT_PTY_PATH_MAX];
 	enum kn_transport_error rc;
 
 	if (args->mode == MONITOR_MODE_STDIO)
@@ -136,6 +186,18 @@ monitor_open_transport(const struct monitor_args *args,
 	else if (args->mode == MONITOR_MODE_TCP_LISTEN)
 		rc = kn_transport_tcp_listen_open(transport, args->host,
 		    args->port);
+	else if (args->mode == MONITOR_MODE_SERIAL)
+		rc = kn_transport_serial_open(transport, args->path, args->baud,
+		    args->flow_control);
+	else if (args->mode == MONITOR_MODE_PTY) {
+		rc = kn_transport_pty_open(transport, slave_path,
+		    sizeof(slave_path));
+		if (rc == KN_TRANSPORT_OK)
+			fprintf(stderr, "PTY slave: %s\n", slave_path);
+	} else if (args->mode == MONITOR_MODE_UNIX_CONNECT)
+		rc = kn_transport_unix_connect_open(transport, args->path);
+	else if (args->mode == MONITOR_MODE_UNIX_LISTEN)
+		rc = kn_transport_unix_listen_open(transport, args->path);
 	else
 		rc = KN_TRANSPORT_ERR_INVALID_CONFIG;
 
@@ -221,6 +283,27 @@ monitor_run(struct kn_transport *transport, size_t max_frame)
 }
 
 static int
+parse_baud_arg(const char *input, unsigned int *out)
+{
+	char *end;
+	unsigned long value;
+
+	if (input == NULL || out == NULL || input[0] == '\0')
+		return 1;
+
+	errno = 0;
+	value = strtoul(input, &end, 10);
+	if (errno != 0 || *end != '\0' || value > UINT32_MAX)
+		return 1;
+
+	if (kn_transport_serial_baud_valid((unsigned int)value) == 0)
+		return 1;
+
+	*out = (unsigned int)value;
+	return 0;
+}
+
+static int
 parse_size_arg(const char *input, size_t *out)
 {
 	char *end;
@@ -245,5 +328,12 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --tcp-connect HOST PORT [--max-frame BYTES]\n",
 	    argv0);
 	fprintf(out, "       %s --tcp-listen HOST PORT [--max-frame BYTES]\n",
+	    argv0);
+	fprintf(out, "       %s --serial DEVICE BAUD "
+	    "[--serial-flow-control on|off] [--max-frame BYTES]\n", argv0);
+	fprintf(out, "       %s --pty [--max-frame BYTES]\n", argv0);
+	fprintf(out, "       %s --unix-connect PATH [--max-frame BYTES]\n",
+	    argv0);
+	fprintf(out, "       %s --unix-listen PATH [--max-frame BYTES]\n",
 	    argv0);
 }
