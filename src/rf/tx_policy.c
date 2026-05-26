@@ -24,6 +24,23 @@ kn_tx_policy_allow_dispatch(const struct kn_tx_policy *policy)
 }
 
 enum kn_tx_policy_error
+kn_tx_policy_allow_control_enqueue(const struct kn_tx_policy *policy,
+	size_t payload_len)
+{
+	enum kn_tx_policy_error rc;
+
+	rc = kn_tx_policy_allow_enqueue(policy, payload_len);
+	if (rc != KN_TX_POLICY_OK)
+		return rc;
+	if (policy->dry_run == 0)
+		return KN_TX_POLICY_ERR_DISPATCH_DISABLED;
+	if (policy->allow_control_enqueue == 0)
+		return KN_TX_POLICY_ERR_CONTROL_DISABLED;
+
+	return KN_TX_POLICY_OK;
+}
+
+enum kn_tx_policy_error
 kn_tx_policy_allow_enqueue(const struct kn_tx_policy *policy,
 	size_t payload_len)
 {
@@ -36,6 +53,23 @@ kn_tx_policy_allow_enqueue(const struct kn_tx_policy *policy,
 		return KN_TX_POLICY_ERR_DISABLED;
 	if (payload_len > policy->max_payload_bytes)
 		return KN_TX_POLICY_ERR_TOO_LARGE;
+
+	return KN_TX_POLICY_OK;
+}
+
+enum kn_tx_policy_error
+kn_tx_policy_allow_shell_enqueue(const struct kn_tx_policy *policy,
+	size_t payload_len)
+{
+	enum kn_tx_policy_error rc;
+
+	rc = kn_tx_policy_allow_enqueue(policy, payload_len);
+	if (rc != KN_TX_POLICY_OK)
+		return rc;
+	if (policy->dry_run == 0)
+		return KN_TX_POLICY_ERR_DISPATCH_DISABLED;
+	if (policy->allow_shell_enqueue == 0)
+		return KN_TX_POLICY_ERR_SHELL_DISABLED;
 
 	return KN_TX_POLICY_OK;
 }

@@ -85,6 +85,11 @@ config_validate(struct kn_config *config)
 	    KN_TX_POLICY_OK)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "invalid transmit policy");
+	if (config->transmit.policy.dry_run == 0 &&
+	    (config->transmit.policy.allow_control_enqueue != 0 ||
+	    config->transmit.policy.allow_shell_enqueue != 0))
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "transmit enqueue requires dry-run");
 
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
@@ -683,6 +688,32 @@ transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
 		    &config->transmit.policy.allow_ui) != KN_CONFIG_OK)
 			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
 			    line_no, "invalid transmit allow-ui value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "allow-control-enqueue") == 0) {
+		if (key_seen(&config->transmit.has_allow_control_enqueue,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.allow_control_enqueue) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit allow-control-enqueue value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "allow-shell-enqueue") == 0) {
+		if (key_seen(&config->transmit.has_allow_shell_enqueue,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.allow_shell_enqueue) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit allow-shell-enqueue value");
 		return KN_CONFIG_OK;
 	}
 

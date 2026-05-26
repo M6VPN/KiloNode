@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "kilonode/bbs_control.h"
 #include "kilonode/callsign.h"
@@ -18,6 +19,7 @@
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
 #include "kilonode/tx_frame.h"
+#include "kilonode/tx_dry_run.h"
 #include "kilonode/tx_queue.h"
 
 #define KILONODE_VERSION "0.1.0"
@@ -42,6 +44,9 @@ static enum kn_control_error format_status(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_tx(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
+static enum kn_control_error format_tx_dryrun_ui(
+	const struct kn_control_snapshot *, const char *, char *, size_t);
+static enum kn_control_error read_word(const char **, char *, size_t);
 static enum kn_control_error return_with_cap(
 	const struct kn_control_snapshot *, char *, size_t,
 	enum kn_control_error);
@@ -530,9 +535,14 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 	}
 
+	if (strncmp(command, "DRYRUN UI ", 10) == 0)
+		return format_tx_dryrun_ui(snapshot, command + 10, buf,
+		    bufsiz);
+
 	if (strcmp(command, "STATUS") == 0) {
 		if (snprintf(buf, bufsiz,
 		    "OK TX STATUS enabled=%s dry_run=%s allow_ui=%s "
+		    "allow_control_enqueue=%s allow_shell_enqueue=%s "
 		    "queued=%llu max_queued=%llu max_payload=%llu\nEND\n",
 		    snapshot->tx_queue->policy.enabled != 0 ? "true" :
 		    "false",
@@ -540,6 +550,10 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		    "false",
 		    snapshot->tx_queue->policy.allow_ui != 0 ? "true" :
 		    "false",
+		    snapshot->tx_queue->policy.allow_control_enqueue != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.allow_shell_enqueue != 0 ?
+		    "true" : "false",
 		    (unsigned long long)kn_tx_queue_count(
 		    snapshot->tx_queue),
 		    (unsigned long long)snapshot->tx_queue->max_frames,
@@ -592,6 +606,103 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 
 	(void)snprintf(buf, bufsiz, "ERR invalid-tx-command\n");
 	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+format_tx_dryrun_ui(const struct kn_control_snapshot *snapshot,
+	const char *command, char *buf, size_t bufsiz)
+{
+	char port[KN_CONFIG_PORT_NAME_MAX];
+	char source[KN_CALLSIGN_MAX + 4];
+	char destination[KN_CALLSIGN_MAX + 4];
+	char via[KN_TX_FRAME_PATH_MAX];
+	const char *p;
+	const char *payload;
+	const char *via_arg;
+	const struct kn_tx_frame *frame;
+	uint64_t id;
+	enum kn_tx_dry_run_error tx_rc;
+
+	p = command;
+	via[0] = '\0';
+	via_arg = NULL;
+
+	if (strncmp(p, "PORT ", 5) != 0)
+		goto invalid;
+	p += 5;
+	if (read_word(&p, port, sizeof(port)) != KN_CONTROL_OK)
+		goto invalid;
+	if (strncmp(p, " FROM ", 6) != 0)
+		goto invalid;
+	p += 6;
+	if (read_word(&p, source, sizeof(source)) != KN_CONTROL_OK)
+		goto invalid;
+	if (strncmp(p, " TO ", 4) != 0)
+		goto invalid;
+	p += 4;
+	if (read_word(&p, destination, sizeof(destination)) != KN_CONTROL_OK)
+		goto invalid;
+	if (strncmp(p, " VIA ", 5) == 0) {
+		p += 5;
+		if (read_word(&p, via, sizeof(via)) != KN_CONTROL_OK)
+			goto invalid;
+		via_arg = via;
+	}
+	if (strncmp(p, " TEXT ", 6) != 0)
+		goto invalid;
+	payload = p + 6;
+	if (payload[0] == '\0')
+		goto invalid;
+
+	tx_rc = kn_tx_dry_run_enqueue_ui(snapshot->tx_queue, snapshot->ports,
+	    snapshot->port_count, KN_TX_DRY_RUN_ORIGIN_CONTROL,
+	    (uint64_t)time(NULL), port, source, destination, via_arg,
+	    KN_AX25_PID_NO_LAYER_3, (const uint8_t *)payload,
+	    strlen(payload), &id);
+	if (tx_rc != KN_TX_DRY_RUN_OK) {
+		if (snprintf(buf, bufsiz, "ERR %s\n",
+		    kn_tx_dry_run_error_name(tx_rc)) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+
+	frame = kn_tx_queue_get(snapshot->tx_queue, id);
+	if (frame == NULL)
+		return KN_CONTROL_ERR_IO;
+	if (snprintf(buf, bufsiz,
+	    "OK TX DRYRUN queued id=%llu port=%s kind=%s ax25_len=%llu "
+	    "kiss_len=%llu\nEND\n",
+	    (unsigned long long)frame->id, frame->port_name,
+	    kn_tx_frame_kind_name(frame->kind),
+	    (unsigned long long)frame->ax25_len,
+	    (unsigned long long)frame->kiss_len) >= (int)bufsiz)
+		return KN_CONTROL_ERR_IO;
+	return KN_CONTROL_OK;
+
+invalid:
+	(void)snprintf(buf, bufsiz, "ERR invalid-tx-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+read_word(const char **input, char *buf, size_t bufsiz)
+{
+	const char *p;
+	size_t len;
+
+	if (input == NULL || *input == NULL || buf == NULL || bufsiz == 0)
+		return KN_CONTROL_ERR_INVALID_ARGUMENT;
+
+	p = *input;
+	len = 0;
+	while (p[len] != '\0' && p[len] != ' ')
+		len++;
+	if (len == 0 || len >= bufsiz)
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	memcpy(buf, p, len);
+	buf[len] = '\0';
+	*input = p + len;
+	return KN_CONTROL_OK;
 }
 
 static enum kn_control_error

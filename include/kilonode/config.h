@@ -135,6 +135,8 @@ struct kn_config_transmit {
 	uint8_t has_max_payload_bytes;
 	uint8_t has_payload_preview_bytes;
 	uint8_t has_allow_ui;
+	uint8_t has_allow_control_enqueue;
+	uint8_t has_allow_shell_enqueue;
 };
 
 struct kn_config_shell {

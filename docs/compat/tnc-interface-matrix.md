@@ -11,6 +11,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | RX event queue | tested | Decoded frames from configured KISS transports feed recent receive events |
 | RX observed sessions | tested | Receive-side source/destination observations from decoded frames |
 | TX queue skeleton | tested | Outbound frames can be built and queued, dispatch is disabled |
+| TX dry-run enqueue | tested | Builds AX.25/KISS frames and queues them without writing to TNC transports |
 | KISS stdin/stdout | implemented | Live monitor can read stdin KISS streams |
 | KISS TCP client | partial | Configured daemon and monitor support, no reconnect or auth |
 | KISS TCP server | partial | Configured daemon and monitor support, single-client only |

@@ -51,6 +51,7 @@ add_library(packetcore STATIC
 	src/rf/rx_event.c
 	src/rf/rx_queue.c
 	src/rf/rx_session.c
+	src/rf/tx_dry_run.c
 	src/rf/tx_frame.c
 	src/rf/tx_policy.c
 	src/rf/tx_queue.c
@@ -171,6 +172,11 @@ add_executable(test_tx_frame tests/test_tx_frame.c)
 target_link_libraries(test_tx_frame PRIVATE packetcore)
 kilonode_target_defaults(test_tx_frame)
 add_test(NAME tx_frame COMMAND test_tx_frame)
+
+add_executable(test_tx_dry_run tests/test_tx_dry_run.c)
+target_link_libraries(test_tx_dry_run PRIVATE packetcore)
+kilonode_target_defaults(test_tx_dry_run)
+add_test(NAME tx_dry_run COMMAND test_tx_dry_run)
 
 add_executable(test_tx_queue tests/test_tx_queue.c)
 target_link_libraries(test_tx_queue PRIVATE packetcore)

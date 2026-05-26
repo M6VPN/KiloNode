@@ -24,7 +24,9 @@ enum kn_tx_policy_error {
 	KN_TX_POLICY_ERR_DISABLED,
 	KN_TX_POLICY_ERR_UI_NOT_ALLOWED,
 	KN_TX_POLICY_ERR_TOO_LARGE,
-	KN_TX_POLICY_ERR_DISPATCH_DISABLED
+	KN_TX_POLICY_ERR_DISPATCH_DISABLED,
+	KN_TX_POLICY_ERR_CONTROL_DISABLED,
+	KN_TX_POLICY_ERR_SHELL_DISABLED
 };
 
 struct kn_tx_policy {
@@ -34,11 +36,17 @@ struct kn_tx_policy {
 	uint8_t enabled;
 	uint8_t dry_run;
 	uint8_t allow_ui;
+	uint8_t allow_control_enqueue;
+	uint8_t allow_shell_enqueue;
 };
 
 enum kn_tx_policy_error kn_tx_policy_allow_dispatch(
 	const struct kn_tx_policy *);
+enum kn_tx_policy_error kn_tx_policy_allow_control_enqueue(
+	const struct kn_tx_policy *, size_t);
 enum kn_tx_policy_error kn_tx_policy_allow_enqueue(
+	const struct kn_tx_policy *, size_t);
+enum kn_tx_policy_error kn_tx_policy_allow_shell_enqueue(
 	const struct kn_tx_policy *, size_t);
 enum kn_tx_policy_error kn_tx_policy_allow_ui(
 	const struct kn_tx_policy *, size_t);

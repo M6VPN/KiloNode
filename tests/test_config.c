@@ -58,6 +58,12 @@ static int test_shell_omitted_disabled(void);
 static int test_shell_unknown_key(void);
 static int test_unknown_block(void);
 static int test_unknown_key(void);
+static int test_transmit_allow_ui_false_control_config(void);
+static int test_transmit_dry_run_false_control_rejected(void);
+static int test_transmit_invalid_allow_control(void);
+static int test_transmit_invalid_allow_shell(void);
+static int test_transmit_omitted_defaults(void);
+static int test_transmit_valid_control_dry_run(void);
 
 int
 main(void)
@@ -109,6 +115,18 @@ main(void)
 	if (test_invalid_receive_max_sessions() != 0)
 		return 1;
 	if (test_invalid_receive_preview() != 0)
+		return 1;
+	if (test_transmit_omitted_defaults() != 0)
+		return 1;
+	if (test_transmit_valid_control_dry_run() != 0)
+		return 1;
+	if (test_transmit_dry_run_false_control_rejected() != 0)
+		return 1;
+	if (test_transmit_invalid_allow_control() != 0)
+		return 1;
+	if (test_transmit_invalid_allow_shell() != 0)
+		return 1;
+	if (test_transmit_allow_ui_false_control_config() != 0)
 		return 1;
 	if (test_duplicate_port_name() != 0)
 		return 1;
@@ -1011,6 +1029,125 @@ test_shell_unknown_key(void)
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
+}
+
+static int
+test_transmit_allow_ui_false_control_config(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dry-run true\n"
+		"allow-ui false\n"
+		"allow-control-enqueue true\n"
+		"}\n";
+	struct kn_config config;
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+
+	return config.transmit.policy.allow_control_enqueue == 1 &&
+	    config.transmit.policy.allow_ui == 0 ? 0 : 1;
+}
+
+static int
+test_transmit_dry_run_false_control_rejected(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dry-run false\n"
+		"allow-control-enqueue true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_transmit_invalid_allow_control(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"allow-control-enqueue maybe\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_transmit_invalid_allow_shell(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"allow-shell-enqueue maybe\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_transmit_omitted_defaults(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.transmit.policy.enabled != 0)
+		return 1;
+	if (config.transmit.policy.dry_run == 0)
+		return 1;
+	if (config.transmit.policy.allow_control_enqueue != 0)
+		return 1;
+
+	return config.transmit.policy.allow_shell_enqueue == 0 ? 0 : 1;
+}
+
+static int
+test_transmit_valid_control_dry_run(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dry-run true\n"
+		"max-queued 16\n"
+		"max-payload-bytes 128\n"
+		"payload-preview-bytes 32\n"
+		"allow-ui true\n"
+		"allow-control-enqueue true\n"
+		"allow-shell-enqueue false\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.transmit.policy.enabled != 1 ||
+	    config.transmit.policy.allow_ui != 1 ||
+	    config.transmit.policy.allow_control_enqueue != 1)
+		return 1;
+	if (config.transmit.policy.max_queued != 16 ||
+	    config.transmit.policy.max_payload_bytes != 128)
+		return 1;
+
+	return config.transmit.policy.payload_preview_bytes == 32 ? 0 : 1;
 }
 
 static int

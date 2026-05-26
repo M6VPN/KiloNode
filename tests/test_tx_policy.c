@@ -67,7 +67,9 @@ test_config_valid_block(void)
 	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
 		return 1;
 	if (config.transmit.policy.enabled == 0 ||
-	    config.transmit.policy.allow_ui == 0)
+	    config.transmit.policy.allow_ui == 0 ||
+	    config.transmit.policy.allow_control_enqueue != 0 ||
+	    config.transmit.policy.allow_shell_enqueue != 0)
 		return 1;
 	if (config.transmit.policy.max_queued != 8 ||
 	    config.transmit.policy.max_payload_bytes != 128)

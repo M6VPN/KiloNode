@@ -18,6 +18,7 @@ static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
 static int command_rx(char *, size_t, int *, int, char **);
 static int command_set(char *, size_t, const char *);
+static int command_tx_dryrun_ui(char *, size_t, int *, int, char **);
 static int command_tx(char *, size_t, int *, int, char **);
 static int run_command(const char *, const char *);
 static void usage(FILE *, const char *);
@@ -312,6 +313,8 @@ command_tx(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 2;
 		return 0;
 	}
+	if (strcmp(sub, "dryrun-ui") == 0)
+		return command_tx_dryrun_ui(dst, dst_len, index, argc, argv);
 	if (strcmp(sub, "queue") != 0)
 		return 1;
 	if (*index + 2 >= argc) {
@@ -330,6 +333,82 @@ command_tx(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 	}
 	*index += 1;
 	return command_set(dst, dst_len, "TX QUEUE");
+}
+
+static int
+command_tx_dryrun_ui(char *dst, size_t dst_len, int *index, int argc,
+	char *argv[])
+{
+	const char *port;
+	const char *source;
+	const char *destination;
+	const char *via;
+	const char *text;
+	int i;
+	int needed;
+
+	port = NULL;
+	source = NULL;
+	destination = NULL;
+	via = NULL;
+	text = NULL;
+	i = *index + 2;
+	while (i < argc) {
+		if (strcmp(argv[i], "--port") == 0) {
+			if (i + 1 >= argc || port != NULL)
+				return 1;
+			port = argv[i + 1];
+			i += 2;
+			continue;
+		}
+		if (strcmp(argv[i], "--from") == 0) {
+			if (i + 1 >= argc || source != NULL)
+				return 1;
+			source = argv[i + 1];
+			i += 2;
+			continue;
+		}
+		if (strcmp(argv[i], "--to") == 0) {
+			if (i + 1 >= argc || destination != NULL)
+				return 1;
+			destination = argv[i + 1];
+			i += 2;
+			continue;
+		}
+		if (strcmp(argv[i], "--via") == 0) {
+			if (i + 1 >= argc || via != NULL)
+				return 1;
+			via = argv[i + 1];
+			i += 2;
+			continue;
+		}
+		if (strcmp(argv[i], "--text") == 0) {
+			if (i + 1 >= argc || text != NULL)
+				return 1;
+			text = argv[i + 1];
+			i += 2;
+			continue;
+		}
+		return 1;
+	}
+	if (port == NULL || source == NULL || destination == NULL ||
+	    text == NULL)
+		return 1;
+
+	if (via != NULL) {
+		needed = snprintf(dst, dst_len,
+		    "TX DRYRUN UI PORT %s FROM %s TO %s VIA %s TEXT %s",
+		    port, source, destination, via, text);
+	} else {
+		needed = snprintf(dst, dst_len,
+		    "TX DRYRUN UI PORT %s FROM %s TO %s TEXT %s",
+		    port, source, destination, text);
+	}
+	if (needed < 0 || (size_t)needed >= dst_len)
+		return 1;
+
+	*index = argc - 1;
+	return 0;
 }
 
 static int
@@ -410,5 +489,8 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH tx queue\n", argv0);
 	fprintf(out, "       %s --socket PATH tx queue --port NAME\n", argv0);
 	fprintf(out, "       %s --socket PATH tx frame ID\n", argv0);
+	fprintf(out, "       %s --socket PATH tx dryrun-ui --port PORT "
+	    "--from CALLSIGN --to CALLSIGN [--via PATH] --text TEXT\n",
+	    argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }

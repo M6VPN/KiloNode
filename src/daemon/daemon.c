@@ -59,7 +59,7 @@ static int control_handle(struct kn_control_socket *,
 	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
 	uint8_t, const struct kn_access_policy *, const struct kn_rx_queue *,
 	const struct kn_rx_session_table *, uint8_t,
-	const struct kn_tx_queue *);
+	struct kn_tx_queue *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
 	struct kn_rx_session_table *);
@@ -449,7 +449,7 @@ control_handle(struct kn_control_socket *control,
 	uint8_t bbs_enabled, const struct kn_access_policy *policy,
 	const struct kn_rx_queue *rx_events,
 	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled,
-	const struct kn_tx_queue *tx_queue)
+	struct kn_tx_queue *tx_queue)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;

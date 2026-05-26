@@ -55,6 +55,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 UI outbound builder | tested | Builds bounded UI frames through existing AX.25 encoder |
 | KISS outbound encoding | tested | Stores complete escaped KISS frames for prepared TX frames |
 | Transmit queue skeleton | tested | In-memory queue with read-only control queries |
+| Dry-run UI enqueue path | tested | Local control-gated dry-run queue insertion only |
+| Control TX dry-run diagnostics | tested | `kilonodectl tx dryrun-ui`, `tx queue`, and `tx frame` |
 | AX.25 connected-mode receive state | planned | Not implemented |
 | Actual RF transmit dispatch | planned | Not implemented |
 | AX.25 transmit path | partial | Builder and queue only, no dispatch |

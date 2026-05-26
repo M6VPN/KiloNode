@@ -57,6 +57,14 @@ static int test_stats_response(void);
 static int test_status_response(void);
 static int test_tx_frame_existing(void);
 static int test_tx_frame_missing(void);
+static int test_tx_dryrun_default_rejected(void);
+static int test_tx_dryrun_invalid_callsign(void);
+static int test_tx_dryrun_invalid_port(void);
+static int test_tx_dryrun_invalid_via(void);
+static int test_tx_dryrun_oversized(void);
+static int test_tx_dryrun_queue_full(void);
+static int test_tx_dryrun_valid(void);
+static int test_tx_dryrun_via_valid(void);
 static int test_tx_malformed_command(void);
 static int test_tx_queue_empty(void);
 static int test_tx_queue_one(void);
@@ -143,6 +151,22 @@ main(void)
 	if (test_rx_malformed_command() != 0)
 		return 1;
 	if (test_tx_status() != 0)
+		return 1;
+	if (test_tx_dryrun_default_rejected() != 0)
+		return 1;
+	if (test_tx_dryrun_valid() != 0)
+		return 1;
+	if (test_tx_dryrun_via_valid() != 0)
+		return 1;
+	if (test_tx_dryrun_invalid_callsign() != 0)
+		return 1;
+	if (test_tx_dryrun_invalid_port() != 0)
+		return 1;
+	if (test_tx_dryrun_invalid_via() != 0)
+		return 1;
+	if (test_tx_dryrun_oversized() != 0)
+		return 1;
+	if (test_tx_dryrun_queue_full() != 0)
 		return 1;
 	if (test_tx_queue_empty() != 0)
 		return 1;
@@ -683,6 +707,19 @@ tx_snapshot_init(struct kn_control_snapshot *snapshot,
 }
 
 static void
+tx_snapshot_port_init(struct kn_control_snapshot *snapshot,
+	struct kn_daemon_stats *daemon, struct kn_port_stats *port,
+	struct kn_tx_queue *queue, uint8_t open)
+{
+	memset(port, 0, sizeof(*port));
+	(void)snprintf(port->name, sizeof(port->name), "%s", "kiss0");
+	port->enabled = 1;
+	port->open = open;
+	snapshot_init(snapshot, daemon, port, 1);
+	snapshot->tx_queue = queue;
+}
+
+static void
 tx_add_frame(struct kn_tx_queue *queue)
 {
 	struct kn_tx_frame frame;
@@ -941,6 +978,211 @@ test_tx_frame_missing(void)
 		return 1;
 
 	return strcmp(out, "ERR frame-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_default_rejected(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR tx-disabled\n") == 0 ? 0 : 1;
+}
+
+static void
+tx_policy_control_allowed(struct kn_tx_policy *policy)
+{
+	kn_tx_policy_defaults(policy);
+	policy->enabled = 1;
+	policy->dry_run = 1;
+	policy->allow_ui = 1;
+	policy->allow_control_enqueue = 1;
+}
+
+static int
+test_tx_dryrun_invalid_callsign(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM bad* "
+	    "TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-callsign\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_invalid_port(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 0);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-port\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_invalid_via(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ VIA bad* TEXT hello", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-via\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_oversized(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	policy.max_payload_bytes = 2;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR payload-too-large\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_queue_full(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	policy.max_queued = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_add_frame(&queue);
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR tx-queue-full\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_valid(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK TX DRYRUN queued id=1 port=kiss0") == NULL)
+		return 1;
+	if (kn_control_protocol_handle("TX QUEUE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "TX FRAME id=1 port=kiss0") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_dryrun_via_valid(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_control_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ VIA WIDE1-1,WIDE2-1 TEXT hello", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (kn_control_protocol_handle("TX FRAME 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "via=WIDE1-1,WIDE2-1") != NULL ? 0 : 1;
 }
 
 static int

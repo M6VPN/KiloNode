@@ -41,7 +41,7 @@ struct kn_control_snapshot {
 	uint8_t rx_enabled;
 	const struct kn_rx_queue *rx_events;
 	const struct kn_rx_session_table *rx_sessions;
-	const struct kn_tx_queue *tx_queue;
+	struct kn_tx_queue *tx_queue;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

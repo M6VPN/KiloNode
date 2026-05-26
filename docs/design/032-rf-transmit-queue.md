@@ -18,6 +18,8 @@ transmit {
 	max-payload-bytes 256
 	payload-preview-bytes 80
 	allow-ui false
+	allow-control-enqueue false
+	allow-shell-enqueue false
 }
 ```
 
@@ -42,6 +44,8 @@ Transmit policy is deliberately conservative:
 - disabled transmit rejects enqueue requests
 - dry-run transmit never writes to a transport
 - `allow-ui false` rejects UI frame enqueue through policy helpers
+- `allow-control-enqueue false` rejects control-socket dry-run enqueue
+- `allow-shell-enqueue false` keeps local shell enqueue disabled
 
 Tests can construct frames directly where needed, but runtime user surfaces do
 not enqueue transmit frames in this pass.
