@@ -49,6 +49,7 @@ add_library(packetcore STATIC
 	src/core/stats.c
 	src/daemon/daemon.c
 	src/monitor/monitor.c
+	src/node/node_shell.c
 	src/proto/ax25.c
 	src/proto/kiss.c
 	src/proto/kiss_stream.c
@@ -140,6 +141,16 @@ add_executable(test_monitor tests/test_monitor.c)
 target_link_libraries(test_monitor PRIVATE packetcore)
 kilonode_target_defaults(test_monitor)
 add_test(NAME monitor COMMAND test_monitor)
+
+add_executable(test_node_shell tests/test_node_shell.c)
+target_link_libraries(test_node_shell PRIVATE packetcore)
+kilonode_target_defaults(test_node_shell)
+add_test(NAME node_shell COMMAND test_node_shell)
+
+add_executable(test_node_shell_socket tests/test_node_shell_socket.c)
+target_link_libraries(test_node_shell_socket PRIVATE packetcore)
+kilonode_target_defaults(test_node_shell_socket)
+add_test(NAME node_shell_socket COMMAND test_node_shell_socket)
 
 add_executable(test_stats tests/test_stats.c)
 target_link_libraries(test_stats PRIVATE packetcore)

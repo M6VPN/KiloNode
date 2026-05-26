@@ -23,6 +23,9 @@
 #define KN_CONFIG_PATH_MAX      256
 #define KN_CONFIG_PORT_MAX      16
 #define KN_CONFIG_PORT_NAME_MAX 32
+#define KN_CONFIG_SHELL_BANNER_MAX      128
+#define KN_CONFIG_SHELL_MAX_CLIENTS     16
+#define KN_CONFIG_SHELL_MAX_CLIENTS_MIN 1
 
 enum kn_config_error {
 	KN_CONFIG_OK = 0,
@@ -75,6 +78,20 @@ struct kn_config_heard {
 	uint8_t has_max_entries;
 };
 
+struct kn_config_shell {
+	char host[KN_CONFIG_HOST_MAX];
+	char port[KN_CONFIG_PORT_NAME_MAX];
+	char banner[KN_CONFIG_SHELL_BANNER_MAX];
+	size_t max_clients;
+	uint8_t enabled;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_host;
+	uint8_t has_port;
+	uint8_t has_max_clients;
+	uint8_t has_banner;
+};
+
 struct kn_config_port {
 	char name[KN_CONFIG_PORT_NAME_MAX];
 	enum kn_config_port_type type;
@@ -101,6 +118,7 @@ struct kn_config {
 	struct kn_config_node node;
 	struct kn_config_control control;
 	struct kn_config_heard heard;
+	struct kn_config_shell shell;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;
 	enum kn_config_error error;

@@ -18,14 +18,22 @@ static int test_duplicate_port_name(void);
 static int test_invalid_baud(void);
 static int test_invalid_callsign(void);
 static int test_invalid_max_frame(void);
+static int test_invalid_shell_max_clients(void);
+static int test_invalid_shell_port(void);
 static int test_line_number_error(void);
 static int test_minimal_valid_config(void);
 static int test_missing_control_path(void);
 static int test_missing_node_callsign(void);
 static int test_missing_port_type(void);
+static int test_missing_shell_host(void);
+static int test_missing_shell_port(void);
 static int test_multiple_ports_disabled(void);
 static int test_one_tcp_listen_port(void);
 static int test_quoted_string(void);
+static int test_shell_block(void);
+static int test_shell_duplicate_block(void);
+static int test_shell_omitted_disabled(void);
+static int test_shell_unknown_key(void);
 static int test_unknown_block(void);
 static int test_unknown_key(void);
 
@@ -67,6 +75,22 @@ main(void)
 	if (test_invalid_baud() != 0)
 		return 1;
 	if (test_invalid_max_frame() != 0)
+		return 1;
+	if (test_shell_omitted_disabled() != 0)
+		return 1;
+	if (test_shell_block() != 0)
+		return 1;
+	if (test_invalid_shell_port() != 0)
+		return 1;
+	if (test_invalid_shell_max_clients() != 0)
+		return 1;
+	if (test_missing_shell_host() != 0)
+		return 1;
+	if (test_missing_shell_port() != 0)
+		return 1;
+	if (test_shell_duplicate_block() != 0)
+		return 1;
+	if (test_shell_unknown_key() != 0)
 		return 1;
 	if (test_line_number_error() != 0)
 		return 1;
@@ -251,6 +275,39 @@ test_invalid_max_frame(void)
 }
 
 static int
+test_invalid_shell_max_clients(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled true\n"
+		"host 127.0.0.1\n"
+		"port 8010\n"
+		"max-clients 99\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_shell_port(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled true\n"
+		"host 127.0.0.1\n"
+		"port 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_line_number_error(void)
 {
 	struct kn_config config;
@@ -320,6 +377,36 @@ test_missing_port_type(void)
 		"}\n"
 		"port kiss0 {\n"
 		"enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_MISSING_REQUIRED);
+}
+
+static int
+test_missing_shell_host(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled true\n"
+		"port 8010\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_MISSING_REQUIRED);
+}
+
+static int
+test_missing_shell_port(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled true\n"
+		"host 127.0.0.1\n"
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_MISSING_REQUIRED);
@@ -396,6 +483,84 @@ test_quoted_string(void)
 		return 1;
 
 	return strcmp(config.node.location, "Test node") == 0 ? 0 : 1;
+}
+
+static int
+test_shell_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled true\n"
+		"host 127.0.0.1\n"
+		"port 8010\n"
+		"max-clients 4\n"
+		"banner \"KiloNode test shell\"\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.shell.enabled != 1)
+		return 1;
+	if (strcmp(config.shell.host, "127.0.0.1") != 0)
+		return 1;
+	if (strcmp(config.shell.port, "8010") != 0)
+		return 1;
+	if (strcmp(config.shell.banner, "KiloNode test shell") != 0)
+		return 1;
+
+	return config.shell.max_clients == 4 ? 0 : 1;
+}
+
+static int
+test_shell_duplicate_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"enabled false\n"
+		"}\n"
+		"shell {\n"
+		"enabled false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_shell_omitted_disabled(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.shell.enabled != 0)
+		return 1;
+
+	return config.shell.max_clients == 4 ? 0 : 1;
+}
+
+static int
+test_shell_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"shell {\n"
+		"unknown value\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
 }
 
 static int

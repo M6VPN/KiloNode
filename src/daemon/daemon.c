@@ -21,6 +21,7 @@
 #include "kilonode/heard.h"
 #include "kilonode/kiss_stream.h"
 #include "kilonode/monitor.h"
+#include "kilonode/node_shell.h"
 #include "kilonode/stats.h"
 #include "kilonode/transport.h"
 #include "kilonode/transport_pty.h"
@@ -51,6 +52,11 @@ static int control_handle(struct kn_control_socket *,
 	const struct kn_heard_table *, uint8_t);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t);
+static void shell_snapshot_init(struct kn_node_shell_snapshot *,
+	const struct kn_config *, const struct kn_daemon_stats *,
+	const struct daemon_port *, size_t, const struct kn_heard_table *,
+	uint8_t, const struct kn_node_shell_state *,
+	struct kn_port_stats *, struct kn_node_shell_user *, size_t *);
 static void signal_handler(int);
 
 static void
@@ -70,26 +76,39 @@ enum kn_daemon_error
 kn_daemon_run_foreground(const struct kn_config *config)
 {
 	struct daemon_port ports[KN_CONFIG_PORT_MAX];
-	struct pollfd pollfds[KN_CONFIG_PORT_MAX + 1];
+	struct pollfd pollfds[KN_CONFIG_PORT_MAX + 2 +
+	    KN_NODE_SHELL_MAX_CLIENTS];
+	struct kn_node_shell_session *shell_sessions[KN_NODE_SHELL_MAX_CLIENTS];
 	struct kn_control_socket control;
 	struct kn_daemon_stats daemon_stats;
 	struct kn_heard_table heard;
+	struct kn_node_shell_state shell;
 	struct sigaction sa;
 	uint8_t read_buf[DAEMON_READ_BUFSIZ];
+	struct kn_node_shell_snapshot shell_snapshot;
+	struct kn_node_shell_user shell_users[KN_NODE_SHELL_MAX_CLIENTS];
+	struct kn_port_stats shell_port_stats[KN_CONFIG_PORT_MAX];
 	size_t i;
-	size_t active_count;
+	size_t control_poll;
+	size_t poll_count;
+	size_t poll_index;
 	size_t port_count;
 	size_t read_len;
+	size_t shell_poll;
+	size_t shell_session_count;
+	size_t shell_user_count;
 	int poll_rc;
 	enum kn_transport_error transport_rc;
 	enum kn_kiss_stream_error stream_rc;
 	uint8_t control_enabled;
+	uint8_t shell_enabled;
 
 	if (config == NULL)
 		return KN_DAEMON_ERR_INVALID_ARGUMENT;
 
 	memset(ports, 0, sizeof(ports));
 	kn_control_socket_init(&control);
+	kn_node_shell_init(&shell);
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_handler;
 	(void)sigaction(SIGINT, &sa, NULL);
@@ -102,6 +121,11 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		if (config->ports[i].enabled != 0)
 			daemon_stats.enabled_ports++;
 	}
+
+	control_enabled = config->control.has_block != 0 &&
+	    config->control.enabled != 0;
+	shell_enabled = config->shell.has_block != 0 &&
+	    config->shell.enabled != 0;
 
 	port_count = 0;
 	for (i = 0; i < config->port_count; i++) {
@@ -122,11 +146,9 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		port_count++;
 	}
 
-	if (port_count == 0)
+	if (port_count == 0 && control_enabled == 0 && shell_enabled == 0)
 		return KN_DAEMON_ERR_CONFIG;
 
-	control_enabled = config->control.has_block != 0 &&
-	    config->control.enabled != 0;
 	if (control_enabled != 0) {
 		if (kn_control_socket_open(&control,
 		    config->control.path) != KN_CONTROL_OK) {
@@ -135,42 +157,77 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		}
 	}
 
+	if (shell_enabled != 0) {
+		if (kn_node_shell_open(&config->shell,
+		    &shell) != KN_NODE_SHELL_OK) {
+			close_ports(ports, port_count);
+			kn_control_socket_close(&control);
+			return KN_DAEMON_ERR_RUNTIME;
+		}
+	}
+
 	while (daemon_stop == 0) {
-		active_count = 0;
+		poll_count = 0;
 		for (i = 0; i < port_count; i++) {
 			if (ports[i].active == 0)
 				continue;
-			pollfds[active_count].fd = kn_transport_fd(
+			pollfds[poll_count].fd = kn_transport_fd(
 			    &ports[i].transport);
-			pollfds[active_count].events = POLLIN;
-			pollfds[active_count].revents = 0;
-			active_count++;
+			pollfds[poll_count].events = POLLIN;
+			pollfds[poll_count].revents = 0;
+			poll_count++;
 		}
+		control_poll = (size_t)-1;
 		if (control_enabled != 0) {
-			pollfds[active_count].fd = kn_control_socket_fd(&control);
-			pollfds[active_count].events = POLLIN;
-			pollfds[active_count].revents = 0;
-			active_count++;
+			control_poll = poll_count;
+			pollfds[poll_count].fd = kn_control_socket_fd(&control);
+			pollfds[poll_count].events = POLLIN;
+			pollfds[poll_count].revents = 0;
+			poll_count++;
+		}
+		shell_poll = (size_t)-1;
+		if (shell_enabled != 0) {
+			shell_poll = poll_count;
+			pollfds[poll_count].fd = kn_node_shell_fd(&shell);
+			pollfds[poll_count].events = POLLIN;
+			pollfds[poll_count].revents = 0;
+			poll_count++;
+
+			shell_session_count = 0;
+			for (i = 0; i < shell.max_clients; i++) {
+				if (shell.sessions[i].fd < 0 ||
+				    shell.sessions[i].closed != 0)
+					continue;
+				shell_sessions[shell_session_count++] =
+				    &shell.sessions[i];
+				pollfds[poll_count].fd = shell.sessions[i].fd;
+				pollfds[poll_count].events = POLLIN;
+				pollfds[poll_count].revents = 0;
+				poll_count++;
+			}
+		} else {
+			shell_session_count = 0;
 		}
 
-		if (active_count == 0)
+		if (poll_count == 0)
 			break;
 
-		poll_rc = poll(pollfds, active_count, -1);
+		poll_rc = poll(pollfds, poll_count, -1);
 		if (poll_rc < 0) {
 			if (daemon_stop != 0)
 				break;
 			close_ports(ports, port_count);
+			kn_node_shell_close(&shell);
 			return KN_DAEMON_ERR_RUNTIME;
 		}
 
-		active_count = 0;
+		poll_index = 0;
 		for (i = 0; i < port_count; i++) {
 			if (ports[i].active == 0)
 				continue;
 
-			if ((pollfds[active_count].revents & POLLIN) == 0) {
-				active_count++;
+			if ((pollfds[poll_index].revents & POLLIN) == 0) {
+				poll_index++;
 				continue;
 			}
 
@@ -182,11 +239,12 @@ kn_daemon_run_foreground(const struct kn_config *config)
 				ports[i].stats.open = 0;
 				if (daemon_stats.open_ports > 0)
 					daemon_stats.open_ports--;
-				active_count++;
+				poll_index++;
 				continue;
 			}
 			if (transport_rc != KN_TRANSPORT_OK) {
 				close_ports(ports, port_count);
+				kn_node_shell_close(&shell);
 				return KN_DAEMON_ERR_TRANSPORT;
 			}
 
@@ -205,17 +263,45 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    config->heard.enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
+				kn_node_shell_close(&shell);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 
-			active_count++;
+			poll_index++;
 		}
-		if (control_enabled != 0 &&
-		    (pollfds[active_count].revents & POLLIN) != 0) {
+		if (control_enabled != 0 && control_poll != (size_t)-1 &&
+		    (pollfds[control_poll].revents & POLLIN) != 0) {
 			if (control_handle(&control, &daemon_stats, ports,
 			    port_count, &heard, config->heard.enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
+				kn_node_shell_close(&shell);
+				return KN_DAEMON_ERR_RUNTIME;
+			}
+		}
+		if (shell_enabled != 0 && shell_poll != (size_t)-1 &&
+		    (pollfds[shell_poll].revents & POLLIN) != 0) {
+			if (kn_node_shell_accept(&shell,
+			    config->shell.banner) != KN_NODE_SHELL_OK) {
+				close_ports(ports, port_count);
+				kn_control_socket_close(&control);
+				kn_node_shell_close(&shell);
+				return KN_DAEMON_ERR_RUNTIME;
+			}
+		}
+		for (i = 0; i < shell_session_count; i++) {
+			poll_index = shell_poll + 1 + i;
+			if ((pollfds[poll_index].revents & POLLIN) == 0)
+				continue;
+			shell_snapshot_init(&shell_snapshot, config,
+			    &daemon_stats, ports, port_count, &heard,
+			    config->heard.enabled, &shell, shell_port_stats,
+			    shell_users, &shell_user_count);
+			if (kn_node_shell_process_session(shell_sessions[i],
+			    &shell_snapshot) != KN_NODE_SHELL_OK) {
+				close_ports(ports, port_count);
+				kn_control_socket_close(&control);
+				kn_node_shell_close(&shell);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 		}
@@ -223,6 +309,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 
 	close_ports(ports, port_count);
 	kn_control_socket_close(&control);
+	kn_node_shell_close(&shell);
 	return KN_DAEMON_OK;
 }
 
@@ -385,6 +472,38 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 	}
 
 	return 0;
+}
+
+static void
+shell_snapshot_init(struct kn_node_shell_snapshot *snapshot,
+	const struct kn_config *config, const struct kn_daemon_stats *daemon_stats,
+	const struct daemon_port *ports, size_t port_count,
+	const struct kn_heard_table *heard, uint8_t heard_enabled,
+	const struct kn_node_shell_state *shell,
+	struct kn_port_stats *port_stats, struct kn_node_shell_user *users,
+	size_t *user_count)
+{
+	size_t i;
+
+	for (i = 0; i < port_count; i++)
+		port_stats[i] = ports[i].stats;
+
+	kn_node_shell_snapshot_users(shell, users, KN_NODE_SHELL_MAX_CLIENTS,
+	    user_count);
+
+	snapshot->node = &config->node;
+	snapshot->daemon = daemon_stats;
+	snapshot->ports = port_stats;
+	snapshot->port_count = port_count;
+	if (heard_enabled != 0) {
+		snapshot->heard = kn_heard_entries(heard);
+		snapshot->heard_count = kn_heard_count(heard);
+	} else {
+		snapshot->heard = NULL;
+		snapshot->heard_count = 0;
+	}
+	snapshot->users = users;
+	snapshot->user_count = *user_count;
 }
 
 static void

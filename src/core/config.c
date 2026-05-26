@@ -23,6 +23,7 @@ enum parser_block {
 	BLOCK_NODE,
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
+	BLOCK_SHELL,
 	BLOCK_PORT
 };
 
@@ -50,6 +51,8 @@ static enum kn_config_error port_key_set(struct parser *, char **, size_t,
 static enum kn_config_port_type port_type_parse(const char *);
 static enum kn_config_error set_error(struct kn_config *, enum kn_config_error,
 	size_t, const char *);
+static enum kn_config_error shell_key_set(struct kn_config *, char **, size_t,
+	size_t);
 static char *skip_ws(char *);
 
 static enum kn_config_error
@@ -66,6 +69,16 @@ config_validate(struct kn_config *config)
 	    config->control.has_path == 0)
 		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
 		    "missing control path");
+
+	if (config->shell.has_block != 0 && config->shell.enabled != 0 &&
+	    config->shell.has_host == 0)
+		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
+		    "missing shell host");
+
+	if (config->shell.has_block != 0 && config->shell.enabled != 0 &&
+	    config->shell.has_port == 0)
+		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
+		    "missing shell port");
 
 	for (i = 0; i < config->port_count; i++) {
 		port = &config->ports[i];
@@ -172,6 +185,7 @@ kn_config_init(struct kn_config *config)
 	memset(config, 0, sizeof(*config));
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
+	config->shell.max_clients = 4;
 }
 
 enum kn_config_error
@@ -444,6 +458,9 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 	if (parser->block == BLOCK_HEARD)
 		return heard_key_set(parser->config, tokens, token_count, line_no);
 
+	if (parser->block == BLOCK_SHELL)
+		return shell_key_set(parser->config, tokens, token_count, line_no);
+
 	if (parser->block == BLOCK_PORT)
 		return port_key_set(parser, tokens, token_count, line_no);
 
@@ -479,6 +496,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    "duplicate heard block");
 		parser->config->heard.has_block = 1;
 		parser->block = BLOCK_HEARD;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "shell") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid shell block");
+		if (parser->config->shell.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate shell block");
+		parser->config->shell.has_block = 1;
+		parser->block = BLOCK_SHELL;
 		return KN_CONFIG_OK;
 	}
 
@@ -761,6 +791,69 @@ port_type_parse(const char *input)
 		return KN_CONFIG_PORT_UNIX_LISTEN;
 
 	return KN_CONFIG_PORT_NONE;
+}
+
+static enum kn_config_error
+shell_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid shell key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->shell.has_enabled, config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->shell.enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid shell enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "host") == 0) {
+		if (key_seen(&config->shell.has_host, config, line_no) != 0)
+			return config->error;
+		return copy_field(config->shell.host,
+		    sizeof(config->shell.host), tokens[1], config, line_no);
+	}
+
+	if (strcmp(tokens[0], "port") == 0) {
+		if (key_seen(&config->shell.has_port, config, line_no) != 0)
+			return config->error;
+		if (kn_transport_tcp_port_valid(tokens[1]) == 0)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid shell port");
+		return copy_field(config->shell.port,
+		    sizeof(config->shell.port), tokens[1], config, line_no);
+	}
+
+	if (strcmp(tokens[0], "max-clients") == 0) {
+		if (key_seen(&config->shell.has_max_clients, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_SHELL_MAX_CLIENTS_MIN ||
+		    value > KN_CONFIG_SHELL_MAX_CLIENTS)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid shell max-clients");
+		config->shell.max_clients = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "banner") == 0) {
+		if (key_seen(&config->shell.has_banner, config, line_no) != 0)
+			return config->error;
+		return copy_field(config->shell.banner,
+		    sizeof(config->shell.banner), tokens[1], config, line_no);
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown shell key");
 }
 
 static enum kn_config_error

@@ -44,6 +44,22 @@ heard {
 The heard block is optional. If omitted, heard tracking is enabled with a
 256-entry limit. `max-entries` must be between 1 and 256.
 
+Shell block:
+
+```text
+shell {
+	enabled true
+	host 127.0.0.1
+	port 8010
+	max-clients 4
+	banner "KiloNode test shell"
+}
+```
+
+The shell block is optional. If omitted, the local node shell is disabled. If
+enabled, `host` and `port` are required. `max-clients` must be between 1 and 16.
+`banner` is optional.
+
 Port block:
 
 ```text
@@ -73,6 +89,7 @@ Validation rules:
 - Duplicate keys are rejected.
 - Duplicate control blocks are rejected.
 - Duplicate heard blocks are rejected.
+- Duplicate shell blocks are rejected.
 - Port names must be unique.
 - Disabled ports parse but are not opened.
 - `max-frame` must be between `KN_CONFIG_MAX_FRAME_MIN` and
