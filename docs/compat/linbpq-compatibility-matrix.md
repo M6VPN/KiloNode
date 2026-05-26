@@ -49,6 +49,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | CI sanitizer build | tested | ASan and UBSan workflow |
 | Hardened release build | tested | Optional CMake hardening profile |
 | Platform portability policy | partial | Linux tested, BSD targets documented |
+| RF receive event model | tested | Receive-only decoded AX.25 event queue |
+| RX event control queries | tested | Read-only `kilonodectl rx events` queries |
+| Observed RF session table | tested | Source/destination observations, no state machine |
+| AX.25 connected-mode receive state | planned | Not implemented |
+| AX.25 transmit path | planned | Not implemented |
+| RF node shell access | planned | Not implemented |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |
@@ -70,6 +76,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQ/LinBPQ topic compatibility | planned | Future black-box research |
 | RF BBS access | planned | Not implemented |
 | RF BBS login | planned | Not implemented |
+| BPQ/LinBPQ node interop | planned | Future black-box tests only |
 | BBS forwarding identity/state | planned | Not implemented |
 | BPQ/LinBPQ BBS command compatibility | planned | Not implemented |
 | BPQ mailbox command compatibility | planned | Not implemented |

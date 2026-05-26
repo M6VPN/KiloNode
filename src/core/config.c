@@ -12,6 +12,7 @@
 #include "kilonode/config.h"
 #include "kilonode/control.h"
 #include "kilonode/kiss_stream.h"
+#include "kilonode/rx_event.h"
 #include "kilonode/transport_serial.h"
 #include "kilonode/transport_tcp.h"
 #include "kilonode/transport_unix.h"
@@ -25,6 +26,7 @@ enum parser_block {
 	BLOCK_BBS,
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
+	BLOCK_RECEIVE,
 	BLOCK_SHELL,
 	BLOCK_PORT
 };
@@ -54,6 +56,8 @@ static enum kn_config_error parse_line_tokens(char *, char **, size_t *,
 static enum kn_config_error parse_size_value(const char *, size_t *);
 static enum kn_config_error port_key_set(struct parser *, char **, size_t,
 	size_t);
+static enum kn_config_error receive_key_set(struct kn_config *, char **,
+	size_t, size_t);
 static enum kn_config_port_type port_type_parse(const char *);
 static enum kn_config_error set_error(struct kn_config *, enum kn_config_error,
 	size_t, const char *);
@@ -202,6 +206,11 @@ kn_config_init(struct kn_config *config)
 	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
+	config->receive.events_enabled = 1;
+	config->receive.max_events = KN_CONFIG_RECEIVE_EVENTS_MAX;
+	config->receive.max_sessions = KN_CONFIG_RECEIVE_SESSIONS_MAX;
+	config->receive.payload_preview_bytes =
+	    KN_RX_EVENT_PREVIEW_DEFAULT;
 	config->shell.max_clients = 4;
 }
 
@@ -555,6 +564,77 @@ heard_key_set(struct kn_config *config, char **tokens, size_t token_count,
 }
 
 static enum kn_config_error
+receive_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid receive key");
+
+	if (strcmp(tokens[0], "events-enabled") == 0) {
+		if (key_seen(&config->receive.has_events_enabled, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->receive.events_enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid receive events-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-events") == 0) {
+		if (key_seen(&config->receive.has_max_events, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RECEIVE_EVENTS_MIN ||
+		    value > KN_CONFIG_RECEIVE_EVENTS_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid receive max-events");
+		config->receive.max_events = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-sessions") == 0) {
+		if (key_seen(&config->receive.has_max_sessions, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RECEIVE_SESSIONS_MIN ||
+		    value > KN_CONFIG_RECEIVE_SESSIONS_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid receive max-sessions");
+		config->receive.max_sessions = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "payload-preview-bytes") == 0) {
+		if (key_seen(&config->receive.has_payload_preview_bytes,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RECEIVE_PREVIEW_MIN ||
+		    value > KN_CONFIG_RECEIVE_PREVIEW_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid receive payload-preview-bytes");
+		config->receive.payload_preview_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown receive key");
+}
+
+static enum kn_config_error
 line_parse(struct parser *parser, char *line, size_t line_no)
 {
 	char *tokens[TOKEN_MAX];
@@ -621,6 +701,10 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 	if (parser->block == BLOCK_HEARD)
 		return heard_key_set(parser->config, tokens, token_count, line_no);
 
+	if (parser->block == BLOCK_RECEIVE)
+		return receive_key_set(parser->config, tokens, token_count,
+		    line_no);
+
 	if (parser->block == BLOCK_SHELL)
 		return shell_key_set(parser->config, tokens, token_count, line_no);
 
@@ -685,6 +769,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    "duplicate heard block");
 		parser->config->heard.has_block = 1;
 		parser->block = BLOCK_HEARD;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "receive") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid receive block");
+		if (parser->config->receive.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate receive block");
+		parser->config->receive.has_block = 1;
+		parser->block = BLOCK_RECEIVE;
 		return KN_CONFIG_OK;
 	}
 

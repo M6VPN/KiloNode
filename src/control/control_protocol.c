@@ -6,11 +6,16 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "kilonode/bbs_control.h"
+#include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
+#include "kilonode/rx_event.h"
+#include "kilonode/rx_queue.h"
+#include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
 
 #define KILONODE_VERSION "0.1.0"
@@ -27,6 +32,8 @@ static enum kn_control_error format_heard(const struct kn_control_snapshot *,
 static enum kn_control_error format_help(char *, size_t);
 static enum kn_control_error format_ports(const struct kn_control_snapshot *,
 	char *, size_t);
+static enum kn_control_error format_rx(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
 static enum kn_control_error format_stats(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_status(const struct kn_control_snapshot *,
@@ -215,7 +222,7 @@ format_help(char *buf, size_t bufsiz)
 
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
-	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS HELP QUIT\n");
+	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX HELP QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -252,6 +259,227 @@ format_ports(const struct kn_control_snapshot *snapshot, char *buf,
 	}
 
 	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
+format_rx_event_list(const struct kn_rx_event **events, size_t count,
+	char *buf, size_t bufsiz)
+{
+	char line[KN_CONTROL_LINE_MAX];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset, "OK RX EVENTS count=%llu\n",
+	    (unsigned long long)count);
+	if (rc != KN_CONTROL_OK)
+		return rc;
+
+	for (i = 0; i < count; i++) {
+		if (kn_rx_event_format_brief(events[i], line,
+		    sizeof(line)) != KN_RX_EVENT_OK)
+			return KN_CONTROL_ERR_IO;
+		rc = append_format(buf, bufsiz, &offset, "%s\n", line);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
+format_rx_sessions(const struct kn_rx_session_entry **entries, size_t count,
+	char *buf, size_t bufsiz)
+{
+	char source[KN_CALLSIGN_MAX + 4];
+	char destination[KN_CALLSIGN_MAX + 4];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset,
+	    "OK RX SESSIONS count=%llu\n", (unsigned long long)count);
+	if (rc != KN_CONTROL_OK)
+		return rc;
+
+	for (i = 0; i < count; i++) {
+		if (kn_callsign_format(&entries[i]->source, source,
+		    sizeof(source)) != 0 ||
+		    kn_callsign_format(&entries[i]->destination, destination,
+		    sizeof(destination)) != 0)
+			return KN_CONTROL_ERR_IO;
+		rc = append_format(buf, bufsiz, &offset,
+		    "RX SESSION port=%s from=%s to=%s frames=%llu "
+		    "ui=%llu i=%llu s=%llu u=%llu malformed=%llu "
+		    "first=%llu last=%llu last_event=%llu\n",
+		    entries[i]->port_name, source, destination,
+		    (unsigned long long)entries[i]->frame_count,
+		    (unsigned long long)entries[i]->ui_count,
+		    (unsigned long long)entries[i]->i_count,
+		    (unsigned long long)entries[i]->s_count,
+		    (unsigned long long)entries[i]->u_count,
+		    (unsigned long long)entries[i]->malformed_count,
+		    (unsigned long long)entries[i]->first_seen,
+		    (unsigned long long)entries[i]->last_seen,
+		    (unsigned long long)entries[i]->last_event_id);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
+format_rx(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	const struct kn_rx_event *events[KN_RX_QUEUE_MAX];
+	const struct kn_rx_session_entry *sessions[KN_RX_SESSION_MAX];
+	const struct kn_rx_event *event;
+	struct kn_callsign callsign;
+	char line[KN_CONTROL_LINE_MAX];
+	char *end;
+	unsigned long id;
+	unsigned long limit;
+	size_t count;
+	size_t i;
+
+	if (snapshot->rx_enabled == 0 || snapshot->rx_events == NULL ||
+	    snapshot->rx_sessions == NULL) {
+		(void)snprintf(buf, bufsiz, "ERR rx-disabled\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+
+	if (strcmp(command, "STATUS") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK RX STATUS events_enabled=true events=%llu "
+		    "max_events=%llu sessions=%llu max_sessions=%llu "
+		    "preview_bytes=%llu\nEND\n",
+		    (unsigned long long)kn_rx_queue_count(snapshot->rx_events),
+		    (unsigned long long)snapshot->rx_events->max_events,
+		    (unsigned long long)kn_rx_session_count(
+		    snapshot->rx_sessions),
+		    (unsigned long long)snapshot->rx_sessions->max_sessions,
+		    (unsigned long long)snapshot->rx_events->preview_bytes) >=
+		    (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "EVENTS") == 0) {
+		if (kn_rx_queue_list(snapshot->rx_events, events, 100,
+		    &count) != KN_RX_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rx_event_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "EVENTS LIMIT ", 13) == 0) {
+		limit = strtoul(command + 13, &end, 10);
+		if (*end != '\0' || limit == 0 || limit > 100) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-rx-command\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rx_queue_list(snapshot->rx_events, events,
+		    (size_t)limit, &count) != KN_RX_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rx_event_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "EVENTS PORT ", 12) == 0) {
+		if (command[12] == '\0' ||
+		    strlen(command + 12) >= KN_CONFIG_PORT_NAME_MAX ||
+		    strchr(command + 12, ' ') != NULL) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rx_queue_list_by_port(snapshot->rx_events,
+		    command + 12, events, 100, &count) != KN_RX_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rx_event_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "EVENTS FROM ", 12) == 0 ||
+	    strncmp(command, "EVENTS TO ", 10) == 0) {
+		const char *value;
+
+		value = strncmp(command, "EVENTS FROM ", 12) == 0 ?
+		    command + 12 : command + 10;
+		if (kn_callsign_parse(value, &callsign) != 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-callsign\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (strncmp(command, "EVENTS FROM ", 12) == 0) {
+			if (kn_rx_queue_list_by_source(snapshot->rx_events,
+			    &callsign, events, 100, &count) != KN_RX_QUEUE_OK)
+				return KN_CONTROL_ERR_IO;
+		} else {
+			if (kn_rx_queue_list_by_destination(snapshot->rx_events,
+			    &callsign, events, 100, &count) !=
+			    KN_RX_QUEUE_OK)
+				return KN_CONTROL_ERR_IO;
+		}
+		return format_rx_event_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "EVENT ", 6) == 0) {
+		id = strtoul(command + 6, &end, 10);
+		if (*end != '\0' || id == 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-event-id\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		event = kn_rx_queue_get(snapshot->rx_events, (uint64_t)id);
+		if (event == NULL) {
+			(void)snprintf(buf, bufsiz, "ERR event-not-found\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rx_event_format_full(event, line, sizeof(line)) !=
+		    KN_RX_EVENT_OK)
+			return KN_CONTROL_ERR_IO;
+		if (snprintf(buf, bufsiz, "OK RX EVENT id=%llu\n%s\nEND\n",
+		    (unsigned long long)event->id, line) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "SESSIONS") == 0) {
+		count = kn_rx_session_count(snapshot->rx_sessions);
+		if (count > KN_RX_SESSION_MAX)
+			count = KN_RX_SESSION_MAX;
+		for (i = 0; i < count; i++)
+			sessions[i] = &kn_rx_session_entries(
+			    snapshot->rx_sessions)[i];
+		return format_rx_sessions(sessions, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "SESSIONS PORT ", 14) == 0) {
+		if (command[14] == '\0' ||
+		    strlen(command + 14) >= KN_CONFIG_PORT_NAME_MAX ||
+		    strchr(command + 14, ' ') != NULL) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rx_session_list_by_port(snapshot->rx_sessions,
+		    command + 14, sessions, 100, &count) !=
+		    KN_RX_SESSION_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rx_sessions(sessions, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "SESSIONS FROM ", 14) == 0) {
+		if (kn_callsign_parse(command + 14, &callsign) != 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-callsign\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rx_session_list_by_source(snapshot->rx_sessions,
+		    &callsign, sessions, 100, &count) != KN_RX_SESSION_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rx_sessions(sessions, count, buf, bufsiz);
+	}
+
+	(void)snprintf(buf, bufsiz, "ERR invalid-rx-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 }
 
 static enum kn_control_error
@@ -368,6 +596,13 @@ kn_control_protocol_handle(const char *command,
 	if (strncmp(command, "BBS ", 4) == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_bbs(snapshot, command + 4, out, out_len));
+	if (strcmp(command, "RX") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-rx-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "RX ", 3) == 0)
+		return return_with_cap(snapshot, out, out_len,
+		    format_rx(snapshot, command + 3, out, out_len));
 	if (strcmp(command, "HELP") == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_help(out, out_len));

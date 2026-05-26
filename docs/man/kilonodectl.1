@@ -38,6 +38,14 @@ Show daemon counters.
 Show heard AX.25 stations.
 .It Cm bbs status | stats | areas | users | messages | message Ar id
 Show read-only local BBS state.
+.It Cm rx status
+Show receive event queue status.
+.It Cm rx events Op Fl -limit Ar n | Fl -port Ar name | Fl -from Ar callsign | Fl -to Ar callsign
+Show recent receive events.
+.It Cm rx event Ar id
+Show one receive event.
+.It Cm rx sessions Op Fl -port Ar name | Fl -from Ar callsign
+Show observed receive-side sessions.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -47,6 +55,8 @@ Example local control socket path.
 .Sh EXAMPLES
 .Dl kilonodectl --socket /tmp/kilonode/control.sock status
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
+.Dl kilonodectl --socket /tmp/kilonode/control.sock rx events
+.Dl kilonodectl --socket /tmp/kilonode/control.sock rx sessions
 .Sh SECURITY NOTES
 The control protocol is local-only in this pass. Use filesystem permissions to
 limit access to the socket.

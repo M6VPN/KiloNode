@@ -10,6 +10,8 @@
 
 #include "kilonode/heard.h"
 #include "kilonode/message_store.h"
+#include "kilonode/rx_queue.h"
+#include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
 
 #define KN_CONTROL_COMMAND_MAX 512
@@ -35,6 +37,9 @@ struct kn_control_snapshot {
 	size_t heard_count;
 	uint8_t bbs_enabled;
 	struct kn_message_store *bbs_store;
+	uint8_t rx_enabled;
+	const struct kn_rx_queue *rx_events;
+	const struct kn_rx_session_table *rx_sessions;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

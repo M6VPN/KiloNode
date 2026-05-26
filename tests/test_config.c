@@ -24,6 +24,10 @@ static int test_duplicate_control_block(void);
 static int test_duplicate_heard_block(void);
 static int test_heard_block(void);
 static int test_invalid_heard_max_entries(void);
+static int test_duplicate_receive_block(void);
+static int test_invalid_receive_max_events(void);
+static int test_invalid_receive_max_sessions(void);
+static int test_invalid_receive_preview(void);
 static int test_duplicate_port_name(void);
 static int test_invalid_baud(void);
 static int test_invalid_callsign(void);
@@ -45,6 +49,9 @@ static int test_missing_shell_port(void);
 static int test_multiple_ports_disabled(void);
 static int test_one_tcp_listen_port(void);
 static int test_quoted_string(void);
+static int test_receive_block(void);
+static int test_receive_omitted_defaults(void);
+static int test_receive_unknown_key(void);
 static int test_shell_block(void);
 static int test_shell_duplicate_block(void);
 static int test_shell_omitted_disabled(void);
@@ -88,6 +95,20 @@ main(void)
 	if (test_duplicate_heard_block() != 0)
 		return 1;
 	if (test_invalid_heard_max_entries() != 0)
+		return 1;
+	if (test_receive_omitted_defaults() != 0)
+		return 1;
+	if (test_receive_block() != 0)
+		return 1;
+	if (test_duplicate_receive_block() != 0)
+		return 1;
+	if (test_receive_unknown_key() != 0)
+		return 1;
+	if (test_invalid_receive_max_events() != 0)
+		return 1;
+	if (test_invalid_receive_max_sessions() != 0)
+		return 1;
+	if (test_invalid_receive_preview() != 0)
 		return 1;
 	if (test_duplicate_port_name() != 0)
 		return 1;
@@ -442,6 +463,82 @@ test_heard_block(void)
 }
 
 static int
+test_duplicate_receive_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"max-events 10\n"
+		"}\n"
+		"receive {\n"
+		"max-events 10\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_receive_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"events-enabled false\n"
+		"max-events 32\n"
+		"max-sessions 16\n"
+		"payload-preview-bytes 40\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.receive.events_enabled != 0)
+		return 1;
+	if (config.receive.max_events != 32)
+		return 1;
+	if (config.receive.max_sessions != 16)
+		return 1;
+
+	return config.receive.payload_preview_bytes == 40 ? 0 : 1;
+}
+
+static int
+test_receive_omitted_defaults(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.receive.has_block != 0)
+		return 1;
+	if (config.receive.events_enabled != 1)
+		return 1;
+	return config.receive.max_events == KN_CONFIG_RECEIVE_EVENTS_MAX ? 0 : 1;
+}
+
+static int
+test_receive_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"unknown true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
+}
+
+static int
 test_duplicate_port_name(void)
 {
 	const char text[] =
@@ -509,6 +606,48 @@ test_invalid_heard_max_entries(void)
 		"}\n"
 		"heard {\n"
 		"max-entries 9999\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_receive_max_events(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"max-events 9999\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_receive_max_sessions(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"max-sessions 9999\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_invalid_receive_preview(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"receive {\n"
+		"payload-preview-bytes 9999\n"
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);

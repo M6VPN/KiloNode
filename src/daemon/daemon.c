@@ -25,6 +25,9 @@
 #include "kilonode/message_store.h"
 #include "kilonode/monitor.h"
 #include "kilonode/node_shell.h"
+#include "kilonode/rx_event.h"
+#include "kilonode/rx_queue.h"
+#include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
 #include "kilonode/transport.h"
 #include "kilonode/transport_pty.h"
@@ -53,9 +56,11 @@ static enum kn_daemon_error open_config_port(struct daemon_port *,
 static int control_handle(struct kn_control_socket *,
 	const struct kn_daemon_stats *, const struct daemon_port *, size_t,
 	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
-	uint8_t, const struct kn_access_policy *);
+	uint8_t, const struct kn_access_policy *, const struct kn_rx_queue *,
+	const struct kn_rx_session_table *, uint8_t);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
-	struct kn_heard_table *, uint8_t);
+	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
+	struct kn_rx_session_table *);
 static void shell_snapshot_init(struct kn_node_shell_snapshot *,
 	const struct kn_config *, const struct kn_daemon_stats *,
 	const struct daemon_port *, size_t, const struct kn_heard_table *,
@@ -87,6 +92,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_control_socket control;
 	struct kn_daemon_stats daemon_stats;
 	struct kn_heard_table heard;
+	struct kn_rx_queue rx_events;
+	struct kn_rx_session_table rx_sessions;
 	struct kn_message_store bbs_store;
 	struct kn_node_shell_state shell;
 	struct sigaction sa;
@@ -125,6 +132,10 @@ kn_daemon_run_foreground(const struct kn_config *config)
 
 	kn_daemon_stats_init(&daemon_stats, config->port_count, 0);
 	kn_heard_init(&heard, config->heard.max_entries);
+	kn_rx_queue_init(&rx_events, config->receive.max_events,
+	    config->receive.payload_preview_bytes,
+	    config->receive.events_enabled);
+	kn_rx_session_init(&rx_sessions, config->receive.max_sessions);
 	for (i = 0; i < config->port_count; i++) {
 		if (config->ports[i].enabled != 0)
 			daemon_stats.enabled_ports++;
@@ -294,7 +305,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			}
 
 			if (pop_frames(&ports[i], &daemon_stats, &heard,
-			    config->heard.enabled) != 0) {
+			    config->heard.enabled, &rx_events,
+			    &rx_sessions) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -309,7 +321,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			if (control_handle(&control, &daemon_stats, ports,
 			    port_count, &heard, config->heard.enabled,
 			    &bbs_store, bbs_enabled,
-			    &config->access.policy) != 0) {
+			    &config->access.policy, &rx_events, &rx_sessions,
+			    config->receive.events_enabled) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -427,7 +440,9 @@ control_handle(struct kn_control_socket *control,
 	const struct kn_daemon_stats *daemon_stats, const struct daemon_port *ports,
 	size_t port_count, const struct kn_heard_table *heard,
 	uint8_t heard_enabled, struct kn_message_store *bbs_store,
-	uint8_t bbs_enabled, const struct kn_access_policy *policy)
+	uint8_t bbs_enabled, const struct kn_access_policy *policy,
+	const struct kn_rx_queue *rx_events,
+	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -470,6 +485,9 @@ control_handle(struct kn_control_socket *control,
 	}
 	snapshot.bbs_enabled = bbs_enabled;
 	snapshot.bbs_store = bbs_enabled != 0 ? bbs_store : NULL;
+	snapshot.rx_enabled = rx_enabled;
+	snapshot.rx_events = rx_enabled != 0 ? rx_events : NULL;
+	snapshot.rx_sessions = rx_enabled != 0 ? rx_sessions : NULL;
 	if (policy != NULL) {
 		snapshot.control_max_command_bytes =
 		    policy->control_max_command_bytes;
@@ -494,13 +512,17 @@ control_handle(struct kn_control_socket *control,
 
 static int
 pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
-	struct kn_heard_table *heard, uint8_t heard_enabled)
+	struct kn_heard_table *heard, uint8_t heard_enabled,
+	struct kn_rx_queue *rx_events, struct kn_rx_session_table *rx_sessions)
 {
 	struct kn_kiss_stream_frame frame;
 	char line[DAEMON_LINE_BUFSIZ];
 	struct kn_ax25_frame ax25;
+	struct kn_rx_event event;
 	enum kn_kiss_stream_error stream_rc;
 	enum kn_monitor_error monitor_rc;
+	enum kn_ax25_error ax25_rc;
+	uint64_t now;
 
 	while (kn_kiss_stream_has_frame(&port->parser) != 0) {
 		stream_rc = kn_kiss_stream_pop_frame(&port->parser, &frame,
@@ -509,17 +531,48 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 			return 1;
 
 		kn_stats_add_kiss_frame(daemon_stats, &port->stats);
-		if (frame.command == 0 &&
-		    kn_ax25_frame_decode(frame.payload,
-		    frame.payload_len, &ax25) == KN_AX25_OK) {
-			kn_stats_add_ax25_frame(daemon_stats, &port->stats);
-			if (heard_enabled != 0) {
-				(void)kn_heard_update(heard, port->config->name,
-				    &ax25, (uint64_t)time(NULL));
+		now = (uint64_t)time(NULL);
+		if (frame.command == 0) {
+			ax25_rc = kn_ax25_frame_decode(frame.payload,
+			    frame.payload_len, &ax25);
+			if (ax25_rc == KN_AX25_OK) {
+				kn_stats_add_ax25_frame(daemon_stats,
+				    &port->stats);
+				if (heard_enabled != 0) {
+					(void)kn_heard_update(heard,
+					    port->config->name, &ax25, now);
+				}
+				if (rx_events != NULL &&
+				    rx_events->enabled != 0) {
+					if (kn_rx_event_from_ax25(&event,
+					    kn_rx_queue_reserve_id(rx_events),
+					    now, port->config->name, frame.port,
+					    frame.command, &ax25,
+					    rx_events->preview_bytes) ==
+					    KN_RX_EVENT_OK) {
+						(void)kn_rx_queue_push(rx_events,
+						    &event);
+						if (rx_sessions != NULL)
+							(void)kn_rx_session_update(
+							    rx_sessions,
+							    &event);
+					}
+				}
+			} else {
+				kn_stats_add_malformed_ax25(daemon_stats,
+				    &port->stats, "ax25");
+				if (rx_events != NULL &&
+				    rx_events->enabled != 0) {
+					if (kn_rx_event_from_malformed(&event,
+					    kn_rx_queue_reserve_id(rx_events),
+					    now, port->config->name, frame.port,
+					    frame.command, (int)ax25_rc,
+					    frame.payload_len) ==
+					    KN_RX_EVENT_OK)
+						(void)kn_rx_queue_push(rx_events,
+						    &event);
+				}
 			}
-		} else if (frame.command == 0) {
-			kn_stats_add_malformed_ax25(daemon_stats, &port->stats,
-			    "ax25");
 		}
 
 		monitor_rc = kn_monitor_format_kiss(line, sizeof(line),

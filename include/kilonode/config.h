@@ -26,6 +26,12 @@
 #define KN_CONFIG_PATH_MAX      256
 #define KN_CONFIG_PORT_MAX      16
 #define KN_CONFIG_PORT_NAME_MAX 32
+#define KN_CONFIG_RECEIVE_EVENTS_MAX    256
+#define KN_CONFIG_RECEIVE_EVENTS_MIN    1
+#define KN_CONFIG_RECEIVE_PREVIEW_MAX   256
+#define KN_CONFIG_RECEIVE_PREVIEW_MIN   1
+#define KN_CONFIG_RECEIVE_SESSIONS_MAX  128
+#define KN_CONFIG_RECEIVE_SESSIONS_MIN  1
 #define KN_CONFIG_SHELL_BANNER_MAX      128
 #define KN_CONFIG_SHELL_MAX_CLIENTS     16
 #define KN_CONFIG_SHELL_MAX_CLIENTS_MIN 1
@@ -107,6 +113,18 @@ struct kn_config_heard {
 	uint8_t has_max_entries;
 };
 
+struct kn_config_receive {
+	size_t max_events;
+	size_t max_sessions;
+	size_t payload_preview_bytes;
+	uint8_t events_enabled;
+	uint8_t has_block;
+	uint8_t has_events_enabled;
+	uint8_t has_max_events;
+	uint8_t has_max_sessions;
+	uint8_t has_payload_preview_bytes;
+};
+
 struct kn_config_shell {
 	char host[KN_CONFIG_HOST_MAX];
 	char port[KN_CONFIG_PORT_NAME_MAX];
@@ -149,6 +167,7 @@ struct kn_config {
 	struct kn_config_control control;
 	struct kn_config_bbs bbs;
 	struct kn_config_heard heard;
+	struct kn_config_receive receive;
 	struct kn_config_shell shell;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;

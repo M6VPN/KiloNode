@@ -3,10 +3,16 @@
 
 #include <sys/types.h>
 
+#include <stdio.h>
 #include <string.h>
 
+#include "kilonode/ax25.h"
+#include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
+#include "kilonode/rx_event.h"
+#include "kilonode/rx_queue.h"
+#include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
 
 static void snapshot_init(struct kn_control_snapshot *,
@@ -35,6 +41,15 @@ static int test_ping_response(void);
 static int test_ports_one_port(void);
 static int test_ports_zero_ports(void);
 static int test_response_line_cap(void);
+static int test_rx_event_existing(void);
+static int test_rx_event_missing(void);
+static int test_rx_events_empty(void);
+static int test_rx_events_filters(void);
+static int test_rx_events_one(void);
+static int test_rx_malformed_command(void);
+static int test_rx_sessions_empty(void);
+static int test_rx_sessions_one(void);
+static int test_rx_status(void);
 static int test_stats_response(void);
 static int test_status_response(void);
 static int test_unknown_command(void);
@@ -99,6 +114,24 @@ main(void)
 		return 1;
 	if (test_control_character_command() != 0)
 		return 1;
+	if (test_rx_status() != 0)
+		return 1;
+	if (test_rx_events_empty() != 0)
+		return 1;
+	if (test_rx_events_one() != 0)
+		return 1;
+	if (test_rx_events_filters() != 0)
+		return 1;
+	if (test_rx_event_existing() != 0)
+		return 1;
+	if (test_rx_event_missing() != 0)
+		return 1;
+	if (test_rx_sessions_empty() != 0)
+		return 1;
+	if (test_rx_sessions_one() != 0)
+		return 1;
+	if (test_rx_malformed_command() != 0)
+		return 1;
 
 	return 0;
 }
@@ -119,6 +152,9 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->heard_count = 0;
 	snapshot->bbs_enabled = 0;
 	snapshot->bbs_store = NULL;
+	snapshot->rx_enabled = 0;
+	snapshot->rx_events = NULL;
+	snapshot->rx_sessions = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -578,6 +614,230 @@ test_response_line_cap(void)
 		return 1;
 
 	return strcmp(out, "ERR response-line-limit\n") == 0 ? 0 : 1;
+}
+
+static void
+rx_snapshot_init(struct kn_control_snapshot *snapshot,
+	struct kn_daemon_stats *daemon, struct kn_rx_queue *queue,
+	struct kn_rx_session_table *sessions)
+{
+	snapshot_init(snapshot, daemon, NULL, 0);
+	snapshot->rx_enabled = 1;
+	snapshot->rx_events = queue;
+	snapshot->rx_sessions = sessions;
+}
+
+static void
+rx_add_event(struct kn_rx_queue *queue, struct kn_rx_session_table *sessions)
+{
+	struct kn_rx_event event;
+
+	kn_rx_event_clear(&event);
+	event.id = kn_rx_queue_reserve_id(queue);
+	event.timestamp = 10;
+	(void)snprintf(event.port_name, sizeof(event.port_name), "%s", "kiss0");
+	event.kiss_port = 0;
+	event.kind = KN_RX_FRAME_UI;
+	(void)kn_callsign_parse("M6VPN-1", &event.source);
+	(void)kn_callsign_parse("CQ", &event.destination);
+	event.control = KN_AX25_CONTROL_UI;
+	event.pid = KN_AX25_PID_NO_LAYER_3;
+	event.has_pid = 1;
+	event.payload_len = 5;
+	(void)snprintf(event.preview, sizeof(event.preview), "%s", "\"hello\"");
+	(void)kn_rx_queue_push(queue, &event);
+	(void)kn_rx_session_update(sessions, &event);
+}
+
+static int
+test_rx_event_existing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_add_event(&queue, &sessions);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX EVENT 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK RX EVENT id=1\n") != NULL &&
+	    strstr(out, "preview=\"hello\"") != NULL ? 0 : 1;
+}
+
+static int
+test_rx_event_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX EVENT 9", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR event-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rx_events_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX EVENTS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK RX EVENTS count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rx_events_filters(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_add_event(&queue, &sessions);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX EVENTS FROM M6VPN-1", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "count=1") == NULL)
+		return 1;
+	if (kn_control_protocol_handle("RX EVENTS TO BAD@", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-callsign\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rx_events_one(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_add_event(&queue, &sessions);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX EVENTS LIMIT 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RX EVENT id=1") != NULL ? 0 : 1;
+}
+
+static int
+test_rx_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX NOPE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-rx-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rx_sessions_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX SESSIONS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK RX SESSIONS count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rx_sessions_one(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_add_event(&queue, &sessions);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX SESSIONS PORT kiss0", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RX SESSION port=kiss0 from=M6VPN-1") != NULL ?
+	    0 : 1;
+}
+
+static int
+test_rx_status(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_rx_queue queue;
+	struct kn_rx_session_table sessions;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_rx_queue_init(&queue, 4, 80, 1);
+	kn_rx_session_init(&sessions, 4);
+	rx_snapshot_init(&snapshot, &daemon, &queue, &sessions);
+
+	if (kn_control_protocol_handle("RX STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK RX STATUS events_enabled=true") != NULL ? 0 : 1;
 }
 
 static int

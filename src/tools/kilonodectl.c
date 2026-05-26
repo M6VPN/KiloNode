@@ -16,6 +16,7 @@
 
 static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
+static int command_rx(char *, size_t, int *, int, char **);
 static int command_set(char *, size_t, const char *);
 static int run_command(const char *, const char *);
 static void usage(FILE *, const char *);
@@ -66,6 +67,14 @@ main(int argc, char *argv[])
 		}
 		if (strcmp(argv[i], "bbs") == 0) {
 			if (command_bbs(command, sizeof(command), &i, argc,
+			    argv) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			continue;
+		}
+		if (strcmp(argv[i], "rx") == 0) {
+			if (command_rx(command, sizeof(command), &i, argc,
 			    argv) != 0) {
 				usage(stderr, argv[0]);
 				return 1;
@@ -157,6 +166,83 @@ command_bbs(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 	}
 	*index += 1;
 	return command_set(dst, dst_len, "BBS MESSAGES");
+}
+
+static int
+command_rx(char *dst, size_t dst_len, int *index, int argc, char *argv[])
+{
+	const char *sub;
+	const char *filter;
+	int needed;
+
+	if (*index + 1 >= argc)
+		return 1;
+
+	sub = argv[*index + 1];
+	if (strcmp(sub, "status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "RX STATUS");
+	}
+	if (strcmp(sub, "event") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "RX EVENT %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "sessions") == 0) {
+		if (*index + 2 >= argc) {
+			*index += 1;
+			return command_set(dst, dst_len, "RX SESSIONS");
+		}
+		if (strcmp(argv[*index + 2], "--port") == 0 ||
+		    strcmp(argv[*index + 2], "--from") == 0) {
+			if (*index + 3 >= argc)
+				return 1;
+			filter = strcmp(argv[*index + 2], "--port") == 0 ?
+			    "PORT" : "FROM";
+			needed = snprintf(dst, dst_len, "RX SESSIONS %s %s",
+			    filter, argv[*index + 3]);
+			if (needed < 0 || (size_t)needed >= dst_len)
+				return 1;
+			*index += 3;
+			return 0;
+		}
+		*index += 1;
+		return command_set(dst, dst_len, "RX SESSIONS");
+	}
+	if (strcmp(sub, "events") != 0)
+		return 1;
+	if (*index + 2 >= argc) {
+		*index += 1;
+		return command_set(dst, dst_len, "RX EVENTS");
+	}
+	if (strcmp(argv[*index + 2], "--limit") == 0 ||
+	    strcmp(argv[*index + 2], "--port") == 0 ||
+	    strcmp(argv[*index + 2], "--from") == 0 ||
+	    strcmp(argv[*index + 2], "--to") == 0) {
+		if (*index + 3 >= argc)
+			return 1;
+		if (strcmp(argv[*index + 2], "--limit") == 0)
+			filter = "LIMIT";
+		else if (strcmp(argv[*index + 2], "--port") == 0)
+			filter = "PORT";
+		else if (strcmp(argv[*index + 2], "--from") == 0)
+			filter = "FROM";
+		else
+			filter = "TO";
+		needed = snprintf(dst, dst_len, "RX EVENTS %s %s",
+		    filter, argv[*index + 3]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 3;
+		return 0;
+	}
+	*index += 1;
+	return command_set(dst, dst_len, "RX EVENTS");
 }
 
 static const char *
@@ -262,5 +348,10 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH bbs messages\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs messages --area AREA\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs message ID\n", argv0);
+	fprintf(out, "       %s --socket PATH rx status\n", argv0);
+	fprintf(out, "       %s --socket PATH rx events\n", argv0);
+	fprintf(out, "       %s --socket PATH rx events --from CALLSIGN\n", argv0);
+	fprintf(out, "       %s --socket PATH rx event ID\n", argv0);
+	fprintf(out, "       %s --socket PATH rx sessions\n", argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }

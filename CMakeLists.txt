@@ -48,6 +48,9 @@ add_library(packetcore STATIC
 	src/proto/ax25.c
 	src/proto/kiss.c
 	src/proto/kiss_stream.c
+	src/rf/rx_event.c
+	src/rf/rx_queue.c
+	src/rf/rx_session.c
 	src/transport/transport.c
 	src/transport/transport_pty.c
 	src/transport/transport_serial.c
@@ -140,6 +143,26 @@ add_executable(test_heard tests/test_heard.c)
 target_link_libraries(test_heard PRIVATE packetcore)
 kilonode_target_defaults(test_heard)
 add_test(NAME heard COMMAND test_heard)
+
+add_executable(test_rx_event tests/test_rx_event.c)
+target_link_libraries(test_rx_event PRIVATE packetcore)
+kilonode_target_defaults(test_rx_event)
+add_test(NAME rx_event COMMAND test_rx_event)
+
+add_executable(test_rx_queue tests/test_rx_queue.c)
+target_link_libraries(test_rx_queue PRIVATE packetcore)
+kilonode_target_defaults(test_rx_queue)
+add_test(NAME rx_queue COMMAND test_rx_queue)
+
+add_executable(test_rx_session tests/test_rx_session.c)
+target_link_libraries(test_rx_session PRIVATE packetcore)
+kilonode_target_defaults(test_rx_session)
+add_test(NAME rx_session COMMAND test_rx_session)
+
+add_executable(test_daemon_rx tests/test_daemon_rx.c)
+target_link_libraries(test_daemon_rx PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_rx)
+add_test(NAME daemon_rx COMMAND test_daemon_rx)
 
 add_executable(test_kiss tests/test_kiss.c)
 target_link_libraries(test_kiss PRIVATE packetcore)
