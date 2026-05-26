@@ -18,6 +18,7 @@ static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
 static int command_rx(char *, size_t, int *, int, char **);
 static int command_set(char *, size_t, const char *);
+static int command_tx(char *, size_t, int *, int, char **);
 static int run_command(const char *, const char *);
 static void usage(FILE *, const char *);
 
@@ -75,6 +76,14 @@ main(int argc, char *argv[])
 		}
 		if (strcmp(argv[i], "rx") == 0) {
 			if (command_rx(command, sizeof(command), &i, argc,
+			    argv) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			continue;
+		}
+		if (strcmp(argv[i], "tx") == 0) {
+			if (command_tx(command, sizeof(command), &i, argc,
 			    argv) != 0) {
 				usage(stderr, argv[0]);
 				return 1;
@@ -280,6 +289,50 @@ command_set(char *dst, size_t dst_len, const char *command)
 }
 
 static int
+command_tx(char *dst, size_t dst_len, int *index, int argc, char *argv[])
+{
+	const char *sub;
+	int needed;
+
+	if (*index + 1 >= argc)
+		return 1;
+
+	sub = argv[*index + 1];
+	if (strcmp(sub, "status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "TX STATUS");
+	}
+	if (strcmp(sub, "frame") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "TX FRAME %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "queue") != 0)
+		return 1;
+	if (*index + 2 >= argc) {
+		*index += 1;
+		return command_set(dst, dst_len, "TX QUEUE");
+	}
+	if (strcmp(argv[*index + 2], "--port") == 0) {
+		if (*index + 3 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "TX QUEUE PORT %s",
+		    argv[*index + 3]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 3;
+		return 0;
+	}
+	*index += 1;
+	return command_set(dst, dst_len, "TX QUEUE");
+}
+
+static int
 run_command(const char *socket_path, const char *command)
 {
 	char request[KN_CONTROL_COMMAND_MAX + 2];
@@ -353,5 +406,9 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH rx events --from CALLSIGN\n", argv0);
 	fprintf(out, "       %s --socket PATH rx event ID\n", argv0);
 	fprintf(out, "       %s --socket PATH rx sessions\n", argv0);
+	fprintf(out, "       %s --socket PATH tx status\n", argv0);
+	fprintf(out, "       %s --socket PATH tx queue\n", argv0);
+	fprintf(out, "       %s --socket PATH tx queue --port NAME\n", argv0);
+	fprintf(out, "       %s --socket PATH tx frame ID\n", argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }

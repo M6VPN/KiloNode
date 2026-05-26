@@ -51,6 +51,9 @@ add_library(packetcore STATIC
 	src/rf/rx_event.c
 	src/rf/rx_queue.c
 	src/rf/rx_session.c
+	src/rf/tx_frame.c
+	src/rf/tx_policy.c
+	src/rf/tx_queue.c
 	src/transport/transport.c
 	src/transport/transport_pty.c
 	src/transport/transport_serial.c
@@ -163,6 +166,26 @@ add_executable(test_daemon_rx tests/test_daemon_rx.c)
 target_link_libraries(test_daemon_rx PRIVATE packetcore)
 kilonode_target_defaults(test_daemon_rx)
 add_test(NAME daemon_rx COMMAND test_daemon_rx)
+
+add_executable(test_tx_frame tests/test_tx_frame.c)
+target_link_libraries(test_tx_frame PRIVATE packetcore)
+kilonode_target_defaults(test_tx_frame)
+add_test(NAME tx_frame COMMAND test_tx_frame)
+
+add_executable(test_tx_queue tests/test_tx_queue.c)
+target_link_libraries(test_tx_queue PRIVATE packetcore)
+kilonode_target_defaults(test_tx_queue)
+add_test(NAME tx_queue COMMAND test_tx_queue)
+
+add_executable(test_tx_policy tests/test_tx_policy.c)
+target_link_libraries(test_tx_policy PRIVATE packetcore)
+kilonode_target_defaults(test_tx_policy)
+add_test(NAME tx_policy COMMAND test_tx_policy)
+
+add_executable(test_daemon_tx tests/test_daemon_tx.c)
+target_link_libraries(test_daemon_tx PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_tx)
+add_test(NAME daemon_tx COMMAND test_daemon_tx)
 
 add_executable(test_kiss tests/test_kiss.c)
 target_link_libraries(test_kiss PRIVATE packetcore)

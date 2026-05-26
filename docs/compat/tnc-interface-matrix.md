@@ -10,6 +10,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Heard tracking | tested | Decoded AX.25 frames from any configured KISS transport |
 | RX event queue | tested | Decoded frames from configured KISS transports feed recent receive events |
 | RX observed sessions | tested | Receive-side source/destination observations from decoded frames |
+| TX queue skeleton | tested | Outbound frames can be built and queued, dispatch is disabled |
 | KISS stdin/stdout | implemented | Live monitor can read stdin KISS streams |
 | KISS TCP client | partial | Configured daemon and monitor support, no reconnect or auth |
 | KISS TCP server | partial | Configured daemon and monitor support, single-client only |

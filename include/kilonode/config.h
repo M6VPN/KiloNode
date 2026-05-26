@@ -10,6 +10,7 @@
 
 #include "kilonode/access_policy.h"
 #include "kilonode/callsign.h"
+#include "kilonode/tx_policy.h"
 #include "kilonode/transport.h"
 
 #define KN_CONFIG_ALIAS_MAX     16
@@ -125,6 +126,17 @@ struct kn_config_receive {
 	uint8_t has_payload_preview_bytes;
 };
 
+struct kn_config_transmit {
+	struct kn_tx_policy policy;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_dry_run;
+	uint8_t has_max_queued;
+	uint8_t has_max_payload_bytes;
+	uint8_t has_payload_preview_bytes;
+	uint8_t has_allow_ui;
+};
+
 struct kn_config_shell {
 	char host[KN_CONFIG_HOST_MAX];
 	char port[KN_CONFIG_PORT_NAME_MAX];
@@ -168,6 +180,7 @@ struct kn_config {
 	struct kn_config_bbs bbs;
 	struct kn_config_heard heard;
 	struct kn_config_receive receive;
+	struct kn_config_transmit transmit;
 	struct kn_config_shell shell;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;

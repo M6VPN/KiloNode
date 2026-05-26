@@ -52,8 +52,16 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | RF receive event model | tested | Receive-only decoded AX.25 event queue |
 | RX event control queries | tested | Read-only `kilonodectl rx events` queries |
 | Observed RF session table | tested | Source/destination observations, no state machine |
+| AX.25 UI outbound builder | tested | Builds bounded UI frames through existing AX.25 encoder |
+| KISS outbound encoding | tested | Stores complete escaped KISS frames for prepared TX frames |
+| Transmit queue skeleton | tested | In-memory queue with read-only control queries |
 | AX.25 connected-mode receive state | planned | Not implemented |
-| AX.25 transmit path | planned | Not implemented |
+| Actual RF transmit dispatch | planned | Not implemented |
+| AX.25 transmit path | partial | Builder and queue only, no dispatch |
+| RF node shell transmit | planned | Not implemented |
+| RF BBS replies | planned | Not implemented |
+| AX.25 connected-mode transmit | planned | Not implemented |
+| NET/ROM transmit/routing | planned | Not implemented |
 | RF node shell access | planned | Not implemented |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |

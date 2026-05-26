@@ -14,6 +14,9 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_frame.h"
+#include "kilonode/tx_policy.h"
+#include "kilonode/tx_queue.h"
 
 static void snapshot_init(struct kn_control_snapshot *,
 	struct kn_daemon_stats *, struct kn_port_stats *, size_t);
@@ -52,6 +55,13 @@ static int test_rx_sessions_one(void);
 static int test_rx_status(void);
 static int test_stats_response(void);
 static int test_status_response(void);
+static int test_tx_frame_existing(void);
+static int test_tx_frame_missing(void);
+static int test_tx_malformed_command(void);
+static int test_tx_queue_empty(void);
+static int test_tx_queue_one(void);
+static int test_tx_queue_port(void);
+static int test_tx_status(void);
 static int test_unknown_command(void);
 static int test_version_response(void);
 
@@ -132,6 +142,20 @@ main(void)
 		return 1;
 	if (test_rx_malformed_command() != 0)
 		return 1;
+	if (test_tx_status() != 0)
+		return 1;
+	if (test_tx_queue_empty() != 0)
+		return 1;
+	if (test_tx_queue_one() != 0)
+		return 1;
+	if (test_tx_queue_port() != 0)
+		return 1;
+	if (test_tx_frame_existing() != 0)
+		return 1;
+	if (test_tx_frame_missing() != 0)
+		return 1;
+	if (test_tx_malformed_command() != 0)
+		return 1;
 
 	return 0;
 }
@@ -155,6 +179,7 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->rx_enabled = 0;
 	snapshot->rx_events = NULL;
 	snapshot->rx_sessions = NULL;
+	snapshot->tx_queue = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -649,6 +674,38 @@ rx_add_event(struct kn_rx_queue *queue, struct kn_rx_session_table *sessions)
 	(void)kn_rx_session_update(sessions, &event);
 }
 
+static void
+tx_snapshot_init(struct kn_control_snapshot *snapshot,
+	struct kn_daemon_stats *daemon, struct kn_tx_queue *queue)
+{
+	snapshot_init(snapshot, daemon, NULL, 0);
+	snapshot->tx_queue = queue;
+}
+
+static void
+tx_add_frame(struct kn_tx_queue *queue)
+{
+	struct kn_tx_frame frame;
+
+	kn_tx_frame_clear(&frame);
+	frame.id = kn_tx_queue_reserve_id(queue);
+	frame.created = 10;
+	(void)snprintf(frame.port_name, sizeof(frame.port_name), "%s", "kiss0");
+	frame.kiss_port = 0;
+	frame.kind = KN_TX_FRAME_UI;
+	frame.status = KN_TX_FRAME_DRY_RUN;
+	(void)kn_callsign_parse("M6VPN-1", &frame.source);
+	(void)kn_callsign_parse("CQ", &frame.destination);
+	frame.control = KN_AX25_CONTROL_UI;
+	frame.pid = KN_AX25_PID_NO_LAYER_3;
+	frame.has_pid = 1;
+	frame.payload_len = 5;
+	frame.ax25_len = 20;
+	frame.kiss_len = 24;
+	(void)snprintf(frame.preview, sizeof(frame.preview), "%s", "\"hello\"");
+	(void)kn_tx_queue_enqueue(queue, &frame);
+}
+
 static int
 test_rx_event_existing(void)
 {
@@ -838,6 +895,169 @@ test_rx_status(void)
 		return 1;
 
 	return strstr(out, "OK RX STATUS events_enabled=true") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_frame_existing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_add_frame(&queue);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX FRAME 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK TX FRAME id=1\n") != NULL &&
+	    strstr(out, "preview=\"hello\"") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_frame_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX FRAME 9", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR frame-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX SEND", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-tx-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_queue_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX QUEUE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK TX QUEUE count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_queue_one(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_add_frame(&queue);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX QUEUE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "TX FRAME id=1 port=kiss0") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_queue_port(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_add_frame(&queue);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX QUEUE PORT kiss0", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "count=1") == NULL)
+		return 1;
+	if (kn_control_protocol_handle("TX QUEUE PORT bad name", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-port\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_status(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK TX STATUS enabled=false dry_run=true") !=
+	    NULL ? 0 : 1;
 }
 
 static int

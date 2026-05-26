@@ -17,6 +17,8 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_frame.h"
+#include "kilonode/tx_queue.h"
 
 #define KILONODE_VERSION "0.1.0"
 
@@ -38,6 +40,8 @@ static enum kn_control_error format_stats(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_status(const struct kn_control_snapshot *,
 	char *, size_t);
+static enum kn_control_error format_tx(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
 static enum kn_control_error return_with_cap(
 	const struct kn_control_snapshot *, char *, size_t,
 	enum kn_control_error);
@@ -222,7 +226,8 @@ format_help(char *buf, size_t bufsiz)
 
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
-	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX HELP QUIT\n");
+	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX TX HELP "
+	    "QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -483,6 +488,113 @@ format_rx(const struct kn_control_snapshot *snapshot, const char *command,
 }
 
 static enum kn_control_error
+format_tx_frame_list(const struct kn_tx_frame **frames, size_t count,
+	char *buf, size_t bufsiz)
+{
+	char line[KN_CONTROL_LINE_MAX];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset, "OK TX QUEUE count=%llu\n",
+	    (unsigned long long)count);
+	if (rc != KN_CONTROL_OK)
+		return rc;
+
+	for (i = 0; i < count; i++) {
+		if (kn_tx_frame_format_brief(frames[i], line,
+		    sizeof(line)) != KN_TX_FRAME_OK)
+			return KN_CONTROL_ERR_IO;
+		rc = append_format(buf, bufsiz, &offset, "%s\n", line);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
+format_tx(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	const struct kn_tx_frame *frames[100];
+	const struct kn_tx_frame *frame;
+	char line[KN_CONTROL_LINE_MAX];
+	char *end;
+	unsigned long id;
+	size_t count;
+
+	if (snapshot->tx_queue == NULL) {
+		(void)snprintf(buf, bufsiz, "ERR tx-unavailable\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+
+	if (strcmp(command, "STATUS") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK TX STATUS enabled=%s dry_run=%s allow_ui=%s "
+		    "queued=%llu max_queued=%llu max_payload=%llu\nEND\n",
+		    snapshot->tx_queue->policy.enabled != 0 ? "true" :
+		    "false",
+		    snapshot->tx_queue->policy.dry_run != 0 ? "true" :
+		    "false",
+		    snapshot->tx_queue->policy.allow_ui != 0 ? "true" :
+		    "false",
+		    (unsigned long long)kn_tx_queue_count(
+		    snapshot->tx_queue),
+		    (unsigned long long)snapshot->tx_queue->max_frames,
+		    (unsigned long long)
+		    snapshot->tx_queue->policy.max_payload_bytes) >=
+		    (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "QUEUE") == 0) {
+		if (kn_tx_queue_list(snapshot->tx_queue, frames, 100,
+		    &count) != KN_TX_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_tx_frame_list(frames, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "QUEUE PORT ", 11) == 0) {
+		if (command[11] == '\0' ||
+		    strlen(command + 11) >= KN_CONFIG_PORT_NAME_MAX ||
+		    strchr(command + 11, ' ') != NULL) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_tx_queue_list_by_port(snapshot->tx_queue,
+		    command + 11, frames, 100, &count) != KN_TX_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_tx_frame_list(frames, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "FRAME ", 6) == 0) {
+		id = strtoul(command + 6, &end, 10);
+		if (*end != '\0' || id == 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-frame-id\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		frame = kn_tx_queue_get(snapshot->tx_queue, (uint64_t)id);
+		if (frame == NULL) {
+			(void)snprintf(buf, bufsiz, "ERR frame-not-found\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_tx_frame_format_full(frame, line, sizeof(line)) !=
+		    KN_TX_FRAME_OK)
+			return KN_CONTROL_ERR_IO;
+		if (snprintf(buf, bufsiz, "OK TX FRAME id=%llu\n%s\nEND\n",
+		    (unsigned long long)frame->id, line) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	(void)snprintf(buf, bufsiz, "ERR invalid-tx-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
 format_stats(const struct kn_control_snapshot *snapshot, char *buf,
 	size_t bufsiz)
 {
@@ -603,6 +715,13 @@ kn_control_protocol_handle(const char *command,
 	if (strncmp(command, "RX ", 3) == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_rx(snapshot, command + 3, out, out_len));
+	if (strcmp(command, "TX") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-tx-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "TX ", 3) == 0)
+		return return_with_cap(snapshot, out, out_len,
+		    format_tx(snapshot, command + 3, out, out_len));
 	if (strcmp(command, "HELP") == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_help(out, out_len));

@@ -29,6 +29,7 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_queue.h"
 #include "kilonode/transport.h"
 #include "kilonode/transport_pty.h"
 #include "kilonode/transport_serial.h"
@@ -57,7 +58,8 @@ static int control_handle(struct kn_control_socket *,
 	const struct kn_daemon_stats *, const struct daemon_port *, size_t,
 	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
 	uint8_t, const struct kn_access_policy *, const struct kn_rx_queue *,
-	const struct kn_rx_session_table *, uint8_t);
+	const struct kn_rx_session_table *, uint8_t,
+	const struct kn_tx_queue *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
 	struct kn_rx_session_table *);
@@ -94,6 +96,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_heard_table heard;
 	struct kn_rx_queue rx_events;
 	struct kn_rx_session_table rx_sessions;
+	struct kn_tx_queue tx_queue;
 	struct kn_message_store bbs_store;
 	struct kn_node_shell_state shell;
 	struct sigaction sa;
@@ -136,6 +139,9 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	    config->receive.payload_preview_bytes,
 	    config->receive.events_enabled);
 	kn_rx_session_init(&rx_sessions, config->receive.max_sessions);
+	if (kn_tx_queue_init(&tx_queue, &config->transmit.policy) !=
+	    KN_TX_QUEUE_OK)
+		return KN_DAEMON_ERR_CONFIG;
 	for (i = 0; i < config->port_count; i++) {
 		if (config->ports[i].enabled != 0)
 			daemon_stats.enabled_ports++;
@@ -322,7 +328,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    port_count, &heard, config->heard.enabled,
 			    &bbs_store, bbs_enabled,
 			    &config->access.policy, &rx_events, &rx_sessions,
-			    config->receive.events_enabled) != 0) {
+			    config->receive.events_enabled, &tx_queue) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -442,7 +448,8 @@ control_handle(struct kn_control_socket *control,
 	uint8_t heard_enabled, struct kn_message_store *bbs_store,
 	uint8_t bbs_enabled, const struct kn_access_policy *policy,
 	const struct kn_rx_queue *rx_events,
-	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled)
+	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled,
+	const struct kn_tx_queue *tx_queue)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -488,6 +495,7 @@ control_handle(struct kn_control_socket *control,
 	snapshot.rx_enabled = rx_enabled;
 	snapshot.rx_events = rx_enabled != 0 ? rx_events : NULL;
 	snapshot.rx_sessions = rx_enabled != 0 ? rx_sessions : NULL;
+	snapshot.tx_queue = tx_queue;
 	if (policy != NULL) {
 		snapshot.control_max_command_bytes =
 		    policy->control_max_command_bytes;

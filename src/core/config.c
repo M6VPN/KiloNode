@@ -28,6 +28,7 @@ enum parser_block {
 	BLOCK_HEARD,
 	BLOCK_RECEIVE,
 	BLOCK_SHELL,
+	BLOCK_TRANSMIT,
 	BLOCK_PORT
 };
 
@@ -64,6 +65,8 @@ static enum kn_config_error set_error(struct kn_config *, enum kn_config_error,
 static enum kn_config_error shell_key_set(struct kn_config *, char **, size_t,
 	size_t);
 static char *skip_ws(char *);
+static enum kn_config_error transmit_key_set(struct kn_config *, char **,
+	size_t, size_t);
 
 static enum kn_config_error
 config_validate(struct kn_config *config)
@@ -78,6 +81,10 @@ config_validate(struct kn_config *config)
 	    KN_ACCESS_POLICY_OK)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "invalid access policy");
+	if (kn_tx_policy_validate(&config->transmit.policy) !=
+	    KN_TX_POLICY_OK)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid transmit policy");
 
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
@@ -211,6 +218,7 @@ kn_config_init(struct kn_config *config)
 	config->receive.max_sessions = KN_CONFIG_RECEIVE_SESSIONS_MAX;
 	config->receive.payload_preview_bytes =
 	    KN_RX_EVENT_PREVIEW_DEFAULT;
+	kn_tx_policy_defaults(&config->transmit.policy);
 	config->shell.max_clients = 4;
 }
 
@@ -635,6 +643,98 @@ receive_key_set(struct kn_config *config, char **tokens, size_t token_count,
 }
 
 static enum kn_config_error
+transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid transmit key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->transmit.has_enabled, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "dry-run") == 0) {
+		if (key_seen(&config->transmit.has_dry_run, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.dry_run) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit dry-run value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "allow-ui") == 0) {
+		if (key_seen(&config->transmit.has_allow_ui, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.allow_ui) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit allow-ui value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-queued") == 0) {
+		if (key_seen(&config->transmit.has_max_queued, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_TX_POLICY_MAX_QUEUED_MIN ||
+		    value > KN_TX_POLICY_MAX_QUEUED_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit max-queued");
+		config->transmit.policy.max_queued = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-payload-bytes") == 0) {
+		if (key_seen(&config->transmit.has_max_payload_bytes, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value > KN_TX_POLICY_PAYLOAD_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit max-payload-bytes");
+		config->transmit.policy.max_payload_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "payload-preview-bytes") == 0) {
+		if (key_seen(&config->transmit.has_payload_preview_bytes,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_TX_POLICY_PREVIEW_MIN ||
+		    value > KN_TX_POLICY_PREVIEW_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit payload-preview-bytes");
+		config->transmit.policy.payload_preview_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown transmit key");
+}
+
+static enum kn_config_error
 line_parse(struct parser *parser, char *line, size_t line_no)
 {
 	char *tokens[TOKEN_MAX];
@@ -707,6 +807,10 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 
 	if (parser->block == BLOCK_SHELL)
 		return shell_key_set(parser->config, tokens, token_count, line_no);
+
+	if (parser->block == BLOCK_TRANSMIT)
+		return transmit_key_set(parser->config, tokens, token_count,
+		    line_no);
 
 	if (parser->block == BLOCK_PORT)
 		return port_key_set(parser, tokens, token_count, line_no);
@@ -795,6 +899,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    "duplicate shell block");
 		parser->config->shell.has_block = 1;
 		parser->block = BLOCK_SHELL;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "transmit") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid transmit block");
+		if (parser->config->transmit.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate transmit block");
+		parser->config->transmit.has_block = 1;
+		parser->block = BLOCK_TRANSMIT;
 		return KN_CONFIG_OK;
 	}
 
