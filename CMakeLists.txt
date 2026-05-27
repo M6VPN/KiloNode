@@ -94,6 +94,9 @@ add_library(packetcore STATIC
 	src/proto/ax25_state.c
 	src/proto/ax25_timer.c
 	src/proto/ax25_timer_queue.c
+	src/proto/ax25_timer_replay.c
+	src/proto/ax25_timer_replay_report.c
+	src/proto/ax25_timer_replay_script.c
 	src/proto/fx25.c
 	src/proto/fx25_params.c
 	src/proto/kiss.c
@@ -274,6 +277,23 @@ add_executable(test_ax25_timer_queue tests/test_ax25_timer_queue.c)
 target_link_libraries(test_ax25_timer_queue PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_timer_queue)
 add_test(NAME ax25_timer_queue COMMAND test_ax25_timer_queue)
+
+add_executable(test_ax25_timer_replay tests/test_ax25_timer_replay.c)
+target_link_libraries(test_ax25_timer_replay PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_timer_replay)
+add_test(NAME ax25_timer_replay COMMAND test_ax25_timer_replay)
+
+add_executable(test_ax25_timer_replay_report
+	tests/test_ax25_timer_replay_report.c)
+target_link_libraries(test_ax25_timer_replay_report PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_timer_replay_report)
+add_test(NAME ax25_timer_replay_report COMMAND test_ax25_timer_replay_report)
+
+add_executable(test_ax25_timer_replay_script
+	tests/test_ax25_timer_replay_script.c)
+target_link_libraries(test_ax25_timer_replay_script PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_timer_replay_script)
+add_test(NAME ax25_timer_replay_script COMMAND test_ax25_timer_replay_script)
 
 add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)

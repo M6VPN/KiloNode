@@ -1,0 +1,16 @@
+# KiloNode AX.25 timer replay v1
+name t2-placeholder
+node M6VPN-1
+remote N0CALL
+port kiss0
+now 0
+params modulo=8 window=1 t1=3000 t2=1000 t3=300000 n2=3
+event rx-sabm
+event rx-i ns=0 nr=0 len=12
+expect timer-running T2 true
+advance 1000
+process-expired
+expect timer-running T2 false
+expect last-error planned
+expect counter timers-expired 1
+expect tx-writes 0

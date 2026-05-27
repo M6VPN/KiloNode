@@ -33,3 +33,4 @@
 | FX.25 FEC with AX.25 runtime | planned | No FEC code exists and AX.25 diagnostics do not inspect FX.25 frames. |
 | FX.25 timer coupling        | unsupported | AX.25 T1/T2/T3 scheduling is kept inside AX.25 connected-mode scaffolding. |
 | FX.25 FEC timer effects     | planned | Future FEC statistics must remain outside AX.25 timer logic. |
+| AX.25 timer replay boundary | scaffold | Timer replay drives AX.25 connection diagnostics only and does not parse FX.25 blocks. |

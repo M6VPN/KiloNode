@@ -1,0 +1,19 @@
+# KiloNode AX.25 timer replay v1
+name connect-timeout-exhaust
+node M6VPN-1
+remote N0CALL
+port kiss0
+now 0
+params modulo=8 window=1 t1=1000 t2=500 t3=300000 n2=2
+event local-connect
+advance 1000
+process-expired
+expect state=awaiting-connection
+expect retry=1
+advance 1000
+process-expired
+expect state=disconnected
+expect action protocol-error
+expect timer-running T1 false
+expect last-error invalid-event
+expect tx-writes 0

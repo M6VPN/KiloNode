@@ -25,6 +25,7 @@ static int test_live_feed_updates_table_when_enabled(void);
 static int test_no_tx_queue_writes(void);
 static int test_params_stored(void);
 static int test_reset_clears_live_counters(void);
+static int test_reset_clears_scheduler(void);
 static int test_reset_clears_table(void);
 
 int
@@ -51,6 +52,8 @@ main(void)
 	if (test_reset_clears_table() != 0)
 		return 1;
 	if (test_reset_clears_live_counters() != 0)
+		return 1;
+	if (test_reset_clears_scheduler() != 0)
 		return 1;
 	if (test_no_tx_queue_writes() != 0)
 		return 1;
@@ -299,6 +302,22 @@ test_reset_clears_live_counters(void)
 
 	return runtime.live_counters.frames_seen == 0 &&
 	    runtime.live.live_rx_retain_frame_plans == 1 ? 0 : 1;
+}
+
+static int
+test_reset_clears_scheduler(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_timer_queue_start(&runtime.scheduler.queue, 1,
+	    KN_AX25_TIMER_T1, 0, 100);
+	runtime.scheduler.counters.timers_started = 1;
+	kn_ax25_runtime_reset(&runtime);
+	if (runtime.scheduler.queue.count != 0)
+		return 1;
+
+	return runtime.scheduler.counters.timers_started == 0 ? 0 : 1;
 }
 
 static int

@@ -6,6 +6,18 @@
 .Nd replay KiloNode compatibility lab transcripts
 .Sh SYNOPSIS
 .Nm
+.Cm check-ax25-timer-replay
+.Ar path
+.Nm
+.Cm run-ax25-timer-replay
+.Ar path
+.Nm
+.Cm run-ax25-timer-replay-dir
+.Ar path
+.Nm
+.Cm ax25-timer-replay-report
+.Ar path
+.Nm
 .Cm check-transcript
 .Ar path
 .Nm
@@ -189,6 +201,16 @@ Show command usage.
 .Bl -tag -width Ds
 .It Cm check-transcript Ar path
 Validate transcript syntax.
+.It Cm check-ax25-timer-replay Ar path
+Validate one AX.25 timer replay script without running it.
+.It Cm run-ax25-timer-replay Ar path
+Run one offline AX.25 timer replay script.
+.It Cm run-ax25-timer-replay-dir Ar path
+Run all
+.Pa *.replay
+files in sorted order.
+.It Cm ax25-timer-replay-report Ar path
+Run one replay and print a detailed timer diagnostic report.
 .It Cm replay-transcript Ar path
 Replay one transcript and print a text report.
 .It Cm replay-dir Ar path

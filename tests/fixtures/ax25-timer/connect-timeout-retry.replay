@@ -1,0 +1,22 @@
+# KiloNode AX.25 timer replay v1
+name connect-timeout-retry
+node M6VPN-1
+remote N0CALL
+port kiss0
+now 0
+params modulo=8 window=1 t1=3000 t2=1000 t3=300000 n2=3
+event local-connect
+expect state=awaiting-connection
+expect retry=0
+expect action send-sabm
+expect plan SABM
+expect timer-running T1 true
+advance 3000
+process-expired
+expect state=awaiting-connection
+expect retry=1
+expect action send-sabm
+expect plan SABM
+expect timer-running T1 true
+expect counter retries-incremented 1
+expect tx-writes 0

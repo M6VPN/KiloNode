@@ -9,6 +9,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "kilonode/ax25_timer_replay.h"
+#include "kilonode/ax25_timer_replay_report.h"
 #include "kilonode/bench_ax25_diag_replay.h"
 #include "kilonode/bench_replay.h"
 #include "kilonode/bench_replay_report.h"
@@ -43,6 +45,7 @@ struct compat_dir_entry {
 };
 
 static int command_check_transcript(const char *);
+static int command_check_ax25_timer_replay(const char *);
 static int command_check_bench_pack(const char *);
 static int command_check_bench_expected(const char *);
 static int command_check_observation(const char *);
@@ -74,6 +77,8 @@ static int command_manual_workspace_init(const char *);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
+static int command_replay_ax25_timer_dir(const char *);
+static int command_replay_ax25_timer(const char *);
 static int command_replay_bench_pack(const char *);
 static int command_replay_bench_diagnostics(const char *);
 static int command_replay_bench_diagnostics_dir(const char *);
@@ -82,6 +87,7 @@ static int command_replay_capture(const char *);
 static int command_replay_capture_dir(const char *);
 static int command_replay_transcript(const char *);
 static int command_report_transcript(const char *);
+static int command_ax25_timer_replay_report(const char *);
 static int command_requirements_coverage(const char *, const char *);
 static int command_requirements_report(const char *);
 static int command_risk_report(const char *);
@@ -93,6 +99,7 @@ static int compare_entries(const void *, const void *);
 static void date_today(char *, size_t);
 static int has_transcript_suffix(const char *);
 static int has_capture_suffix(const char *);
+static int has_replay_suffix(const char *);
 static int decode_capture_file(const char *, struct kn_compat_packet_capture *,
 	struct kn_compat_packet_decode *);
 static enum kn_compat_observe_mode mode_from_text(const char *);
@@ -143,6 +150,8 @@ main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "check-transcript") == 0 && argc == 3)
 		return command_check_transcript(argv[2]);
+	if (strcmp(argv[1], "check-ax25-timer-replay") == 0 && argc == 3)
+		return command_check_ax25_timer_replay(argv[2]);
 	if (strcmp(argv[1], "check-bench-pack") == 0 && argc == 3)
 		return command_check_bench_pack(argv[2]);
 	if (strcmp(argv[1], "check-bench-expected") == 0 && argc == 3)
@@ -213,6 +222,10 @@ main(int argc, char *argv[])
 		return command_observe_tcp(argc, argv);
 	if (strcmp(argv[1], "replay-transcript") == 0 && argc == 3)
 		return command_replay_transcript(argv[2]);
+	if (strcmp(argv[1], "run-ax25-timer-replay") == 0 && argc == 3)
+		return command_replay_ax25_timer(argv[2]);
+	if (strcmp(argv[1], "run-ax25-timer-replay-dir") == 0 && argc == 3)
+		return command_replay_ax25_timer_dir(argv[2]);
 	if (strcmp(argv[1], "replay-capture") == 0 && argc == 3)
 		return command_replay_capture(argv[2]);
 	if (strcmp(argv[1], "replay-capture-dir") == 0 && argc == 3)
@@ -230,6 +243,8 @@ main(int argc, char *argv[])
 		return command_replay_dir(argv[2]);
 	if (strcmp(argv[1], "report-transcript") == 0 && argc == 3)
 		return command_report_transcript(argv[2]);
+	if (strcmp(argv[1], "ax25-timer-replay-report") == 0 && argc == 3)
+		return command_ax25_timer_replay_report(argv[2]);
 	if (strcmp(argv[1], "requirements-coverage") == 0 && argc == 4)
 		return command_requirements_coverage(argv[2], argv[3]);
 	if (strcmp(argv[1], "requirements-report") == 0 && argc == 3)
@@ -239,6 +254,31 @@ main(int argc, char *argv[])
 
 	usage();
 	return 1;
+}
+
+static int
+command_ax25_timer_replay_report(const char *path)
+{
+	struct kn_ax25_timer_replay_result result;
+	struct kn_ax25_timer_replay_error_info error;
+	char report[KN_AX25_TIMER_REPLAY_REPORT_MAX];
+	enum kn_ax25_timer_replay_error rc;
+
+	rc = kn_ax25_timer_replay_run_file(path, &result, &error);
+	if (rc != KN_AX25_TIMER_REPLAY_OK &&
+	    rc != KN_AX25_TIMER_REPLAY_ERR_MISMATCH) {
+		fprintf(stderr, "ERR ax25-timer-replay path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_timer_replay_error_name(rc),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	if (kn_ax25_timer_replay_report_format(&result, report,
+	    sizeof(report)) != KN_AX25_TIMER_REPLAY_REPORT_OK)
+		return 1;
+	printf("%s", report);
+	return result.pass != 0 ? 0 : 1;
 }
 
 static int
@@ -295,6 +335,26 @@ command_bench_pack_report(const char *path)
 	    sizeof(report)) != KN_COMPAT_BENCH_OK)
 		return 1;
 	printf("%s", report);
+	return 0;
+}
+
+static int
+command_check_ax25_timer_replay(const char *path)
+{
+	struct kn_ax25_timer_replay_script script;
+	struct kn_ax25_timer_replay_error_info error;
+
+	if (kn_ax25_timer_replay_script_parse_file(path, &script, &error) !=
+	    KN_AX25_TIMER_REPLAY_OK) {
+		fprintf(stderr, "ERR ax25-timer-replay path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_timer_replay_error_name(error.error),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	printf("OK ax25-timer-replay=%s commands=%llu\n", script.name,
+	    (unsigned long long)script.command_count);
 	return 0;
 }
 
@@ -1090,6 +1150,82 @@ command_risk_report(const char *path)
 }
 
 static int
+command_replay_ax25_timer(const char *path)
+{
+	struct kn_ax25_timer_replay_result result;
+	struct kn_ax25_timer_replay_error_info error;
+	char report[KN_AX25_TIMER_REPLAY_REPORT_MAX];
+	enum kn_ax25_timer_replay_error rc;
+
+	rc = kn_ax25_timer_replay_run_file(path, &result, &error);
+	if (rc != KN_AX25_TIMER_REPLAY_OK &&
+	    rc != KN_AX25_TIMER_REPLAY_ERR_MISMATCH) {
+		fprintf(stderr, "ERR ax25-timer-replay path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_timer_replay_error_name(rc),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	if (kn_ax25_timer_replay_report_format(&result, report,
+	    sizeof(report)) != KN_AX25_TIMER_REPLAY_REPORT_OK)
+		return 1;
+	printf("%s", report);
+	return result.pass != 0 && result.tx_writes_observed == 0 ? 0 : 1;
+}
+
+static int
+command_replay_ax25_timer_dir(const char *path)
+{
+	struct compat_dir_entry entries[COMPAT_DIR_MAX];
+	DIR *dir;
+	struct dirent *entry;
+	size_t count;
+	size_t i;
+	int failed;
+	int needed;
+
+	dir = opendir(path);
+	if (dir == NULL) {
+		fprintf(stderr, "ERR open-dir path=%s\n", path);
+		return 1;
+	}
+	count = 0;
+	while ((entry = readdir(dir)) != NULL) {
+		if (has_replay_suffix(entry->d_name) == 0)
+			continue;
+		if (count >= COMPAT_DIR_MAX) {
+			closedir(dir);
+			fprintf(stderr, "ERR too-many-replays\n");
+			return 1;
+		}
+		needed = snprintf(entries[count].path,
+		    sizeof(entries[count].path), "%s/%s", path,
+		    entry->d_name);
+		if (needed < 0 ||
+		    (size_t)needed >= sizeof(entries[count].path)) {
+			closedir(dir);
+			fprintf(stderr, "ERR path-too-long\n");
+			return 1;
+		}
+		count++;
+	}
+	closedir(dir);
+	qsort(entries, count, sizeof(entries[0]), compare_entries);
+	failed = 0;
+	for (i = 0; i < count; i++) {
+		if (command_replay_ax25_timer(entries[i].path) != 0)
+			failed = 1;
+	}
+	if (count == 0) {
+		fprintf(stderr, "ERR no-replays\n");
+		return 1;
+	}
+
+	return failed;
+}
+
+static int
 command_replay_dir(const char *path)
 {
 	struct compat_dir_entry entries[COMPAT_DIR_MAX];
@@ -1539,6 +1675,23 @@ has_capture_suffix(const char *name)
 }
 
 static int
+has_replay_suffix(const char *name)
+{
+	const char suffix[] = ".replay";
+	size_t name_len;
+	size_t suffix_len;
+
+	if (name == NULL)
+		return 0;
+	name_len = strlen(name);
+	suffix_len = strlen(suffix);
+	if (name_len < suffix_len)
+		return 0;
+
+	return strcmp(name + name_len - suffix_len, suffix) == 0 ? 1 : 0;
+}
+
+static int
 decode_capture_file(const char *path, struct kn_compat_packet_capture *capture,
 	struct kn_compat_packet_decode *decode)
 {
@@ -1829,6 +1982,7 @@ usage(void)
 {
 	fprintf(stderr,
 	    "usage: kilonode-compat check-transcript PATH\n"
+	    "       kilonode-compat check-ax25-timer-replay PATH\n"
 	    "       kilonode-compat check-bench-pack PATH\n"
 	    "       kilonode-compat check-bench-expected PATH\n"
 	    "       kilonode-compat check-observation PATH\n"
@@ -1857,6 +2011,9 @@ usage(void)
 	    "       kilonode-compat replay-pack PATH\n"
 	    "       kilonode-compat compare-pack-observations PATH\n"
 	    "       kilonode-compat replay-transcript PATH\n"
+	    "       kilonode-compat run-ax25-timer-replay PATH\n"
+	    "       kilonode-compat run-ax25-timer-replay-dir PATH\n"
+	    "       kilonode-compat ax25-timer-replay-report PATH\n"
 	    "       kilonode-compat replay-dir PATH\n"
 	    "       kilonode-compat report-transcript PATH\n"
 	    "       kilonode-compat requirements-coverage REQUIREMENTS PACK\n"

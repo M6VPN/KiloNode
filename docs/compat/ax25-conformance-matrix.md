@@ -64,6 +64,12 @@
 | N2 retry accounting            | implemented | Bounded retry helper covers reset, increment, under-limit, and exhaustion checks. |
 | Timer expiry event mapping     | partial     | T1 and T3 map to state-machine timeout events. T2 remains a planned placeholder. |
 | Scheduler scaffold             | implemented | Offline scheduler applies timer/retry action intents and processes injected expiries. |
+| Offline timer-driven diagnostics | implemented | Replay scripts drive synthetic events, injected time, scheduler expiry, state transitions, and expectations. |
+| T1 timeout replay              | implemented | Fixtures cover connect retry, disconnect retry, and connection exhaustion diagnostics. |
+| T1 retry exhaustion replay     | implemented | Fixture reaches N2 exhaustion and verifies disconnected/error diagnostics. |
+| T3 timeout replay              | implemented | Fixture verifies connected T3 expiry produces RR diagnostic action and plan. |
+| T2 placeholder replay          | scaffold    | Fixture verifies T2 placeholder expiry is reported as planned. Delayed ACK is not implemented. |
+| N2 replay                      | implemented | Replay fixtures assert retry increments and retry count state. |
 | Timers                         | partial     | Logical timers exist for tests. No daemon scheduler is started. |
 | Retries                        | partial     | N2 retry count is used by isolated timeout transitions and scheduler diagnostics. |
 | Modulo 8                       | implemented | Basic sequence increment, receive accounting, and ack handling are tested. |

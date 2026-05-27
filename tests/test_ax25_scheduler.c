@@ -17,6 +17,7 @@ static int test_format(void);
 static int test_init_empty(void);
 static int test_no_tx_writes_for_send_actions(void);
 static int test_process_t1_expiry(void);
+static int test_retry_exhaustion_counter(void);
 static int test_t2_placeholder(void);
 static int test_t3_expiry_event(void);
 
@@ -32,6 +33,8 @@ main(void)
 	if (test_no_tx_writes_for_send_actions() != 0)
 		return 1;
 	if (test_process_t1_expiry() != 0)
+		return 1;
+	if (test_retry_exhaustion_counter() != 0)
 		return 1;
 	if (test_t3_expiry_event() != 0)
 		return 1;
@@ -206,6 +209,27 @@ test_process_t1_expiry(void)
 
 	return kn_ax25_timer_queue_count_running(&scheduler.queue) == 1 &&
 	    scheduler.counters.tx_queue_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_retry_exhaustion_counter(void)
+{
+	struct kn_ax25_scheduler scheduler;
+	struct kn_ax25_params params;
+	struct kn_ax25_action_list actions;
+
+	kn_ax25_scheduler_init(&scheduler);
+	enabled_params(&params);
+	params.n2_retry_count = 1;
+	kn_ax25_action_list_clear(&actions);
+	if (kn_ax25_action_list_append(&actions,
+	    KN_AX25_ACTION_INCREMENT_RETRY_COUNT) != KN_AX25_ACTION_OK)
+		return 1;
+	if (kn_ax25_scheduler_apply_actions(&scheduler, 9, &params,
+	    &actions, 0) != KN_AX25_SCHEDULER_OK)
+		return 1;
+
+	return scheduler.counters.retries_exhausted == 1 ? 0 : 1;
 }
 
 static int

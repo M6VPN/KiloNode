@@ -1,0 +1,18 @@
+# KiloNode AX.25 timer replay v1
+name connected-t3-poll
+node M6VPN-1
+remote N0CALL
+port kiss0
+now 0
+params modulo=8 window=1 t1=3000 t2=1000 t3=5000 n2=3
+event rx-sabm
+expect state=connected
+expect action start-t3
+expect timer-running T3 true
+advance 5000
+process-expired
+expect state=connected
+expect action send-rr
+expect plan RR
+expect timer-running T3 false
+expect tx-writes 0

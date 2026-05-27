@@ -14,6 +14,7 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat check-bench-expected tests/fixtures/bench/ax25-diag-replay.expected
 ./build/kilonode-compat replay-bench-diagnostics tests/fixtures/bench/manifest.bench
+./build/kilonode-compat run-ax25-timer-replay-dir tests/fixtures/ax25-timer
 manual_workspace="/tmp/kilonode-manual-captures-test-$$"
 ./build/kilonode-compat manual-workspace-init "$manual_workspace"
 ./build/kilonode-compat manual-workspace-check "$manual_workspace"
