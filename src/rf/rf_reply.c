@@ -8,6 +8,8 @@
 
 #include "kilonode/ax25.h"
 #include "kilonode/callsign.h"
+#include "kilonode/node_command_context.h"
+#include "kilonode/node_command_dispatch.h"
 #include "kilonode/rf_reply.h"
 #include "kilonode/tx_frame.h"
 #include "kilonode/tx_policy.h"
@@ -21,12 +23,6 @@ static enum kn_rf_reply_error gate_reply(const struct kn_tx_queue *,
 static const struct kn_port_stats *stats_port_find(const struct kn_port_stats *,
 	size_t, const char *);
 static void reason_set(char *, size_t, const char *);
-static enum kn_rf_reply_error reply_heard(const struct kn_heard_entry *,
-	size_t, char *, size_t);
-static enum kn_rf_reply_error reply_ports(const struct kn_port_stats *, size_t,
-	char *, size_t);
-static enum kn_rf_reply_error reply_stats(const struct kn_daemon_stats *,
-	const struct kn_tx_queue *, char *, size_t);
 
 enum kn_rf_reply_error
 kn_rf_reply_format(const struct kn_rf_command_event *event,
@@ -35,44 +31,35 @@ kn_rf_reply_format(const struct kn_rf_command_event *event,
 	const struct kn_heard_entry *heard, size_t heard_count, char *buf,
 	size_t bufsiz)
 {
-	char node[KN_CALLSIGN_MAX + 4];
-	int needed;
+	struct kn_node_command_context context;
+	struct kn_node_command_dispatch_result result;
+	const char *input;
+	size_t input_len;
+	enum kn_node_command_dispatch_status rc;
 
 	if (event == NULL || config == NULL || buf == NULL || bufsiz == 0)
 		return KN_RF_REPLY_ERR_INVALID_ARGUMENT;
 
-	switch (event->command) {
-	case KN_RF_COMMAND_HELP:
-		needed = snprintf(buf, bufsiz,
-		    "KiloNode commands: HELP INFO PORTS HEARD STATS PING");
-		break;
-	case KN_RF_COMMAND_INFO:
-		if (kn_callsign_format(&config->node.callsign, node,
-		    sizeof(node)) != 0)
-			return KN_RF_REPLY_ERR_INVALID_ARGUMENT;
-		needed = snprintf(buf, bufsiz, "KiloNode call=%s alias=%s",
-		    node, config->node.alias[0] == '\0' ? "-" :
-		    config->node.alias);
-		break;
-	case KN_RF_COMMAND_PORTS:
-		return reply_ports(ports, port_count, buf, bufsiz);
-	case KN_RF_COMMAND_HEARD:
-		return reply_heard(heard, heard_count, buf, bufsiz);
-	case KN_RF_COMMAND_STATS:
-		return reply_stats(stats, NULL, buf, bufsiz);
-	case KN_RF_COMMAND_PING:
-		needed = snprintf(buf, bufsiz, "PONG");
-		break;
-	case KN_RF_COMMAND_UNKNOWN:
-		needed = snprintf(buf, bufsiz, "ERR unknown command");
-		break;
-	default:
-		needed = snprintf(buf, bufsiz, "ERR command failed");
-		break;
-	}
-
-	return needed >= 0 && (size_t)needed < bufsiz ?
-	    KN_RF_REPLY_OK : KN_RF_REPLY_ERR_BUFFER;
+	kn_node_command_context_clear(&context);
+	context.node = &config->node;
+	context.daemon = stats;
+	context.ports = ports;
+	context.port_count = port_count;
+	context.heard = heard;
+	context.heard_count = heard_count;
+	context.output_limit = bufsiz;
+	input = event->raw[0] != '\0' ? event->raw :
+	    kn_rf_command_name_string(event->command);
+	input_len = strlen(input);
+	rc = kn_node_command_dispatch(KN_NODE_COMMAND_CONTEXT_RF_UI, &context,
+	    (const uint8_t *)input, input_len,
+	    config->rf_command.max_command_bytes, &result);
+	if (rc == KN_NODE_COMMAND_DISPATCH_INTERNAL_ERROR)
+		return KN_RF_REPLY_ERR_BUFFER;
+	if (result.output_len >= bufsiz)
+		return KN_RF_REPLY_ERR_BUFFER;
+	memcpy(buf, result.output, result.output_len + 1);
+	return KN_RF_REPLY_OK;
 }
 
 enum kn_rf_reply_error
@@ -241,83 +228,4 @@ reason_set(char *reason, size_t reason_len, const char *text)
 	needed = snprintf(reason, reason_len, "%s", text == NULL ? "" : text);
 	if (needed < 0 || (size_t)needed >= reason_len)
 		reason[0] = '\0';
-}
-
-static enum kn_rf_reply_error
-reply_heard(const struct kn_heard_entry *heard, size_t heard_count, char *buf,
-	size_t bufsiz)
-{
-	char call[KN_CALLSIGN_MAX + 4];
-	size_t i;
-	size_t limit;
-	size_t offset;
-	int needed;
-
-	if (buf == NULL || bufsiz == 0)
-		return KN_RF_REPLY_ERR_INVALID_ARGUMENT;
-
-	needed = snprintf(buf, bufsiz, "HEARD count=%llu",
-	    (unsigned long long)heard_count);
-	if (needed < 0 || (size_t)needed >= bufsiz)
-		return KN_RF_REPLY_ERR_BUFFER;
-	offset = (size_t)needed;
-	limit = heard_count < 4 ? heard_count : 4;
-	for (i = 0; heard != NULL && i < limit; i++) {
-		if (kn_callsign_format(&heard[i].source, call,
-		    sizeof(call)) != 0)
-			continue;
-		needed = snprintf(buf + offset, bufsiz - offset, " %s", call);
-		if (needed < 0 || (size_t)needed >= bufsiz - offset)
-			return KN_RF_REPLY_ERR_BUFFER;
-		offset += (size_t)needed;
-	}
-
-	return KN_RF_REPLY_OK;
-}
-
-static enum kn_rf_reply_error
-reply_ports(const struct kn_port_stats *ports, size_t port_count, char *buf,
-	size_t bufsiz)
-{
-	size_t i;
-	size_t offset;
-	int needed;
-
-	if (buf == NULL || bufsiz == 0)
-		return KN_RF_REPLY_ERR_INVALID_ARGUMENT;
-
-	needed = snprintf(buf, bufsiz, "PORTS count=%llu",
-	    (unsigned long long)port_count);
-	if (needed < 0 || (size_t)needed >= bufsiz)
-		return KN_RF_REPLY_ERR_BUFFER;
-	offset = (size_t)needed;
-	for (i = 0; ports != NULL && i < port_count && i < 4; i++) {
-		needed = snprintf(buf + offset, bufsiz - offset, " %s:%s",
-		    ports[i].name, ports[i].open != 0 ? "open" : "closed");
-		if (needed < 0 || (size_t)needed >= bufsiz - offset)
-			return KN_RF_REPLY_ERR_BUFFER;
-		offset += (size_t)needed;
-	}
-
-	return KN_RF_REPLY_OK;
-}
-
-static enum kn_rf_reply_error
-reply_stats(const struct kn_daemon_stats *stats, const struct kn_tx_queue *queue,
-	char *buf, size_t bufsiz)
-{
-	int needed;
-
-	(void)queue;
-	if (stats == NULL || buf == NULL || bufsiz == 0)
-		return KN_RF_REPLY_ERR_INVALID_ARGUMENT;
-
-	needed = snprintf(buf, bufsiz,
-	    "STATS rx=%llu ax25=%llu malformed=%llu",
-	    (unsigned long long)stats->kiss_frames_received,
-	    (unsigned long long)stats->ax25_frames_decoded,
-	    (unsigned long long)(stats->malformed_kiss_frames +
-	    stats->malformed_ax25_frames));
-	return needed >= 0 && (size_t)needed < bufsiz ?
-	    KN_RF_REPLY_OK : KN_RF_REPLY_ERR_BUFFER;
 }

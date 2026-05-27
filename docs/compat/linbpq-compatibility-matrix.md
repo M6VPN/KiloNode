@@ -88,6 +88,13 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Command profile planner | tested | External behaviour categories only, no parser logic |
 | Compatibility risk register | tested | Default clean-room and prerequisite risk report |
 | Generated node plan from observations | tested | Writes conservative requirements and profiles |
+| KiloNode-native command dispatcher | tested | Shared runtime dispatcher for native commands |
+| Local/RF command profile sharing | partial | Local shell and RF UI share native profile definitions |
+| BPQ/LinBPQ command aliases | planned | Not implemented |
+| BPQ/LinBPQ command output compatibility | planned | Not implemented |
+| Connected-mode command context | planned | Not implemented |
+| NET/ROM node command context | planned | Not implemented |
+| RF BBS command context | planned | Not implemented |
 | Manual LinBPQ node observations | planned | Future explicit black-box captures |
 | Live KISS capture | planned | Not implemented |
 | Live AXIP capture | planned | Not implemented |

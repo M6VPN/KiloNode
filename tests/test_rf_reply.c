@@ -12,6 +12,7 @@ static void config_base(struct kn_config *);
 static void event_base(struct kn_rf_command_event *);
 static void port_base(struct kn_port_stats *);
 static int test_format(void);
+static int test_format_bbs_forbidden(void);
 static int test_reply_blocked(void);
 static int test_reply_disabled(void);
 static int test_reply_queues(void);
@@ -20,6 +21,8 @@ int
 main(void)
 {
 	if (test_format() != 0)
+		return 1;
+	if (test_format_bbs_forbidden() != 0)
 		return 1;
 	if (test_reply_disabled() != 0)
 		return 1;
@@ -70,6 +73,29 @@ port_base(struct kn_port_stats *port)
 	port->enabled = 1;
 	port->open = 1;
 	port->tx_enabled = 1;
+}
+
+static int
+test_format_bbs_forbidden(void)
+{
+	struct kn_config config;
+	struct kn_daemon_stats stats;
+	struct kn_rf_command_event event;
+	struct kn_port_stats port;
+	char reply[64];
+
+	config_base(&config);
+	kn_daemon_stats_init(&stats, 1, 1);
+	event_base(&event);
+	port_base(&port);
+	event.command = KN_RF_COMMAND_UNKNOWN;
+	event.status = KN_RF_COMMAND_STATUS_UNKNOWN;
+	(void)snprintf(event.raw, sizeof(event.raw), "BBS");
+	if (kn_rf_reply_format(&event, &config, &stats, &port, 1, NULL, 0,
+	    reply, sizeof(reply)) != KN_RF_REPLY_OK)
+		return 1;
+
+	return strcmp(reply, "ERR command unavailable") == 0 ? 0 : 1;
 }
 
 static int

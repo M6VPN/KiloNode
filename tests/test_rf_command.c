@@ -83,6 +83,7 @@ test_parse_invalid(void)
 {
 	const uint8_t empty[] = "";
 	const uint8_t unknown[] = "NOPE";
+	const uint8_t bbs[] = "BBS";
 	const uint8_t args[] = "PING NOW";
 	const uint8_t binary[] = { 'P', 0x01, 'G' };
 	enum kn_rf_command_name command;
@@ -94,6 +95,10 @@ test_parse_invalid(void)
 	    status != KN_RF_COMMAND_STATUS_EMPTY)
 		return 1;
 	if (kn_rf_command_parse(unknown, 4, 128, &command, raw, sizeof(raw),
+	    &status) != KN_RF_COMMAND_OK ||
+	    status != KN_RF_COMMAND_STATUS_UNKNOWN)
+		return 1;
+	if (kn_rf_command_parse(bbs, 3, 128, &command, raw, sizeof(raw),
 	    &status) != KN_RF_COMMAND_OK ||
 	    status != KN_RF_COMMAND_STATUS_UNKNOWN)
 		return 1;

@@ -3,12 +3,13 @@
 
 #include <sys/types.h>
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "kilonode/ax25.h"
 #include "kilonode/callsign.h"
+#include "kilonode/node_command.h"
+#include "kilonode/node_command_profile.h"
 #include "kilonode/rf_command.h"
 
 static uint8_t destination_allowed(const struct kn_config *,
@@ -212,11 +213,10 @@ kn_rf_command_parse(const uint8_t *payload, size_t payload_len,
 	size_t max_command_bytes, enum kn_rf_command_name *command, char *raw,
 	size_t raw_len, enum kn_rf_command_status *status)
 {
-	char text[KN_RF_COMMAND_RAW_MAX];
-	size_t start;
-	size_t end;
-	size_t len;
-	size_t i;
+	struct kn_node_command_input parsed;
+	enum kn_node_command_error parse_rc;
+	enum kn_node_command_id command_id;
+	int needed;
 
 	if (payload == NULL && payload_len > 0)
 		return KN_RF_COMMAND_ERR_INVALID_ARGUMENT;
@@ -230,57 +230,42 @@ kn_rf_command_parse(const uint8_t *payload, size_t payload_len,
 	*status = KN_RF_COMMAND_STATUS_IGNORED;
 	raw[0] = '\0';
 
-	if (payload_len > max_command_bytes) {
+	parse_rc = kn_node_command_parse(payload, payload_len,
+	    max_command_bytes, &parsed);
+	if (parse_rc == KN_NODE_COMMAND_ERR_OVERLONG) {
 		*status = KN_RF_COMMAND_STATUS_OVERLONG;
 		return KN_RF_COMMAND_OK;
 	}
-
-	start = 0;
-	while (start < payload_len &&
-	    (payload[start] == ' ' || payload[start] == '\t'))
-		start++;
-	end = payload_len;
-	while (end > start &&
-	    (payload[end - 1] == ' ' || payload[end - 1] == '\t' ||
-	    payload[end - 1] == '\r' || payload[end - 1] == '\n'))
-		end--;
-	len = end - start;
-	if (len == 0) {
+	if (parse_rc == KN_NODE_COMMAND_ERR_EMPTY) {
 		*status = KN_RF_COMMAND_STATUS_EMPTY;
 		return KN_RF_COMMAND_OK;
 	}
-	if (len >= sizeof(text) || len >= raw_len)
+	if (parse_rc == KN_NODE_COMMAND_ERR_CONTROL) {
+		*status = KN_RF_COMMAND_STATUS_BINARY;
+		return raw_copy(payload, payload_len, raw, raw_len);
+	}
+	if (parse_rc != KN_NODE_COMMAND_OK)
 		return KN_RF_COMMAND_ERR_BUFFER;
-
-	for (i = 0; i < len; i++) {
-		if (payload[start + i] < 0x20 || payload[start + i] > 0x7e) {
-			*status = KN_RF_COMMAND_STATUS_BINARY;
-			return raw_copy(payload + start, len, raw, raw_len);
-		}
-		text[i] = (char)toupper((unsigned char)payload[start + i]);
-		raw[i] = (char)payload[start + i];
-	}
-	text[len] = '\0';
-	raw[len] = '\0';
-
-	for (i = 0; text[i] != '\0'; i++) {
-		if (text[i] == ' ' || text[i] == '\t') {
-			*status = KN_RF_COMMAND_STATUS_ARGUMENTS;
-			return KN_RF_COMMAND_OK;
-		}
+	needed = snprintf(raw, raw_len, "%s", parsed.preview);
+	if (needed < 0 || (size_t)needed >= raw_len)
+		return KN_RF_COMMAND_ERR_BUFFER;
+	if (parsed.args_len != 0) {
+		*status = KN_RF_COMMAND_STATUS_ARGUMENTS;
+		return KN_RF_COMMAND_OK;
 	}
 
-	if (strcmp(text, "HELP") == 0)
+	command_id = kn_node_command_id_from_name(parsed.command);
+	if (command_id == KN_NODE_COMMAND_ID_HELP)
 		*command = KN_RF_COMMAND_HELP;
-	else if (strcmp(text, "INFO") == 0)
+	else if (command_id == KN_NODE_COMMAND_ID_INFO)
 		*command = KN_RF_COMMAND_INFO;
-	else if (strcmp(text, "PORTS") == 0)
+	else if (command_id == KN_NODE_COMMAND_ID_PORTS)
 		*command = KN_RF_COMMAND_PORTS;
-	else if (strcmp(text, "HEARD") == 0)
+	else if (command_id == KN_NODE_COMMAND_ID_HEARD)
 		*command = KN_RF_COMMAND_HEARD;
-	else if (strcmp(text, "STATS") == 0)
+	else if (command_id == KN_NODE_COMMAND_ID_STATS)
 		*command = KN_RF_COMMAND_STATS;
-	else if (strcmp(text, "PING") == 0)
+	else if (command_id == KN_NODE_COMMAND_ID_PING)
 		*command = KN_RF_COMMAND_PING;
 	else {
 		*status = KN_RF_COMMAND_STATUS_UNKNOWN;

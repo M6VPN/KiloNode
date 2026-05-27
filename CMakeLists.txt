@@ -60,6 +60,9 @@ add_library(packetcore STATIC
 	src/core/stats.c
 	src/daemon/daemon.c
 	src/monitor/monitor.c
+	src/node/node_command.c
+	src/node/node_command_dispatch.c
+	src/node/node_command_profile.c
 	src/node/node_shell.c
 	src/proto/ax25.c
 	src/proto/kiss.c
@@ -310,6 +313,21 @@ add_executable(test_daemon_rf_command tests/test_daemon_rf_command.c)
 target_link_libraries(test_daemon_rf_command PRIVATE packetcore)
 kilonode_target_defaults(test_daemon_rf_command)
 add_test(NAME daemon_rf_command COMMAND test_daemon_rf_command)
+
+add_executable(test_node_command tests/test_node_command.c)
+target_link_libraries(test_node_command PRIVATE packetcore)
+kilonode_target_defaults(test_node_command)
+add_test(NAME node_command COMMAND test_node_command)
+
+add_executable(test_node_command_profile tests/test_node_command_profile.c)
+target_link_libraries(test_node_command_profile PRIVATE packetcore)
+kilonode_target_defaults(test_node_command_profile)
+add_test(NAME node_command_profile COMMAND test_node_command_profile)
+
+add_executable(test_node_command_dispatch tests/test_node_command_dispatch.c)
+target_link_libraries(test_node_command_dispatch PRIVATE packetcore)
+kilonode_target_defaults(test_node_command_dispatch)
+add_test(NAME node_command_dispatch COMMAND test_node_command_dispatch)
 
 add_executable(test_tx_frame tests/test_tx_frame.c)
 target_link_libraries(test_tx_frame PRIVATE packetcore)

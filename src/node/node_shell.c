@@ -7,7 +7,6 @@
 #include <sys/types.h>
 
 #include <arpa/inet.h>
-#include <ctype.h>
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -22,11 +21,13 @@
 #include "kilonode/callsign.h"
 #include "kilonode/config.h"
 #include "kilonode/heard.h"
+#include "kilonode/node_command.h"
+#include "kilonode/node_command_context.h"
+#include "kilonode/node_command_dispatch.h"
+#include "kilonode/node_command_profile.h"
 #include "kilonode/node_shell.h"
 #include "kilonode/session_limits.h"
 #include "kilonode/stats.h"
-
-#define KILONODE_VERSION "0.1.0"
 
 static enum kn_node_shell_error append_format(char *, size_t, size_t *,
 	const char *, ...);
@@ -38,16 +39,9 @@ static void close_fd(int *);
 static enum kn_node_shell_error command_bbs_enter(
 	struct kn_node_shell_session *, const char *,
 	const struct kn_node_shell_snapshot *, char *, size_t);
-static enum kn_node_shell_error command_heard(const char *,
-	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
-static enum kn_node_shell_error command_info(
-	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
-static enum kn_node_shell_error command_ports(
-	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
-static enum kn_node_shell_error command_stats(
-	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
-static enum kn_node_shell_error command_users(
-	const struct kn_node_shell_snapshot *, char *, size_t, size_t *);
+static enum kn_node_shell_error context_from_snapshot(
+	const struct kn_node_shell_snapshot *, struct kn_node_command_context *,
+	struct kn_node_command_user *, size_t);
 static void remote_string(const struct sockaddr_storage *, char *, size_t);
 static enum kn_node_shell_error send_greeting(int, const char *);
 static enum kn_node_shell_error socket_open(const struct kn_config_shell *,
@@ -62,13 +56,11 @@ append_format(char *buf, size_t bufsiz, size_t *offset, const char *fmt, ...)
 
 	if (*offset >= bufsiz)
 		return KN_NODE_SHELL_ERR_IO;
-
 	va_start(args, fmt);
 	needed = vsnprintf(buf + *offset, bufsiz - *offset, fmt, args);
 	va_end(args);
 	if (needed < 0 || (size_t)needed >= bufsiz - *offset)
 		return KN_NODE_SHELL_ERR_IO;
-
 	*offset += (size_t)needed;
 	return KN_NODE_SHELL_OK;
 }
@@ -76,7 +68,14 @@ append_format(char *buf, size_t bufsiz, size_t *offset, const char *fmt, ...)
 static enum kn_node_shell_error
 append_prompt(char *buf, size_t bufsiz, size_t *offset)
 {
-	return append_format(buf, bufsiz, offset, "%s", KN_NODE_SHELL_PROMPT);
+	int needed;
+
+	needed = snprintf(buf + *offset, bufsiz - *offset, "%s",
+	    KN_NODE_SHELL_PROMPT);
+	if (needed < 0 || (size_t)needed >= bufsiz - *offset)
+		return KN_NODE_SHELL_ERR_IO;
+	*offset += (size_t)needed;
+	return KN_NODE_SHELL_OK;
 }
 
 static enum kn_node_shell_error
@@ -174,165 +173,39 @@ command_bbs_enter(struct kn_node_shell_session *session, const char *args,
 }
 
 static enum kn_node_shell_error
-command_heard(const char *args, const struct kn_node_shell_snapshot *snapshot,
-	char *buf, size_t bufsiz, size_t *offset)
-{
-	char call[KN_CALLSIGN_MAX + 4];
-	char dest[KN_CALLSIGN_MAX + 4];
-	const struct kn_heard_entry *entry;
-	const char *port_filter;
-	char key[6];
-	size_t count;
-	size_t i;
-	enum kn_node_shell_error rc;
-
-	port_filter = NULL;
-	if (args != NULL && args[0] != '\0') {
-		for (i = 0; i < 5 && args[i] != '\0'; i++)
-			key[i] = (char)toupper((unsigned char)args[i]);
-		key[i] = '\0';
-		if (strcmp(key, "PORT ") != 0 || args[5] == '\0')
-			return append_format(buf, bufsiz, offset,
-			    "ERR invalid-heard-command\r\n");
-		port_filter = args + 5;
-	}
-
-	count = 0;
-	for (i = 0; i < snapshot->heard_count; i++) {
-		entry = &snapshot->heard[i];
-		if (port_filter == NULL ||
-		    strcmp(entry->port_name, port_filter) == 0)
-			count++;
-	}
-
-	rc = append_format(buf, bufsiz, offset, "OK HEARD count=%llu\r\n",
-	    (unsigned long long)count);
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-
-	for (i = 0; i < snapshot->heard_count; i++) {
-		entry = &snapshot->heard[i];
-		if (port_filter != NULL &&
-		    strcmp(entry->port_name, port_filter) != 0)
-			continue;
-		if (kn_heard_format_callsign(&entry->source, call,
-		    sizeof(call)) != 0)
-			(void)snprintf(call, sizeof(call), "-");
-		if (kn_heard_format_callsign(&entry->last_destination, dest,
-		    sizeof(dest)) != 0)
-			(void)snprintf(dest, sizeof(dest), "-");
-		rc = append_format(buf, bufsiz, offset,
-		    "HEARD port=%s call=%s last_dest=%s frames=%llu\r\n",
-		    entry->port_name, call, dest,
-		    (unsigned long long)entry->frame_count);
-		if (rc != KN_NODE_SHELL_OK)
-			return rc;
-	}
-
-	return append_format(buf, bufsiz, offset, "END\r\n");
-}
-
-static enum kn_node_shell_error
-command_info(const struct kn_node_shell_snapshot *snapshot, char *buf,
-	size_t bufsiz, size_t *offset)
-{
-	char call[KN_CALLSIGN_MAX + 4];
-	enum kn_node_shell_error rc;
-
-	if (kn_callsign_format(&snapshot->node->callsign, call,
-	    sizeof(call)) != 0)
-		(void)snprintf(call, sizeof(call), "-");
-
-	rc = append_format(buf, bufsiz, offset, "OK INFO call=%s alias=", call);
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-	if (snapshot->node->has_alias != 0)
-		rc = append_safe(buf, bufsiz, offset, snapshot->node->alias);
-	else
-		rc = append_format(buf, bufsiz, offset, "-");
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-	rc = append_format(buf, bufsiz, offset, " location=");
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-	if (snapshot->node->has_location != 0)
-		rc = append_safe(buf, bufsiz, offset, snapshot->node->location);
-	else
-		rc = append_format(buf, bufsiz, offset, "-");
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-
-	return append_format(buf, bufsiz, offset, " version=%s\r\n",
-	    KILONODE_VERSION);
-}
-
-static enum kn_node_shell_error
-command_ports(const struct kn_node_shell_snapshot *snapshot, char *buf,
-	size_t bufsiz, size_t *offset)
-{
-	const struct kn_port_stats *port;
-	size_t i;
-	enum kn_node_shell_error rc;
-
-	rc = append_format(buf, bufsiz, offset, "OK PORTS count=%llu\r\n",
-	    (unsigned long long)snapshot->port_count);
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-	for (i = 0; i < snapshot->port_count; i++) {
-		port = &snapshot->ports[i];
-		rc = append_format(buf, bufsiz, offset,
-		    "PORT name=%s type=%s enabled=%s open=%s\r\n",
-		    port->name, kn_stats_port_type_name(port->type),
-		    port->enabled != 0 ? "true" : "false",
-		    port->open != 0 ? "true" : "false");
-		if (rc != KN_NODE_SHELL_OK)
-			return rc;
-	}
-
-	return append_format(buf, bufsiz, offset, "END\r\n");
-}
-
-static enum kn_node_shell_error
-command_stats(const struct kn_node_shell_snapshot *snapshot, char *buf,
-	size_t bufsiz, size_t *offset)
-{
-	const struct kn_daemon_stats *stats;
-
-	stats = snapshot->daemon;
-	return append_format(buf, bufsiz, offset,
-	    "OK STATS rx_bytes=%llu kiss_frames=%llu ax25_frames=%llu "
-	    "malformed_kiss=%llu malformed_ax25=%llu\r\n",
-	    (unsigned long long)stats->bytes_received,
-	    (unsigned long long)stats->kiss_frames_received,
-	    (unsigned long long)stats->ax25_frames_decoded,
-	    (unsigned long long)stats->malformed_kiss_frames,
-	    (unsigned long long)stats->malformed_ax25_frames);
-}
-
-static enum kn_node_shell_error
-command_users(const struct kn_node_shell_snapshot *snapshot, char *buf,
-	size_t bufsiz, size_t *offset)
+context_from_snapshot(const struct kn_node_shell_snapshot *snapshot,
+	struct kn_node_command_context *context,
+	struct kn_node_command_user *users, size_t user_cap)
 {
 	const struct kn_node_shell_user *user;
 	size_t i;
-	enum kn_node_shell_error rc;
 
-	rc = append_format(buf, bufsiz, offset, "OK USERS count=%llu\r\n",
-	    (unsigned long long)snapshot->user_count);
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
-	for (i = 0; i < snapshot->user_count; i++) {
+	if (snapshot == NULL || context == NULL ||
+	    (snapshot->user_count > 0 && users == NULL))
+		return KN_NODE_SHELL_ERR_INVALID_ARGUMENT;
+	kn_node_command_context_clear(context);
+	context->node = snapshot->node;
+	context->daemon = snapshot->daemon;
+	context->ports = snapshot->ports;
+	context->port_count = snapshot->port_count;
+	context->heard = snapshot->heard;
+	context->heard_count = snapshot->heard_count;
+	context->output_limit = KN_NODE_SHELL_RESPONSE_MAX;
+	context->bbs_enabled = snapshot->bbs.enabled != 0 &&
+	    snapshot->bbs.store != NULL ? 1 : 0;
+	context->user_count = snapshot->user_count;
+	if (context->user_count > user_cap)
+		context->user_count = user_cap;
+	for (i = 0; i < context->user_count; i++) {
 		user = &snapshot->users[i];
-		rc = append_format(buf, bufsiz, offset,
-		    "USER remote=%s commands=%llu connected=%llu\r\n",
-		    user->remote,
-		    (unsigned long long)user->command_count,
-		    (unsigned long long)user->connected_at);
-		if (rc != KN_NODE_SHELL_OK)
-			return rc;
+		(void)snprintf(users[i].remote, sizeof(users[i].remote),
+		    "%s", user->remote);
+		users[i].connected_at = user->connected_at;
+		users[i].command_count = user->command_count;
 	}
+	context->users = users;
 
-	return append_format(buf, bufsiz, offset, "END\r\n");
+	return KN_NODE_SHELL_OK;
 }
 
 void
@@ -354,13 +227,12 @@ kn_node_shell_format_command(const char *line,
 	const struct kn_node_shell_snapshot *snapshot, char *out, size_t out_len,
 	uint8_t *close_session)
 {
-	char command[KN_NODE_SHELL_LINE_MAX];
-	char word[16];
-	const char *args;
-	size_t i;
+	struct kn_node_command_context context;
+	struct kn_node_command_user users[KN_NODE_SHELL_MAX_CLIENTS];
+	struct kn_node_command_dispatch_result result;
 	size_t len;
 	size_t offset;
-	enum kn_node_shell_error rc;
+	enum kn_node_command_dispatch_status dispatch_rc;
 
 	if (line == NULL || snapshot == NULL || snapshot->node == NULL ||
 	    snapshot->daemon == NULL || out == NULL || out_len == 0 ||
@@ -377,73 +249,39 @@ kn_node_shell_format_command(const char *line,
 		    "ERR command-too-long\r\n%s", KN_NODE_SHELL_PROMPT);
 		return KN_NODE_SHELL_OK;
 	}
-	if (len >= sizeof(command)) {
+	if (len >= KN_NODE_SHELL_LINE_MAX) {
 		(void)snprintf(out, out_len,
 		    "ERR line-too-long\r\n%s", KN_NODE_SHELL_PROMPT);
 		return KN_NODE_SHELL_OK;
 	}
 
-	while (*line == ' ' || *line == '\t')
-		line++;
-	len = strlen(line);
-	while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t'))
-		len--;
-	if (len == 0) {
-		(void)snprintf(out, out_len, "%s", KN_NODE_SHELL_PROMPT);
+	offset = 0;
+	if (context_from_snapshot(snapshot, &context, users,
+	    sizeof(users) / sizeof(users[0])) != KN_NODE_SHELL_OK)
+		return KN_NODE_SHELL_ERR_INVALID_ARGUMENT;
+	context.output_limit = out_len;
+	dispatch_rc = kn_node_command_dispatch(KN_NODE_COMMAND_CONTEXT_LOCAL,
+	    &context, (const uint8_t *)line, len, KN_NODE_SHELL_LINE_MAX - 1,
+	    &result);
+	if (dispatch_rc == KN_NODE_COMMAND_DISPATCH_OVERLONG) {
+		(void)snprintf(out, out_len,
+		    "ERR line-too-long\r\n%s", KN_NODE_SHELL_PROMPT);
 		return KN_NODE_SHELL_OK;
 	}
-
-	memcpy(command, line, len);
-	command[len] = '\0';
-	for (i = 0; command[i] != '\0'; i++) {
-		if ((unsigned char)command[i] < 0x20 ||
-		    (unsigned char)command[i] > 0x7e)
-			command[i] = '?';
+	if (dispatch_rc == KN_NODE_COMMAND_DISPATCH_CONTROL_CHARACTER) {
+		(void)snprintf(out, out_len,
+		    "ERR control-character\r\n%s", KN_NODE_SHELL_PROMPT);
+		return KN_NODE_SHELL_OK;
 	}
-
-	i = 0;
-	while (command[i] != '\0' && command[i] != ' ' &&
-	    command[i] != '\t' && i + 1 < sizeof(word)) {
-		word[i] = (char)toupper((unsigned char)command[i]);
-		i++;
-	}
-	word[i] = '\0';
-	args = command + i;
-	while (*args == ' ' || *args == '\t')
-		args++;
-
-	offset = 0;
-	if (strcmp(word, "HELP") == 0) {
-		if (snapshot->bbs.enabled != 0 && snapshot->bbs.store != NULL)
-			rc = append_format(out, out_len, &offset,
-			    "OK HELP HELP INFO PORTS HEARD USERS STATS BBS "
-			    "BYE QUIT\r\n");
-		else
-			rc = append_format(out, out_len, &offset,
-			    "OK HELP HELP INFO PORTS HEARD USERS STATS "
-			    "BBS(unavailable) BYE QUIT\r\n");
-	} else if (strcmp(word, "INFO") == 0)
-		rc = command_info(snapshot, out, out_len, &offset);
-	else if (strcmp(word, "PORTS") == 0)
-		rc = command_ports(snapshot, out, out_len, &offset);
-	else if (strcmp(word, "USERS") == 0)
-		rc = command_users(snapshot, out, out_len, &offset);
-	else if (strcmp(word, "STATS") == 0)
-		rc = command_stats(snapshot, out, out_len, &offset);
-	else if (strcmp(word, "HEARD") == 0) {
-		rc = command_heard(args, snapshot, out, out_len, &offset);
-	} else if (strcmp(word, "BBS") == 0) {
-		rc = append_format(out, out_len, &offset,
-		    "ERR use-session-command\r\n");
-	} else if (strcmp(word, "BYE") == 0 || strcmp(word, "QUIT") == 0) {
-		*close_session = 1;
-		return append_format(out, out_len, &offset, "BYE\r\n");
-	} else {
-		rc = append_format(out, out_len, &offset,
-		    "ERR unknown-command\r\n");
-	}
-	if (rc != KN_NODE_SHELL_OK)
-		return rc;
+	if (dispatch_rc == KN_NODE_COMMAND_DISPATCH_INTERNAL_ERROR)
+		return KN_NODE_SHELL_ERR_IO;
+	if (result.output_len >= out_len)
+		return KN_NODE_SHELL_ERR_IO;
+	memcpy(out, result.output, result.output_len + 1);
+	offset = result.output_len;
+	*close_session = result.close_session;
+	if (*close_session != 0)
+		return KN_NODE_SHELL_OK;
 
 	return append_prompt(out, out_len, &offset);
 }
@@ -453,9 +291,8 @@ kn_node_shell_format_session_command(struct kn_node_shell_session *session,
 	const char *line, const struct kn_node_shell_snapshot *snapshot,
 	char *out, size_t out_len, uint8_t *close_session)
 {
-	char command[KN_NODE_SHELL_LINE_MAX];
+	struct kn_node_command_input parsed;
 	size_t len;
-	size_t i;
 	uint8_t exit_bbs;
 
 	if (session == NULL || line == NULL || snapshot == NULL ||
@@ -473,25 +310,14 @@ kn_node_shell_format_session_command(struct kn_node_shell_session *session,
 	}
 
 	len = strlen(line);
-	if (len < sizeof(command)) {
-		while (*line == ' ' || *line == '\t')
-			line++;
-		len = strlen(line);
-		while (len > 0 && (line[len - 1] == ' ' ||
-		    line[len - 1] == '\t'))
-			len--;
-		if (len >= 3) {
-			for (i = 0; i < len && line[i] != ' ' &&
-			    line[i] != '\t'; i++)
-				command[i] = (char)toupper(
-				    (unsigned char)line[i]);
-			command[i] = '\0';
-			if (strcmp(command, "BBS") == 0) {
-				*close_session = 0;
-				return command_bbs_enter(session, line + i,
-				    snapshot, out, out_len);
-			}
-		}
+	if (kn_node_command_parse((const uint8_t *)line, len,
+	    KN_NODE_SHELL_LINE_MAX - 1, &parsed) == KN_NODE_COMMAND_OK &&
+	    parsed.command_len != 0 &&
+	    kn_node_command_id_from_name(parsed.command) ==
+	    KN_NODE_COMMAND_ID_BBS) {
+		*close_session = 0;
+		return command_bbs_enter(session, parsed.args, snapshot, out,
+		    out_len);
 	}
 
 	return kn_node_shell_format_command(line, snapshot, out, out_len,
