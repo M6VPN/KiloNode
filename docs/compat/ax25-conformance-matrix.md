@@ -39,6 +39,12 @@
 | Synthetic bench KISS SABM fixture | implemented | KISS SABM fixture validates setup-frame decode expectations. |
 | Synthetic bench KISS DISC/RR fixtures | implemented | KISS DISC and RR fixtures validate disconnect and supervisory decode expectations. |
 | Raw AX.25 bench fixtures      | implemented | AXIP-format packet-boundary fixtures carry raw AX.25 UI and SABM bytes. |
+| Offline diagnostic replay from KISS captures | implemented | Bench KISS captures replay into the AX.25 diagnostics runtime with zero TX writes. |
+| Offline diagnostic replay from raw AX.25 captures | implemented | Raw AX.25 bench captures replay through the same diagnostics harness. |
+| SABM bench replay             | implemented | SABM fixtures create diagnostic connection records and retain response frame plans only. |
+| DISC/RR bench replay          | partial     | Single-frame DISC/RR fixtures decode and are ignored without an existing connection. Multi-frame sequence fixtures are planned placeholders. |
+| UI ignored by connected diagnostics | implemented | UI captures increment ignored UI counters and do not create connected-mode records. |
+| TX writes zero assertion      | implemented | Diagnostic replay reports and expected checks require TX write attempts to remain zero. |
 | Real AX.25 source validation   | planned     | Manual bench validation with receive-only hardware is planned. CI remains synthetic. |
 | Manual bench captures          | planned     | Future imported manual captures require review before becoming committed fixtures. |
 | Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |

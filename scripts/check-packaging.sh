@@ -106,8 +106,10 @@ require_file docs/bench/fx25-future-bench-notes.md
 require_file docs/bench/capture-fixtures.md
 require_file docs/bench/importing-manual-captures.md
 require_file docs/bench/replay-bench-captures.md
+require_file docs/bench/diagnostic-replay.md
 require_file docs/bench/fx25-capture-placeholders.md
 
+require_file scripts/bench-rx-replay-diagnostics.sh
 require_file scripts/bench-rx-replay-fixtures.sh
 require_file scripts/bench-rx-import-capture.sh
 require_file scripts/bench-rx-capture-report.sh
@@ -115,6 +117,7 @@ require_file scripts/bench-rx-fixture-status.sh
 
 require_file tests/fixtures/bench/README.md
 require_file tests/fixtures/bench/manifest.bench
+require_file tests/fixtures/bench/ax25-diag-replay.expected
 require_file tests/fixtures/bench/kiss-ui-cq.capture
 require_file tests/fixtures/bench/kiss-ui-ping-node.capture
 require_file tests/fixtures/bench/kiss-sabm-node.capture
@@ -123,6 +126,8 @@ require_file tests/fixtures/bench/kiss-rr-node.capture
 require_file tests/fixtures/bench/ax25-ui-cq.capture
 require_file tests/fixtures/bench/ax25-sabm-node.capture
 require_file tests/fixtures/bench/fx25-future-placeholder.capture
+require_file tests/fixtures/bench/kiss-sabm-disc-sequence.capture
+require_file tests/fixtures/bench/kiss-sabm-rr-disc-sequence.capture
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -137,6 +142,7 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/uninstall-local.sh scripts/bench-rx-check-configs.sh \
 	scripts/bench-rx-direwolf-notes.sh scripts/bench-rx-kiss-tcp-smoke.sh \
 	scripts/bench-rx-monitor-tcp.sh scripts/bench-rx-ax25-status.sh \
+	scripts/bench-rx-replay-diagnostics.sh \
 	scripts/bench-rx-replay-fixtures.sh scripts/bench-rx-import-capture.sh \
 	scripts/bench-rx-capture-report.sh scripts/bench-rx-fixture-status.sh; then
 	echo "packaging files must not contain privileged helper commands"

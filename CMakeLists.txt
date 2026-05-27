@@ -23,6 +23,9 @@ function(kilonode_target_defaults target_name)
 endfunction()
 
 add_library(packetcore STATIC
+	src/compat/bench_ax25_diag_replay.c
+	src/compat/bench_replay.c
+	src/compat/bench_replay_report.c
 	src/compat/compat_bench_pack.c
 	src/compat/compat_capture.c
 	src/compat/compat_capture_report.c
@@ -363,6 +366,22 @@ add_executable(test_compat_bench_pack tests/test_compat_bench_pack.c)
 target_link_libraries(test_compat_bench_pack PRIVATE packetcore)
 kilonode_target_defaults(test_compat_bench_pack)
 add_test(NAME compat_bench_pack COMMAND test_compat_bench_pack)
+
+add_executable(test_bench_ax25_diag_replay
+	tests/test_bench_ax25_diag_replay.c)
+target_link_libraries(test_bench_ax25_diag_replay PRIVATE packetcore)
+kilonode_target_defaults(test_bench_ax25_diag_replay)
+add_test(NAME bench_ax25_diag_replay COMMAND test_bench_ax25_diag_replay)
+
+add_executable(test_bench_replay tests/test_bench_replay.c)
+target_link_libraries(test_bench_replay PRIVATE packetcore)
+kilonode_target_defaults(test_bench_replay)
+add_test(NAME bench_replay COMMAND test_bench_replay)
+
+add_executable(test_bench_replay_report tests/test_bench_replay_report.c)
+target_link_libraries(test_bench_replay_report PRIVATE packetcore)
+kilonode_target_defaults(test_bench_replay_report)
+add_test(NAME bench_replay_report COMMAND test_bench_replay_report)
 
 add_executable(test_compat_replay tests/test_compat_replay.c)
 target_link_libraries(test_compat_replay PRIVATE packetcore)

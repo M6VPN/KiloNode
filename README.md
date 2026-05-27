@@ -140,11 +140,13 @@ Dire Wolf with a USB sound card, KiloTNC, and serial, TCP, PTY, and Unix socket
 KISS inputs. Bench configs keep transmit disabled.
 Synthetic bench capture fixtures live in
 [tests/fixtures/bench](tests/fixtures/bench/README.md) and can be replayed
-without hardware.
+without hardware. AX.25 diagnostic replay feeds those fixtures into the
+diagnostics runtime and checks that TX write attempts stay at zero.
 
 ```sh
 ./scripts/bench-rx-check-configs.sh
 ./scripts/bench-rx-replay-fixtures.sh
+./scripts/bench-rx-replay-diagnostics.sh
 ```
 
 ## Compatibility

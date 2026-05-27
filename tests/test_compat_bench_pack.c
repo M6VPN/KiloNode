@@ -10,6 +10,7 @@
 
 #include "kilonode/compat_bench_pack.h"
 
+static const char *fixture_path(const char *);
 static int test_absolute_fixture_rejected(void);
 static int test_clean_room_false(void);
 static int test_coverage_summary(void);
@@ -33,6 +34,20 @@ static const char valid_manifest[] =
     "hardware-required false\n"
     "transmit-required false\n"
     "fixture kiss-ui-cq.capture\n";
+
+static const char *
+fixture_path(const char *name)
+{
+	static char path[256];
+
+	(void)snprintf(path, sizeof(path), "tests/fixtures/bench/%s", name);
+	if (access(path, R_OK) == 0)
+		return path;
+	(void)snprintf(path, sizeof(path), "../tests/fixtures/bench/%s",
+	    name);
+
+	return path;
+}
 
 int
 main(void)
@@ -99,8 +114,8 @@ test_coverage_summary(void)
 	struct kn_compat_bench_pack pack;
 	char report[KN_COMPAT_BENCH_REPORT_MAX];
 
-	if (kn_compat_bench_pack_parse_file(
-	    "../tests/fixtures/bench/manifest.bench", &pack, NULL) !=
+	if (kn_compat_bench_pack_parse_file(fixture_path("manifest.bench"),
+	    &pack, NULL) !=
 	    KN_COMPAT_BENCH_OK)
 		return 1;
 	if (kn_compat_bench_pack_coverage_report(&pack, report,
@@ -218,8 +233,8 @@ test_replay_supported_captures(void)
 	struct kn_compat_bench_pack pack;
 	char report[KN_COMPAT_BENCH_REPORT_MAX];
 
-	if (kn_compat_bench_pack_parse_file(
-	    "../tests/fixtures/bench/manifest.bench", &pack, NULL) !=
+	if (kn_compat_bench_pack_parse_file(fixture_path("manifest.bench"),
+	    &pack, NULL) !=
 	    KN_COMPAT_BENCH_OK)
 		return 1;
 	if (kn_compat_bench_pack_replay_report(&pack, report,
@@ -240,8 +255,8 @@ test_report_deterministic(void)
 	struct kn_compat_bench_pack pack;
 	char report[KN_COMPAT_BENCH_REPORT_MAX];
 
-	if (kn_compat_bench_pack_parse_file(
-	    "../tests/fixtures/bench/manifest.bench", &pack, NULL) !=
+	if (kn_compat_bench_pack_parse_file(fixture_path("manifest.bench"),
+	    &pack, NULL) !=
 	    KN_COMPAT_BENCH_OK)
 		return 1;
 	if (kn_compat_bench_pack_report(&pack, report, sizeof(report)) !=

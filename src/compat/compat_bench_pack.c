@@ -33,7 +33,7 @@ static enum kn_compat_bench_error field_set(
 	struct kn_compat_bench_pack *, uint32_t *, const char *,
 	const char *, size_t, struct kn_compat_bench_error_info *);
 static uint8_t field_seen(uint32_t *, uint32_t);
-static uint8_t fx25_placeholder(const char *);
+static uint8_t planned_placeholder(const char *);
 static enum kn_compat_bench_error list_add(struct kn_compat_bench_entry *,
 	size_t *, const char *);
 static enum kn_compat_bench_error require_fields(
@@ -276,7 +276,7 @@ kn_compat_bench_pack_coverage(const struct kn_compat_bench_pack *pack,
 		if (kn_compat_packet_capture_parse_file(path, &capture,
 		    NULL) != KN_COMPAT_PACKET_CAPTURE_OK)
 			return KN_COMPAT_BENCH_ERR_REFERENCE;
-		fx25 = fx25_placeholder(pack->fixtures[i].path);
+		fx25 = planned_placeholder(pack->fixtures[i].path);
 		if (fx25 == 0 && capture_decode(&capture, &decode) !=
 		    KN_COMPAT_BENCH_OK)
 			return KN_COMPAT_BENCH_ERR_REPLAY;
@@ -344,7 +344,7 @@ kn_compat_bench_pack_report(const struct kn_compat_bench_pack *pack,
 		needed = snprintf(buf + off, bufsiz - off,
 		    "BENCH FIXTURE path=%s planned=%s\n",
 		    pack->fixtures[i].path,
-		    fx25_placeholder(pack->fixtures[i].path) != 0 ?
+		    planned_placeholder(pack->fixtures[i].path) != 0 ?
 		    "true" : "false");
 		if (needed < 0 || (size_t)needed >= bufsiz - off)
 			return KN_COMPAT_BENCH_ERR_BUFFER;
@@ -374,7 +374,7 @@ kn_compat_bench_pack_replay_report(
 		return KN_COMPAT_BENCH_ERR_BUFFER;
 	off = (size_t)needed;
 	for (i = 0; i < pack->fixture_count; i++) {
-		if (fx25_placeholder(pack->fixtures[i].path) != 0) {
+		if (planned_placeholder(pack->fixtures[i].path) != 0) {
 			needed = snprintf(buf + off, bufsiz - off,
 			    "BENCH-SKIP fixture=%s reason=fx25-planned\n",
 			    pack->fixtures[i].path);
@@ -574,9 +574,16 @@ field_seen(uint32_t *seen, uint32_t flag)
 }
 
 static uint8_t
-fx25_placeholder(const char *path)
+planned_placeholder(const char *path)
 {
-	return path != NULL && strncmp(path, "fx25-", 5) == 0 ? 1 : 0;
+	if (path == NULL)
+		return 0;
+	if (strncmp(path, "fx25-", 5) == 0)
+		return 1;
+	if (strstr(path, "sequence") != NULL)
+		return 1;
+
+	return 0;
 }
 
 static enum kn_compat_bench_error

@@ -12,3 +12,7 @@ AXUDP frames as packet-boundary AX.25 bytes.
 `fx25-future-placeholder.capture` is a planned placeholder only. It exists so
 bench coverage can track future FX.25 receive fixtures without claiming FX.25
 decode or FEC support.
+
+`ax25-diag-replay.expected` contains offline AX.25 diagnostic replay
+expectations. The sequence capture files are planned placeholders until the
+capture format supports multi-frame fixture bodies.

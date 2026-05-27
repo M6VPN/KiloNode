@@ -42,3 +42,14 @@ Bench coverage reports count:
 
 FX.25 placeholders are planned fixtures only. They are skipped during replay and
 counted separately.
+
+## Diagnostic Replay
+
+AX.25 diagnostic replay uses the same manifest and optional expected file
+beside it. The replay harness decodes supported captures, feeds AX.25
+connected-mode frames into the diagnostics runtime, and reports final counters
+and connection-table state.
+
+Sequence captures are present as planned placeholders until multi-frame capture
+syntax is added. They must not claim connected-mode replay support before that
+parser exists.

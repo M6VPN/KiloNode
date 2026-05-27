@@ -1,0 +1,45 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/tests/fixtures/bench/ax25-diag-replay.expected
+# KiloNode bench AX.25 diagnostic replay expected v1
+capture kiss-ui-cq.capture {
+	frames-parsed 1
+	ui-ignored 1
+	connections-created 0
+	final-connections 0
+	expected-state none
+	tx-writes 0
+}
+
+capture kiss-sabm-node.capture {
+	frames-parsed 1
+	connections-created 1
+	final-connections 1
+	expected-state connected
+	frame-plans-retained 1
+	tx-writes 0
+}
+
+capture kiss-disc-node.capture {
+	frames-parsed 1
+	connections-created 0
+	final-connections 0
+	expected-state none
+	tx-writes 0
+}
+
+capture kiss-rr-node.capture {
+	frames-parsed 1
+	connections-created 0
+	final-connections 0
+	expected-state none
+	tx-writes 0
+}
+
+capture ax25-sabm-node.capture {
+	frames-parsed 1
+	connections-created 1
+	final-connections 1
+	expected-state connected
+	frame-plans-retained 1
+	tx-writes 0
+}

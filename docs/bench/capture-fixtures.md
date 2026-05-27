@@ -19,6 +19,8 @@ use generic test callsigns and small deterministic frame bodies.
 | `ax25-ui-cq.capture` | Raw packet-boundary AX.25 UI frame represented with the AXIP capture method. |
 | `ax25-sabm-node.capture` | Raw packet-boundary AX.25 SABM frame represented with the AXIP capture method. |
 | `fx25-future-placeholder.capture` | Planned FX.25 placeholder. It does not claim FX.25 decode support. |
+| `kiss-sabm-disc-sequence.capture` | Planned multi-frame sequence placeholder for future SABM then DISC replay. |
+| `kiss-sabm-rr-disc-sequence.capture` | Planned multi-frame sequence placeholder for future SABM, RR, then DISC replay. |
 
 ## Manifest
 
@@ -32,3 +34,7 @@ Replay the pack with:
 ```
 
 The FX.25 placeholder is skipped as planned future work.
+
+AX.25 diagnostic replay expectations live in
+`tests/fixtures/bench/ax25-diag-replay.expected`. Sequence placeholders are not
+listed in the manifest until multi-frame capture syntax is implemented.

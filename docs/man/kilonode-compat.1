@@ -99,6 +99,18 @@
 .Cm bench-coverage
 .Ar path
 .Nm
+.Cm check-bench-expected
+.Ar path
+.Nm
+.Cm replay-bench-diagnostics
+.Ar path
+.Nm
+.Cm replay-bench-diagnostics-dir
+.Ar path
+.Nm
+.Cm bench-diagnostics-report
+.Ar path
+.Nm
 .Cm check-requirements
 .Ar path
 .Nm
@@ -200,6 +212,17 @@ Print a receive-only bench fixture manifest report.
 Replay supported bench capture fixtures and skip planned FX.25 placeholders.
 .It Cm bench-coverage Ar path
 Print receive-only bench fixture coverage counts.
+.It Cm check-bench-expected Ar path
+Validate AX.25 diagnostic replay expected results.
+.It Cm replay-bench-diagnostics Ar path
+Replay one bench capture or bench manifest into the offline AX.25 diagnostics
+runtime. The command does not open transports, queue frames, or dispatch TX.
+.It Cm replay-bench-diagnostics-dir Ar path
+Replay all
+.Pa *.capture
+files in sorted order through the offline AX.25 diagnostics runtime.
+.It Cm bench-diagnostics-report Ar path
+Print a detailed offline AX.25 diagnostic replay report for one capture.
 .It Cm check-requirements Ar path
 Validate a node command requirements planning file.
 .It Cm requirements-report Ar path

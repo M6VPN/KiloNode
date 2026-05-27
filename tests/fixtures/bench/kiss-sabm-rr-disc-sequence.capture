@@ -1,0 +1,18 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/tests/fixtures/bench/kiss-sabm-rr-disc-sequence.capture
+# KiloNode packet capture v1
+# Placeholder only. Multi-frame capture syntax is planned, not implemented.
+name bench-kiss-sabm-rr-disc-sequence
+subject synthetic-bench
+method kiss
+date 2026-05-27
+observer M6VPN
+mode sequence-planned-placeholder
+direction rx
+port kiss0
+timestamp 1710000201
+frame-begin hex
+c0 00 c0
+frame-end
+expect-decode malformed
+expect-kind SEQUENCE-PLANNED

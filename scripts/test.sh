@@ -12,6 +12,8 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat check-bench-pack tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat replay-bench-pack tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
+./build/kilonode-compat check-bench-expected tests/fixtures/bench/ax25-diag-replay.expected
+./build/kilonode-compat replay-bench-diagnostics tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat replay-pack tests/fixtures/compat/linbpq-node/manifest.pack

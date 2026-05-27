@@ -15,7 +15,8 @@ Supported input paths:
 
 Synthetic capture fixtures for this workflow live in `tests/fixtures/bench`.
 See [capture-fixtures.md](capture-fixtures.md) and
-[replay-bench-captures.md](replay-bench-captures.md).
+[replay-bench-captures.md](replay-bench-captures.md). AX.25 diagnostic replay
+is documented in [diagnostic-replay.md](diagnostic-replay.md).
 
 Primary validation commands:
 
