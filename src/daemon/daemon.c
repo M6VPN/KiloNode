@@ -64,6 +64,7 @@ static volatile sig_atomic_t daemon_stop;
 static enum kn_daemon_error ax25_runtime_configure(
 	struct kn_ax25_runtime *, const struct kn_config *);
 static void close_ports(struct daemon_port *, size_t);
+static uint64_t daemon_monotonic_ms(void);
 static enum kn_daemon_error open_config_port(struct daemon_port *,
 	const struct kn_config_port *);
 static int control_handle(struct kn_control_socket *,
@@ -103,11 +104,28 @@ ax25_live_options_from_config(const struct kn_config *config,
 	    config->ax25.live_rx_retain_frame_plans;
 }
 
+static void
+ax25_scheduler_policy_from_config(const struct kn_config *config,
+	struct kn_ax25_scheduler_policy *policy)
+{
+	kn_ax25_scheduler_policy_default(policy);
+	if (config == NULL)
+		return;
+	policy->enabled = config->ax25.live_scheduler;
+	policy->process_expired =
+	    config->ax25.live_scheduler_process_expired;
+	policy->max_expired_per_cycle =
+	    config->ax25.live_scheduler_max_expired_per_cycle;
+	policy->tx_actions_enabled = config->ax25.live_scheduler_tx_actions;
+	policy->diagnostics_enabled = config->ax25.diagnostics;
+}
+
 static enum kn_daemon_error
 ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	const struct kn_config *config)
 {
 	struct kn_ax25_live_options live;
+	struct kn_ax25_scheduler_policy scheduler_policy;
 
 	if (runtime == NULL || config == NULL)
 		return KN_DAEMON_ERR_INVALID_ARGUMENT;
@@ -122,6 +140,10 @@ ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	ax25_live_options_from_config(config, &live);
 	if (kn_ax25_runtime_set_live_options(runtime, &live) !=
 	    KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	ax25_scheduler_policy_from_config(config, &scheduler_policy);
+	if (kn_ax25_runtime_set_scheduler_policy(runtime,
+	    &scheduler_policy) != KN_AX25_RUNTIME_OK)
 		return KN_DAEMON_ERR_CONFIG;
 
 	return KN_DAEMON_OK;
@@ -139,6 +161,18 @@ close_ports(struct daemon_port *ports, size_t port_count)
 		kn_buffer_free(&ports[i].frame_buf);
 		ports[i].active = 0;
 	}
+}
+
+static uint64_t
+daemon_monotonic_ms(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+		return 0;
+
+	return (uint64_t)ts.tv_sec * 1000U +
+	    (uint64_t)ts.tv_nsec / 1000000U;
 }
 
 enum kn_daemon_error
@@ -330,6 +364,9 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	}
 
 	while (daemon_stop == 0) {
+		if (ax25_runtime.live_scheduler.policy.enabled != 0)
+			(void)kn_ax25_live_scheduler_poll(&ax25_runtime,
+			    daemon_monotonic_ms());
 		if (shell_enabled != 0)
 			kn_node_shell_prune_idle(&shell, (uint64_t)time(NULL));
 		poll_count = 0;

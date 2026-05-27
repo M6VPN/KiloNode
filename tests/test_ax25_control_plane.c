@@ -22,6 +22,9 @@ static int test_one_connection_response(void);
 static int test_output_truncation(void);
 static int test_params_response(void);
 static int test_port_filtered_connections_response(void);
+static int test_scheduler_counters_response(void);
+static int test_scheduler_response(void);
+static int test_scheduler_timers_response(void);
 static int test_status_disabled_response(void);
 
 int
@@ -42,6 +45,12 @@ main(void)
 	if (test_counters_response() != 0)
 		return 1;
 	if (test_live_response() != 0)
+		return 1;
+	if (test_scheduler_response() != 0)
+		return 1;
+	if (test_scheduler_timers_response() != 0)
+		return 1;
+	if (test_scheduler_counters_response() != 0)
 		return 1;
 	if (test_invalid_port_filter_rejected() != 0)
 		return 1;
@@ -235,6 +244,51 @@ test_port_filtered_connections_response(void)
 }
 
 static int
+test_scheduler_counters_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_ax25_runtime_init(&runtime);
+	if (kn_ax25_control_plane_format_scheduler_counters(&runtime, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 SCHEDULER COUNTERS cycles=0") != NULL ?
+	    0 : 1;
+}
+
+static int
+test_scheduler_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_ax25_runtime_init(&runtime);
+	if (kn_ax25_control_plane_format_scheduler(&runtime, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 SCHEDULER enabled=false") != NULL ?
+	    0 : 1;
+}
+
+static int
+test_scheduler_timers_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_ax25_runtime_init(&runtime);
+	if (kn_ax25_control_plane_format_scheduler_timers(&runtime, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strcmp(out, "OK AX25 SCHEDULER TIMERS count=0\nEND\n") == 0 ?
+	    0 : 1;
+}
+
+static int
 test_status_disabled_response(void)
 {
 	struct kn_ax25_runtime runtime;
@@ -248,6 +302,7 @@ test_status_disabled_response(void)
 	return strcmp(out,
 	    "OK AX25 STATUS enabled=false connected_mode=false "
 	    "live_rx_feed=false live_rx_create_connections=false "
+	    "live_scheduler=false live_scheduler_process_expired=false "
 	    "connections=0 max_connections=32 diagnostics=true\nEND\n") == 0 ?
 	    0 : 1;
 }

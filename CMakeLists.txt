@@ -85,11 +85,14 @@ add_library(packetcore STATIC
 	src/proto/ax25_frame_builder.c
 	src/proto/ax25_frame_plan.c
 	src/proto/ax25_live_diag.c
+	src/proto/ax25_live_scheduler.c
 	src/proto/ax25_params.c
 	src/proto/ax25_retry.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
 	src/proto/ax25_scheduler.c
+	src/proto/ax25_scheduler_diag.c
+	src/proto/ax25_scheduler_policy.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
 	src/proto/ax25_timer.c
@@ -248,6 +251,11 @@ target_link_libraries(test_ax25_rx_feed PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_rx_feed)
 add_test(NAME ax25_rx_feed COMMAND test_ax25_rx_feed)
 
+add_executable(test_ax25_live_scheduler tests/test_ax25_live_scheduler.c)
+target_link_libraries(test_ax25_live_scheduler PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_live_scheduler)
+add_test(NAME ax25_live_scheduler COMMAND test_ax25_live_scheduler)
+
 add_executable(test_ax25_runtime tests/test_ax25_runtime.c)
 target_link_libraries(test_ax25_runtime PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_runtime)
@@ -262,6 +270,16 @@ add_executable(test_ax25_scheduler tests/test_ax25_scheduler.c)
 target_link_libraries(test_ax25_scheduler PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_scheduler)
 add_test(NAME ax25_scheduler COMMAND test_ax25_scheduler)
+
+add_executable(test_ax25_scheduler_diag tests/test_ax25_scheduler_diag.c)
+target_link_libraries(test_ax25_scheduler_diag PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_scheduler_diag)
+add_test(NAME ax25_scheduler_diag COMMAND test_ax25_scheduler_diag)
+
+add_executable(test_ax25_scheduler_policy tests/test_ax25_scheduler_policy.c)
+target_link_libraries(test_ax25_scheduler_policy PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_scheduler_policy)
+add_test(NAME ax25_scheduler_policy COMMAND test_ax25_scheduler_policy)
 
 add_executable(test_ax25_state tests/test_ax25_state.c)
 target_link_libraries(test_ax25_state PRIVATE packetcore)

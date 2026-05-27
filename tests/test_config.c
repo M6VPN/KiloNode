@@ -15,6 +15,10 @@ static int test_access_unknown_key(void);
 static int test_ax25_duplicate_block(void);
 static int test_ax25_invalid_bool(void);
 static int test_ax25_invalid_live_dependency(void);
+static int test_ax25_invalid_scheduler_dependency(void);
+static int test_ax25_invalid_scheduler_enabled_dependency(void);
+static int test_ax25_invalid_scheduler_max(void);
+static int test_ax25_invalid_scheduler_tx_actions(void);
 static int test_ax25_invalid_max_connections(void);
 static int test_ax25_invalid_modulo(void);
 static int test_ax25_omitted_defaults(void);
@@ -118,6 +122,14 @@ main(void)
 	if (test_ax25_invalid_bool() != 0)
 		return 1;
 	if (test_ax25_invalid_live_dependency() != 0)
+		return 1;
+	if (test_ax25_invalid_scheduler_dependency() != 0)
+		return 1;
+	if (test_ax25_invalid_scheduler_enabled_dependency() != 0)
+		return 1;
+	if (test_ax25_invalid_scheduler_tx_actions() != 0)
+		return 1;
+	if (test_ax25_invalid_scheduler_max() != 0)
 		return 1;
 	if (test_ax25_invalid_max_connections() != 0)
 		return 1;
@@ -384,6 +396,65 @@ test_ax25_invalid_live_dependency(void)
 }
 
 static int
+test_ax25_invalid_scheduler_dependency(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled true\n"
+		"live-scheduler-process-expired true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_scheduler_enabled_dependency(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"live-scheduler true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_scheduler_max(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"live-scheduler-max-expired-per-cycle 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_scheduler_tx_actions(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled true\n"
+		"live-scheduler true\n"
+		"live-scheduler-tx-actions true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_ax25_invalid_max_connections(void)
 {
 	const char text[] =
@@ -427,6 +498,13 @@ test_ax25_omitted_defaults(void)
 	if (config.ax25.live_rx_feed != 0 ||
 	    config.ax25.live_rx_create_connections != 0)
 		return 1;
+	if (config.ax25.live_scheduler != 0 ||
+	    config.ax25.live_scheduler_process_expired != 0 ||
+	    config.ax25.live_scheduler_tx_actions != 0)
+		return 1;
+	if (config.ax25.live_scheduler_max_expired_per_cycle !=
+	    KN_AX25_LIVE_SCHEDULER_EXPIRED_DEFAULT)
+		return 1;
 
 	return config.ax25.diagnostics == 1 &&
 	    config.ax25.live_rx_retain_frame_plans == 1 ? 0 : 1;
@@ -461,6 +539,10 @@ test_ax25_valid_block(void)
 		"live-rx-feed true\n"
 		"live-rx-create-connections true\n"
 		"live-rx-retain-frame-plans true\n"
+		"live-scheduler true\n"
+		"live-scheduler-process-expired false\n"
+		"live-scheduler-max-expired-per-cycle 4\n"
+		"live-scheduler-tx-actions false\n"
 		"max-connections 8\n"
 		"modulo 8\n"
 		"window-size 1\n"
@@ -473,6 +555,10 @@ test_ax25_valid_block(void)
 	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
 		return 1;
 	if (config.ax25.enabled != 1 || config.ax25.live_rx_feed != 1)
+		return 1;
+	if (config.ax25.live_scheduler != 1 ||
+	    config.ax25.live_scheduler_process_expired != 0 ||
+	    config.ax25.live_scheduler_tx_actions != 0)
 		return 1;
 	if (config.ax25.max_connections != 8)
 		return 1;

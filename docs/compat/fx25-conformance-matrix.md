@@ -34,3 +34,5 @@
 | FX.25 timer coupling        | unsupported | AX.25 T1/T2/T3 scheduling is kept inside AX.25 connected-mode scaffolding. |
 | FX.25 FEC timer effects     | planned | Future FEC statistics must remain outside AX.25 timer logic. |
 | AX.25 timer replay boundary | scaffold | Timer replay drives AX.25 connection diagnostics only and does not parse FX.25 blocks. |
+| Live AX.25 scheduler boundary | scaffold | Live scheduler diagnostics operate only on AX.25 runtime state. FX.25 remains outside the scheduler. |
+| FX.25 scheduler coupling      | unsupported | No FX.25 decode, FEC, wrapper, or timer policy is wired into AX.25 scheduler hooks. |

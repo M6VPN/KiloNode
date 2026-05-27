@@ -73,7 +73,7 @@ kn_ax25_timer_queue_collect_expired(struct kn_ax25_timer_queue *queue,
 		if (found == 0)
 			break;
 		if (out >= expired_len)
-			return KN_AX25_TIMER_QUEUE_ERR_INVALID_VALUE;
+			break;
 
 		timer = &queue->timers[best];
 		expired[out].connection_id = timer->connection_id;

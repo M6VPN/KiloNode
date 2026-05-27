@@ -12,6 +12,8 @@
 
 static int test_daemon_ax25_runtime_defaults(void);
 static int test_daemon_ax25_runtime_no_live_processing_default(void);
+static int test_daemon_scheduler_default_disabled(void);
+static int test_daemon_scheduler_poll_no_tx(void);
 static int test_synthetic_sabm_reaches_runtime_when_enabled(void);
 static int test_synthetic_ui_does_not_create_connection(void);
 static int test_tx_queue_unchanged_by_feed(void);
@@ -22,6 +24,10 @@ main(void)
 	if (test_daemon_ax25_runtime_defaults() != 0)
 		return 1;
 	if (test_daemon_ax25_runtime_no_live_processing_default() != 0)
+		return 1;
+	if (test_daemon_scheduler_default_disabled() != 0)
+		return 1;
+	if (test_daemon_scheduler_poll_no_tx() != 0)
 		return 1;
 	if (test_synthetic_sabm_reaches_runtime_when_enabled() != 0)
 		return 1;
@@ -55,6 +61,37 @@ test_daemon_ax25_runtime_no_live_processing_default(void)
 	kn_ax25_runtime_init(&runtime);
 
 	return kn_ax25_runtime_connection_count(&runtime) == 0 ? 0 : 1;
+}
+
+static int
+test_daemon_scheduler_default_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+
+	return runtime.live_scheduler.policy.enabled == 0 &&
+	    runtime.live_scheduler.policy.process_expired == 0 ? 0 : 1;
+}
+
+static int
+test_daemon_scheduler_poll_no_tx(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_scheduler_policy policy;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	kn_ax25_scheduler_policy_default(&policy);
+	policy.enabled = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	if (kn_ax25_live_scheduler_poll(&runtime, 100) !=
+	    KN_AX25_LIVE_SCHEDULER_OK)
+		return 1;
+
+	return runtime.live_scheduler.tx_writes_attempted == 0 ? 0 : 1;
 }
 
 static int

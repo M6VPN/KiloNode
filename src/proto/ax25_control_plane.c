@@ -11,6 +11,7 @@
 #include "kilonode/ax25_control_plane.h"
 #include "kilonode/ax25_connection_diag.h"
 #include "kilonode/ax25_live_diag.h"
+#include "kilonode/ax25_scheduler_diag.h"
 #include "kilonode/config.h"
 
 static enum kn_ax25_control_plane_error append_format(char *, size_t,
@@ -107,12 +108,16 @@ kn_ax25_control_plane_format_status(const struct kn_ax25_runtime *runtime,
 	}
 	needed = snprintf(buf, bufsiz,
 	    "OK AX25 STATUS enabled=%s connected_mode=%s live_rx_feed=%s "
-	    "live_rx_create_connections=%s connections=%llu "
+	    "live_rx_create_connections=%s live_scheduler=%s "
+	    "live_scheduler_process_expired=%s connections=%llu "
 	    "max_connections=%llu diagnostics=%s\nEND\n",
 	    rt->enabled != 0 ? "true" : "false",
 	    rt->connected_mode_enabled != 0 ? "true" : "false",
 	    rt->live.live_rx_feed != 0 ? "true" : "false",
 	    rt->live.live_rx_create_connections != 0 ? "true" : "false",
+	    rt->live_scheduler.policy.enabled != 0 ? "true" : "false",
+	    rt->live_scheduler.policy.process_expired != 0 ? "true" :
+	    "false",
 	    (unsigned long long)kn_ax25_runtime_connection_count(rt),
 	    (unsigned long long)rt->max_connections,
 	    rt->diagnostics_enabled != 0 ? "true" : "false");
@@ -318,7 +323,10 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    "live_seen=%llu live_accepted=%llu live_ignored=%llu "
 	    "live_malformed=%llu live_not_relevant=%llu "
 	    "live_ui_ignored=%llu live_events=%llu live_event_rejected=%llu "
-	    "live_plans=%llu live_retained=%llu live_tx_writes=%llu\nEND\n",
+	    "live_plans=%llu live_retained=%llu live_tx_writes=%llu "
+	    "scheduler_cycles=%llu scheduler_expired=%llu "
+	    "scheduler_blocked=%llu scheduler_plans=%llu "
+	    "scheduler_tx_blocked=%llu scheduler_tx_writes=%llu\nEND\n",
 	    (unsigned long long)rt->counters.events_accepted,
 	    (unsigned long long)rt->counters.events_rejected,
 	    (unsigned long long)rt->counters.connections_created,
@@ -336,8 +344,48 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    (unsigned long long)rt->live_counters.events_rejected,
 	    (unsigned long long)rt->live_counters.frame_plans_generated,
 	    (unsigned long long)rt->live_counters.frame_plans_retained,
-	    (unsigned long long)rt->live_counters.tx_queue_writes_attempted);
+	    (unsigned long long)rt->live_counters.tx_queue_writes_attempted,
+	    (unsigned long long)rt->live_scheduler.cycles_run,
+	    (unsigned long long)rt->live_scheduler.expired_processed,
+	    (unsigned long long)
+	    rt->live_scheduler.expired_blocked_by_policy,
+	    (unsigned long long)rt->live_scheduler.generated_frame_plans,
+	    (unsigned long long)rt->live_scheduler.tx_actions_blocked,
+	    (unsigned long long)rt->live_scheduler.tx_writes_attempted);
 	if (needed < 0 || (size_t)needed >= bufsiz)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_scheduler(const struct kn_ax25_runtime *runtime,
+	char *buf, size_t bufsiz)
+{
+	if (kn_ax25_scheduler_diag_format_status(runtime, buf, bufsiz) !=
+	    KN_AX25_SCHEDULER_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_scheduler_counters(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_scheduler_diag_format_counters(runtime, buf, bufsiz) !=
+	    KN_AX25_SCHEDULER_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_scheduler_timers(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_scheduler_diag_format_timers(runtime, buf, bufsiz) !=
+	    KN_AX25_SCHEDULER_DIAG_OK)
 		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
 
 	return KN_AX25_CONTROL_PLANE_OK;
@@ -391,6 +439,15 @@ kn_ax25_control_plane_format(const char *command,
 		    bufsiz);
 	if (strcmp(command, "LIVE") == 0)
 		return kn_ax25_control_plane_format_live(runtime, buf, bufsiz);
+	if (strcmp(command, "SCHEDULER") == 0)
+		return kn_ax25_control_plane_format_scheduler(runtime, buf,
+		    bufsiz);
+	if (strcmp(command, "SCHEDULER TIMERS") == 0)
+		return kn_ax25_control_plane_format_scheduler_timers(runtime,
+		    buf, bufsiz);
+	if (strcmp(command, "SCHEDULER COUNTERS") == 0)
+		return kn_ax25_control_plane_format_scheduler_counters(runtime,
+		    buf, bufsiz);
 
 	(void)snprintf(buf, bufsiz, "ERR invalid-ax25-command\n");
 	return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;

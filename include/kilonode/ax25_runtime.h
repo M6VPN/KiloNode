@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "kilonode/ax25_connection_table.h"
+#include "kilonode/ax25_live_scheduler.h"
 #include "kilonode/ax25_scheduler.h"
 
 enum kn_ax25_runtime_error {
@@ -57,6 +58,7 @@ struct kn_ax25_runtime {
 	struct kn_ax25_params params;
 	struct kn_ax25_connection_table table;
 	struct kn_ax25_scheduler scheduler;
+	struct kn_ax25_live_scheduler live_scheduler;
 	struct kn_ax25_runtime_counters counters;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_live_counters live_counters;
@@ -75,6 +77,9 @@ enum kn_ax25_runtime_error kn_ax25_runtime_set_enabled(
 	struct kn_ax25_runtime *, uint8_t, uint8_t);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_live_options(
 	struct kn_ax25_runtime *, const struct kn_ax25_live_options *);
+enum kn_ax25_runtime_error kn_ax25_runtime_set_scheduler_policy(
+	struct kn_ax25_runtime *,
+	const struct kn_ax25_scheduler_policy *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_params(
 	struct kn_ax25_runtime *, const struct kn_ax25_params *, size_t);
 

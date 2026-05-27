@@ -25,8 +25,11 @@ static int test_live_feed_updates_table_when_enabled(void);
 static int test_no_tx_queue_writes(void);
 static int test_params_stored(void);
 static int test_reset_clears_live_counters(void);
+static int test_reset_clears_live_scheduler(void);
 static int test_reset_clears_scheduler(void);
 static int test_reset_clears_table(void);
+static int test_scheduler_policy_defaults_disabled(void);
+static int test_scheduler_policy_validates_dependencies(void);
 
 int
 main(void)
@@ -45,6 +48,10 @@ main(void)
 		return 1;
 	if (test_live_feed_updates_table_when_enabled() != 0)
 		return 1;
+	if (test_scheduler_policy_defaults_disabled() != 0)
+		return 1;
+	if (test_scheduler_policy_validates_dependencies() != 0)
+		return 1;
 	if (test_inject_sabm_creates_connection() != 0)
 		return 1;
 	if (test_counters_update() != 0)
@@ -52,6 +59,8 @@ main(void)
 	if (test_reset_clears_table() != 0)
 		return 1;
 	if (test_reset_clears_live_counters() != 0)
+		return 1;
+	if (test_reset_clears_live_scheduler() != 0)
 		return 1;
 	if (test_reset_clears_scheduler() != 0)
 		return 1;
@@ -254,6 +263,47 @@ test_live_feed_updates_table_when_enabled(void)
 }
 
 static int
+test_scheduler_policy_defaults_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	if (runtime.live_scheduler.policy.enabled != 0)
+		return 1;
+	if (runtime.live_scheduler.policy.process_expired != 0)
+		return 1;
+
+	return runtime.live_scheduler.policy.max_expired_per_cycle ==
+	    KN_AX25_LIVE_SCHEDULER_EXPIRED_DEFAULT ? 0 : 1;
+}
+
+static int
+test_scheduler_policy_validates_dependencies(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_scheduler_policy policy;
+
+	kn_ax25_runtime_init(&runtime);
+	kn_ax25_scheduler_policy_default(&policy);
+	policy.enabled = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_ERR_INVALID_VALUE)
+		return 1;
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	policy.tx_actions_enabled = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_ERR_INVALID_VALUE)
+		return 1;
+	policy.tx_actions_enabled = 0;
+	policy.process_expired = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+
+	return runtime.live_scheduler.policy.process_expired == 1 ? 0 : 1;
+}
+
+static int
 test_no_tx_queue_writes(void)
 {
 	struct kn_ax25_runtime runtime;
@@ -302,6 +352,23 @@ test_reset_clears_live_counters(void)
 
 	return runtime.live_counters.frames_seen == 0 &&
 	    runtime.live.live_rx_retain_frame_plans == 1 ? 0 : 1;
+}
+
+static int
+test_reset_clears_live_scheduler(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	runtime.live_scheduler.policy.enabled = 1;
+	runtime.live_scheduler.cycles_run = 5;
+	runtime.live_scheduler.expired_processed = 2;
+	kn_ax25_runtime_reset(&runtime);
+	if (runtime.live_scheduler.policy.enabled != 1)
+		return 1;
+
+	return runtime.live_scheduler.cycles_run == 0 &&
+	    runtime.live_scheduler.expired_processed == 0 ? 0 : 1;
 }
 
 static int

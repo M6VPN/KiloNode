@@ -31,6 +31,7 @@ kn_ax25_runtime_free(struct kn_ax25_runtime *runtime)
 
 	kn_ax25_connection_table_free(&runtime->table);
 	kn_ax25_scheduler_reset(&runtime->scheduler);
+	kn_ax25_live_scheduler_reset(&runtime->live_scheduler);
 	memset(runtime, 0, sizeof(*runtime));
 }
 
@@ -60,6 +61,7 @@ kn_ax25_runtime_init(struct kn_ax25_runtime *runtime)
 	runtime->params.allow_connected_mode = 0;
 	kn_ax25_connection_table_init(&runtime->table);
 	kn_ax25_scheduler_init(&runtime->scheduler);
+	kn_ax25_live_scheduler_init(&runtime->live_scheduler);
 	runtime->table.max_connections = runtime->max_connections;
 	runtime_apply_table_params(runtime);
 }
@@ -119,6 +121,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 {
 	struct kn_ax25_params params;
 	struct kn_ax25_live_options live;
+	struct kn_ax25_scheduler_policy scheduler_policy;
 	size_t max_connections;
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -129,6 +132,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 
 	params = runtime->params;
 	live = runtime->live;
+	scheduler_policy = runtime->live_scheduler.policy;
 	max_connections = runtime->max_connections;
 	enabled = runtime->enabled;
 	connected_mode_enabled = runtime->connected_mode_enabled;
@@ -137,8 +141,10 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	memset(&runtime->live_counters, 0, sizeof(runtime->live_counters));
 	kn_ax25_connection_table_reset(&runtime->table);
 	kn_ax25_scheduler_reset(&runtime->scheduler);
+	kn_ax25_live_scheduler_reset(&runtime->live_scheduler);
 	runtime->params = params;
 	runtime->live = live;
+	runtime->live_scheduler.policy = scheduler_policy;
 	runtime->max_connections = max_connections;
 	runtime->enabled = enabled;
 	runtime->connected_mode_enabled = connected_mode_enabled;
@@ -181,6 +187,21 @@ kn_ax25_runtime_set_live_options(struct kn_ax25_runtime *runtime,
 
 	runtime->live = *options;
 	runtime_apply_table_params(runtime);
+	return KN_AX25_RUNTIME_OK;
+}
+
+enum kn_ax25_runtime_error
+kn_ax25_runtime_set_scheduler_policy(struct kn_ax25_runtime *runtime,
+	const struct kn_ax25_scheduler_policy *policy)
+{
+	if (runtime == NULL || policy == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	if (policy->enabled != 0 && runtime->enabled == 0)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	if (kn_ax25_live_scheduler_set_policy(&runtime->live_scheduler,
+	    policy) != KN_AX25_LIVE_SCHEDULER_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
 	return KN_AX25_RUNTIME_OK;
 }
 

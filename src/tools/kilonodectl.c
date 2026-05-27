@@ -175,6 +175,18 @@ command_ax25(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "AX25 LIVE");
 	}
+	if (strcmp(sub, "scheduler") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 SCHEDULER");
+	}
+	if (strcmp(sub, "scheduler-timers") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 SCHEDULER TIMERS");
+	}
+	if (strcmp(sub, "scheduler-counters") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 SCHEDULER COUNTERS");
+	}
 
 	return 1;
 }

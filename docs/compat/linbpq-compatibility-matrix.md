@@ -19,6 +19,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 scheduler scaffold | tested | Applies timer/retry action intents and produces timeout events without TX |
 | AX.25 timer replay harness | tested | Offline timer scripts validate T1/T2/T3 diagnostics without live sessions |
 | AX.25 retry diagnostics | tested | Replay fixtures assert N2 retry and exhaustion behaviour |
+| AX.25 live scheduler boundary | tested | Disabled-by-default daemon wrapper and read-only diagnostics only |
+| AX.25 scheduler control diagnostics | tested | Scheduler status, timer rows, and counters are read-only |
 | Live AX.25 connection table in daemon | planned | Not implemented |
 | AX.25 live response queueing | planned | Not implemented |
 | Live AX.25 retransmission | planned | Timeout send intents are not queued or dispatched |

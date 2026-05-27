@@ -103,6 +103,22 @@ config_validate(struct kn_config *config)
 	    config->ax25.live_rx_feed == 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "ax25 live-rx-create-connections requires live-rx-feed");
+	if (config->ax25.live_scheduler != 0 && config->ax25.enabled == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler requires enabled ax25");
+	if (config->ax25.live_scheduler_process_expired != 0 &&
+	    config->ax25.live_scheduler == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-process-expired requires "
+		    "live-scheduler");
+	if (config->ax25.live_scheduler_tx_actions != 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-tx-actions is disabled");
+	if (config->ax25.live_scheduler_max_expired_per_cycle == 0 ||
+	    config->ax25.live_scheduler_max_expired_per_cycle >
+	    KN_AX25_LIVE_SCHEDULER_EXPIRED_MAX)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid ax25 live-scheduler-max-expired-per-cycle");
 	config->ax25.params.allow_connected_mode =
 	    config->ax25.connected_mode;
 	if (config->ax25.max_connections < KN_CONFIG_AX25_CONNECTIONS_MIN ||
@@ -269,6 +285,8 @@ kn_config_init(struct kn_config *config)
 	config->ax25.max_connections = KN_CONFIG_AX25_CONNECTIONS_MAX;
 	config->ax25.diagnostics = 1;
 	config->ax25.live_rx_retain_frame_plans = 1;
+	config->ax25.live_scheduler_max_expired_per_cycle =
+	    KN_AX25_LIVE_SCHEDULER_EXPIRED_DEFAULT;
 	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
@@ -642,6 +660,62 @@ ax25_key_set(struct kn_config *config, char **tokens, size_t token_count,
 			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
 			    line_no,
 			    "invalid ax25 live-rx-retain-frame-plans value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-scheduler") == 0) {
+		if (key_seen(&config->ax25.has_live_scheduler, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.live_scheduler) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 live-scheduler value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-scheduler-process-expired") == 0) {
+		if (key_seen(
+		    &config->ax25.has_live_scheduler_process_expired,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.live_scheduler_process_expired) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-scheduler-process-expired "
+			    "value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-scheduler-tx-actions") == 0) {
+		if (key_seen(&config->ax25.has_live_scheduler_tx_actions,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.live_scheduler_tx_actions) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-scheduler-tx-actions value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0],
+	    "live-scheduler-max-expired-per-cycle") == 0) {
+		if (key_seen(
+		    &config->ax25.has_live_scheduler_max_expired_per_cycle,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' || value == 0 ||
+		    value > KN_AX25_LIVE_SCHEDULER_EXPIRED_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-scheduler-max-expired-per-cycle");
+		config->ax25.live_scheduler_max_expired_per_cycle =
+		    (size_t)value;
 		return KN_CONFIG_OK;
 	}
 

@@ -83,8 +83,13 @@
 | Live response queueing         | planned     | Generated frame plans are not queued or dispatched. |
 | TX response from bench         | planned     | Receive-only bench configs do not enable TX queue writes or dispatch. |
 | Payload delivery               | planned     | I-frame payload bytes are not delivered to shell or BBS code. |
-| Timer scheduler                | scaffold    | Runtime owns a disabled scheduler scaffold, but no live polling occurs. |
-| Live daemon timer integration  | planned     | No daemon loop, OS timer, thread, alarm, or signal integration exists. |
+| Live scheduler policy          | implemented | Disabled-by-default policy validates safe diagnostic-only combinations. |
+| Live scheduler diagnostics     | implemented | Read-only status, timer list, and counter formatters are exposed. |
+| Live scheduler timer list      | implemented | Control output lists bounded logical timer rows without mutation. |
+| Live scheduler counters        | implemented | Counters include cycles, expiries, blocked actions, plans, and TX writes. |
+| Live poll helper               | scaffold    | Explicit poll helper can process bounded expiries when enabled by config. |
+| Timer scheduler                | scaffold    | Runtime owns a disabled scheduler scaffold and live diagnostic wrapper. |
+| Live daemon timer integration  | partial     | Daemon owns the wrapper and can call explicit polling, but no TX bridge exists. |
 | Retransmission dispatch        | planned     | Timeout send actions are not queued or dispatched. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |
 | Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |
