@@ -105,3 +105,23 @@ Synthetic captures can be validated now:
 
 Future LinBPQ captures must be produced by explicit manual black-box runs. Tests
 and scripts do not run the local LinBPQ binary.
+
+## Observation Pack Workflow
+
+M1.29 adds a node observation pack for grouping related node-command
+observations:
+
+```text
+tests/fixtures/compat/linbpq-node/manifest.pack
+```
+
+The current pack contains synthetic placeholders only. A later manual workflow
+can add black-box observations by:
+
+1. running the target explicitly in an isolated lab
+2. recording command input and external output as `.observation` files
+3. adding relative fixture paths to the manifest
+4. converting reviewed observations into transcript candidates
+5. updating coverage reports
+
+Observation packs do not execute the target binary and do not inspect source.

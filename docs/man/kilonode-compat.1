@@ -53,6 +53,9 @@
 .Cm check-capture
 .Ar path
 .Nm
+.Cm check-pack
+.Ar path
+.Nm
 .Cm decode-capture
 .Ar path
 .Nm
@@ -68,11 +71,27 @@
 .Cm capture-to-transcript
 .Ar path
 .Fl -output Ar path
+.Nm
+.Cm show-pack
+.Ar path
+.Nm
+.Cm pack-report
+.Ar path
+.Nm
+.Cm pack-coverage
+.Ar path
+.Nm
+.Cm replay-pack
+.Ar path
+.Nm
+.Cm compare-pack-observations
+.Ar path
 .Sh DESCRIPTION
 .Nm
 validates and replays KiloNode-native compatibility transcripts.
 The current replay mode is synthetic RF UI command ingress. It can also validate
-and store black-box observation files and offline packet-boundary captures.
+and store black-box observation files, offline packet-boundary captures, and
+observation packs.
 .Pp
 The tool does not run LinBPQ, inspect GPL source, open real transports, or
 dispatch queued transmit frames unless the operator explicitly requests a
@@ -109,6 +128,8 @@ Write a transcript candidate marked as black-box observation data.
 Compare two observations at text level.
 .It Cm check-capture Ar path
 Validate one packet capture file.
+.It Cm check-pack Ar path
+Validate an observation pack manifest and referenced files.
 .It Cm decode-capture Ar path
 Decode one packet capture and print a bounded packet summary.
 .It Cm replay-capture Ar path
@@ -121,6 +142,16 @@ files in sorted order.
 Print a full capture expectation report.
 .It Cm capture-to-transcript Ar path Fl -output Ar path
 Write an RF UI transcript candidate from a capture payload.
+.It Cm show-pack Ar path
+Print sanitized observation pack metadata and fixture lists.
+.It Cm pack-report Ar path
+Validate an observation pack and print a manifest report.
+.It Cm pack-coverage Ar path
+Print node command coverage for an observation pack.
+.It Cm replay-pack Ar path
+Replay transcript fixtures referenced by an observation pack.
+.It Cm compare-pack-observations Ar path
+Compare observation fixtures in deterministic manifest order.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -135,6 +166,8 @@ kilonode-compat check-observation tests/fixtures/compat/blackbox-node-help.obser
 kilonode-compat show-observation tests/fixtures/compat/blackbox-node-help.observation
 kilonode-compat replay-capture tests/fixtures/compat/kiss-ui-ping.capture
 kilonode-compat capture-to-transcript tests/fixtures/compat/kiss-ui-ping.capture --output /tmp/kilonode-capture.transcript
+kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
+kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
@@ -144,6 +177,8 @@ LinBPQ is not run automatically; process observation requires an explicit
 binary path from the operator.
 Packet captures are offline text fixtures in this pass. No live capture, pcap
 input, real TNC hardware, or TX dispatch is used.
+Observation packs are metadata and fixture lists only. They do not execute
+compatibility targets or inspect source trees.
 .Sh SEE ALSO
 .Xr kilonodectl 1 ,
 .Xr kilonoded 8

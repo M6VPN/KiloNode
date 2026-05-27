@@ -46,6 +46,7 @@ Supported modes:
 
 ```text
 observer M6VPN
+source manual-black-box
 binary ~/path/to/binary
 config ~/path/to/config
 connect 127.0.0.1:8010
@@ -67,6 +68,7 @@ subject linbpq
 method telnet
 date 2026-05-27
 observer M6VPN
+source manual-black-box
 binary ~/Sync/Code/M6VPN/M6VPN-7/3rd/linbpq/linbpq
 config ~/Sync/Code/M6VPN/M6VPN-7/3rd/linbpq/bpq32.cfg.example
 mode node-shell

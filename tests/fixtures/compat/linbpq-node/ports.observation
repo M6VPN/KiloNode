@@ -1,0 +1,15 @@
+# KiloNode black-box observation v1
+# Synthetic placeholder, not captured from LinBPQ.
+name linbpq-node-ports
+subject linbpq
+source synthetic-placeholder
+method telnet
+date 2026-05-27
+observer M6VPN
+mode node-shell
+connect 127.0.0.1:8010
+input PORTS
+observed-begin
+synthetic node ports placeholder
+observed-end
+notes tooling fixture only

@@ -81,6 +81,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AXIP/AXUDP capture parser | tested | Offline raw AX.25 payload observations |
 | Capture expectation reports | tested | Deterministic pass/fail mismatch reports |
 | Capture to transcript conversion | tested | RF UI payload candidate generation |
+| Node observation pack manifest | tested | Native manifest parser with clean-room checks |
+| Synthetic node observation fixtures | tested | Placeholder observations for tooling coverage |
+| Node command coverage report | tested | Deterministic coverage summary |
+| Manual LinBPQ node observations | planned | Future explicit black-box captures |
 | Live KISS capture | planned | Not implemented |
 | Live AXIP capture | planned | Not implemented |
 | BPQ/LinBPQ packet observations | planned | Future manual black-box captures |

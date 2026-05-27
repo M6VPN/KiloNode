@@ -21,6 +21,7 @@ static const char valid_observation[] =
     "# KiloNode black-box observation v1\n"
     "name blackbox-node-help\n"
     "subject linbpq\n"
+    "source synthetic-placeholder\n"
     "method telnet\n"
     "date 2026-05-27\n"
     "observer M6VPN\n"
@@ -192,6 +193,8 @@ test_valid_observation(void)
 	    NULL) != KN_COMPAT_OBSERVE_OK)
 		return 1;
 	if (strcmp(observation.name, "blackbox-node-help") != 0)
+		return 1;
+	if (strcmp(observation.source, "synthetic-placeholder") != 0)
 		return 1;
 	if (observation.method != KN_COMPAT_OBSERVE_METHOD_TELNET)
 		return 1;

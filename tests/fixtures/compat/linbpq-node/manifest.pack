@@ -1,0 +1,17 @@
+# KiloNode observation pack v1
+name linbpq-node
+subject linbpq
+type node-command-observations
+source synthetic-placeholder
+created 2026-05-27
+clean-room true
+source-code-used false
+fixture help.observation
+fixture info.observation
+fixture ports.observation
+fixture users.observation
+fixture unknown.observation
+transcript help.transcript
+transcript info.transcript
+transcript unknown.transcript
+notes Synthetic placeholders until manually captured black-box observations are added.

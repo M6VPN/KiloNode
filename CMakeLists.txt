@@ -26,8 +26,10 @@ add_library(packetcore STATIC
 	src/compat/compat_capture.c
 	src/compat/compat_capture_report.c
 	src/compat/compat_axip_capture.c
+	src/compat/compat_coverage.c
 	src/compat/compat_kiss_capture.c
 	src/compat/compat_observe.c
+	src/compat/compat_observation_pack.c
 	src/compat/compat_packet_capture.c
 	src/compat/compat_process.c
 	src/compat/compat_report.c
@@ -168,6 +170,17 @@ add_executable(test_compat_observe tests/test_compat_observe.c)
 target_link_libraries(test_compat_observe PRIVATE packetcore)
 kilonode_target_defaults(test_compat_observe)
 add_test(NAME compat_observe COMMAND test_compat_observe)
+
+add_executable(test_compat_observation_pack
+	tests/test_compat_observation_pack.c)
+target_link_libraries(test_compat_observation_pack PRIVATE packetcore)
+kilonode_target_defaults(test_compat_observation_pack)
+add_test(NAME compat_observation_pack COMMAND test_compat_observation_pack)
+
+add_executable(test_compat_coverage tests/test_compat_coverage.c)
+target_link_libraries(test_compat_coverage PRIVATE packetcore)
+kilonode_target_defaults(test_compat_coverage)
+add_test(NAME compat_coverage COMMAND test_compat_coverage)
 
 add_executable(test_compat_process tests/test_compat_process.c)
 target_link_libraries(test_compat_process PRIVATE packetcore)

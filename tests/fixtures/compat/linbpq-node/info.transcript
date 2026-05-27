@@ -1,0 +1,16 @@
+# KiloNode compatibility transcript v1
+# source=synthetic-placeholder
+# compatibility-target=linbpq-node
+# not-verified-against-linbpq=true
+name linbpq-node-info
+mode rf-ui
+node M6VPN-1
+port kiss0
+source N0CALL
+destination M6VPN-1
+pid 0xf0
+input INFO
+expect-event command=INFO status=ok
+expect-reply contains=KiloNode call=M6VPN-1
+expect-reply-queued true
+expect-no-dispatch true

@@ -25,6 +25,7 @@
 #define OBS_FIELD_PACKET      0x2000u
 #define OBS_FIELD_MAILBOX     0x4000u
 #define OBS_FIELD_RESULT      0x8000u
+#define OBS_FIELD_SOURCE      0x10000u
 
 static enum kn_compat_observe_error append_observed(
 	struct kn_compat_observation *, const char *);
@@ -351,6 +352,10 @@ field_set(struct kn_compat_observation *observation, uint32_t *seen,
 		dst = observation->subject;
 		dst_len = sizeof(observation->subject);
 		flag = OBS_FIELD_SUBJECT;
+	} else if (strcmp(key, "source") == 0) {
+		dst = observation->source;
+		dst_len = sizeof(observation->source);
+		flag = OBS_FIELD_SOURCE;
 	} else if (strcmp(key, "method") == 0) {
 		if (field_seen(seen, OBS_FIELD_METHOD) != 0)
 			goto duplicate;

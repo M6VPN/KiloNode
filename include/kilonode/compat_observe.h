@@ -49,6 +49,7 @@ struct kn_compat_observation {
 	char name[KN_COMPAT_OBSERVE_NAME_MAX];
 	char subject[KN_COMPAT_OBSERVE_FIELD_MAX];
 	enum kn_compat_observe_method method;
+	char source[KN_COMPAT_OBSERVE_FIELD_MAX];
 	char date[32];
 	char observer[KN_COMPAT_OBSERVE_FIELD_MAX];
 	char binary_path[KN_COMPAT_OBSERVE_FIELD_MAX];
