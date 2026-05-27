@@ -4,8 +4,9 @@ The TX dispatch test harness proves the outbound queue, stored KISS frame bytes,
 transport write boundary, status updates, counters, and control diagnostics
 without enabling normal RF transmit.
 
-This pass only dispatches to a memory transport. It does not write to serial,
-TCP, PTY, Unix socket, or stdio transports.
+This harness dispatches only to a memory transport. Real KISS transport dispatch
+is covered separately in `docs/design/035-real-kiss-tx-dispatch.md` and remains
+behind explicit safety gates.
 
 ## Memory Transport
 
@@ -36,13 +37,15 @@ transmit {
 	allow-shell-enqueue false
 	dispatch-enabled false
 	dispatch-test-only true
+	dispatch-real-kiss false
 	dispatch-max-per-cycle 4
+	require-explicit-port-tx true
 }
 ```
 
-Dispatch is disabled by default. If `dispatch-enabled true` is set, `enabled`
-must also be true and `dispatch-test-only` must remain true. Config validation
-rejects non-test dispatch in this pass.
+Dispatch is disabled by default. For the memory harness, if
+`dispatch-enabled true` is set, `enabled` must also be true and
+`dispatch-test-only` must remain true.
 
 Dry-run frames may be written only to memory/mock targets. This lets tests prove
 KISS bytes and status transitions without RF output.

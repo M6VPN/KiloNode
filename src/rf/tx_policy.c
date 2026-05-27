@@ -19,8 +19,13 @@ kn_tx_policy_allow_dispatch(const struct kn_tx_policy *policy)
 		return KN_TX_POLICY_ERR_DISABLED;
 	if (policy->dispatch_enabled == 0)
 		return KN_TX_POLICY_ERR_DISPATCH_DISABLED;
-	if (policy->dispatch_test_only == 0)
-		return KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED;
+	if (policy->dispatch_test_only == 0) {
+		if (policy->dry_run != 0)
+			return KN_TX_POLICY_ERR_DRY_RUN_REQUIRED;
+		if (policy->dispatch_real_kiss == 0 ||
+		    policy->require_explicit_port_tx == 0)
+			return KN_TX_POLICY_ERR_REAL_KISS_DISABLED;
+	}
 
 	return KN_TX_POLICY_OK;
 }
@@ -102,6 +107,7 @@ kn_tx_policy_defaults(struct kn_tx_policy *policy)
 	policy->payload_preview_bytes = KN_TX_POLICY_PREVIEW_DEFAULT;
 	policy->dry_run = 1;
 	policy->dispatch_test_only = 1;
+	policy->require_explicit_port_tx = 1;
 	policy->dispatch_max_per_cycle =
 	    KN_TX_POLICY_DISPATCH_MAX_DEFAULT;
 }
@@ -125,9 +131,5 @@ kn_tx_policy_validate(const struct kn_tx_policy *policy)
 		return KN_TX_POLICY_ERR_INVALID_ARGUMENT;
 	if (policy->dispatch_enabled != 0 && policy->enabled == 0)
 		return KN_TX_POLICY_ERR_DISABLED;
-	if (policy->dispatch_enabled != 0 &&
-	    policy->dispatch_test_only == 0)
-		return KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED;
-
 	return KN_TX_POLICY_OK;
 }

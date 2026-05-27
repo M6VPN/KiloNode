@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <unistd.h>
 
 #include "kilonode/ax25.h"
 #include "kilonode/tx_dispatch.h"
@@ -11,12 +12,15 @@
 
 static void make_frame(struct kn_tx_queue *, const char *);
 static void make_policy(struct kn_tx_policy *);
+static void make_real_policy(struct kn_tx_policy *);
 static int test_by_port(void);
 static int test_disabled_rejects(void);
 static int test_empty_queue(void);
 static int test_memory_dispatch(void);
 static int test_no_safe_target(void);
 static int test_per_cycle_limit(void);
+static int test_real_dispatch(void);
+static int test_real_gate_blocks(void);
 static int test_write_failure(void);
 
 int
@@ -35,6 +39,10 @@ main(void)
 	if (test_per_cycle_limit() != 0)
 		return 1;
 	if (test_no_safe_target() != 0)
+		return 1;
+	if (test_real_gate_blocks() != 0)
+		return 1;
+	if (test_real_dispatch() != 0)
 		return 1;
 
 	return 0;
@@ -63,6 +71,21 @@ make_policy(struct kn_tx_policy *policy)
 	policy->allow_control_enqueue = 1;
 	policy->dispatch_enabled = 1;
 	policy->dispatch_test_only = 1;
+	policy->dispatch_max_per_cycle = 4;
+}
+
+static void
+make_real_policy(struct kn_tx_policy *policy)
+{
+	kn_tx_policy_defaults(policy);
+	policy->enabled = 1;
+	policy->dry_run = 0;
+	policy->allow_ui = 1;
+	policy->allow_control_enqueue = 1;
+	policy->dispatch_enabled = 1;
+	policy->dispatch_test_only = 0;
+	policy->dispatch_real_kiss = 1;
+	policy->require_explicit_port_tx = 1;
 	policy->dispatch_max_per_cycle = 4;
 }
 
@@ -218,6 +241,83 @@ test_per_cycle_limit(void)
 		return 1;
 
 	return result.sent == 1 && result.remaining == 1 ? 0 : 1;
+}
+
+static int
+test_real_dispatch(void)
+{
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_tx_dispatch_result result;
+	struct kn_transport transport;
+	const struct kn_tx_frame *frame;
+	uint8_t written[512];
+	int fds[2];
+	ssize_t nread;
+
+	make_real_policy(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	make_frame(&queue, "kiss0");
+	frame = kn_tx_queue_get(&queue, 1);
+	if (frame == NULL)
+		return 1;
+	if (pipe(fds) != 0)
+		return 1;
+	kn_transport_reset(&transport);
+	transport.kind = KN_TRANSPORT_KIND_TCP_CLIENT;
+	transport.write_fd = fds[1];
+	transport.open = 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	(void)kn_tx_dispatch_add_transport_target(&dispatcher, "kiss0",
+	    &transport, KN_CONFIG_PORT_TCP_CONNECT,
+	    KN_TRANSPORT_KIND_TCP_CLIENT, 1, 1, 1);
+	if (kn_tx_dispatch_run(&queue, &dispatcher, NULL, &result) !=
+	    KN_TX_DISPATCH_OK) {
+		(void)close(fds[0]);
+		kn_transport_close(&transport);
+		return 1;
+	}
+	nread = read(fds[0], written, sizeof(written));
+	(void)close(fds[0]);
+	kn_transport_close(&transport);
+	if (nread < 0 || (size_t)nread != frame->kiss_len)
+		return 1;
+	if (memcmp(written, frame->kiss, frame->kiss_len) != 0)
+		return 1;
+	frame = kn_tx_queue_get(&queue, 1);
+
+	return result.sent == 1 && frame != NULL &&
+	    frame->status == KN_TX_FRAME_SENT ? 0 : 1;
+}
+
+static int
+test_real_gate_blocks(void)
+{
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_tx_dispatch_result result;
+	struct kn_transport transport;
+
+	make_real_policy(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	make_frame(&queue, "kiss0");
+	kn_transport_reset(&transport);
+	transport.kind = KN_TRANSPORT_KIND_TCP_CLIENT;
+	transport.write_fd = -1;
+	transport.open = 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	(void)kn_tx_dispatch_add_transport_target(&dispatcher, "kiss0",
+	    &transport, KN_CONFIG_PORT_TCP_CONNECT,
+	    KN_TRANSPORT_KIND_TCP_CLIENT, 1, 1, 0);
+
+	return kn_tx_dispatch_run(&queue, &dispatcher, NULL, &result) ==
+	    KN_TX_DISPATCH_ERR_GATE_BLOCKED &&
+	    result.gate_error == KN_TX_TRANSPORT_GATE_ERR_PORT_TX_DISABLED ?
+	    0 : 1;
 }
 
 static int

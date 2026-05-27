@@ -49,6 +49,8 @@ static enum kn_control_error format_tx_dispatch(
 	const struct kn_control_snapshot *, const char *, char *, size_t);
 static enum kn_control_error format_tx_dryrun_ui(
 	const struct kn_control_snapshot *, const char *, char *, size_t);
+static enum kn_control_error format_tx_gates(
+	const struct kn_control_snapshot *, const char *, char *, size_t);
 static enum kn_control_error read_word(const char **, char *, size_t);
 static enum kn_control_error return_with_cap(
 	const struct kn_control_snapshot *, char *, size_t,
@@ -543,12 +545,16 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		    bufsiz);
 	if (strncmp(command, "DISPATCH ", 9) == 0)
 		return format_tx_dispatch(snapshot, command + 9, buf, bufsiz);
+	if (strcmp(command, "GATES") == 0 ||
+	    strncmp(command, "GATES PORT ", 11) == 0)
+		return format_tx_gates(snapshot, command, buf, bufsiz);
 
 	if (strcmp(command, "STATUS") == 0) {
 		if (snprintf(buf, bufsiz,
 		    "OK TX STATUS enabled=%s dry_run=%s allow_ui=%s "
 		    "allow_control_enqueue=%s allow_shell_enqueue=%s "
 		    "dispatch_enabled=%s dispatch_test_only=%s "
+		    "dispatch_real_kiss=%s require_explicit_port_tx=%s "
 		    "dispatch_max_per_cycle=%llu queued=%llu "
 		    "max_queued=%llu max_payload=%llu",
 		    snapshot->tx_queue->policy.enabled != 0 ? "true" :
@@ -564,6 +570,10 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		    snapshot->tx_queue->policy.dispatch_enabled != 0 ?
 		    "true" : "false",
 		    snapshot->tx_queue->policy.dispatch_test_only != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_real_kiss != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.require_explicit_port_tx != 0 ?
 		    "true" : "false",
 		    (unsigned long long)
 		    snapshot->tx_queue->policy.dispatch_max_per_cycle,
@@ -660,11 +670,14 @@ format_tx_dispatch(const struct kn_control_snapshot *snapshot,
 	if (strcmp(command, "STATUS") == 0) {
 		if (snprintf(buf, bufsiz,
 		    "OK TX DISPATCH STATUS enabled=%s test_only=%s "
+		    "real_kiss=%s "
 		    "max_per_cycle=%llu attempts=%llu sent=%llu failed=%llu "
 		    "blocked=%llu bytes=%llu\nEND\n",
 		    snapshot->tx_queue->policy.dispatch_enabled != 0 ?
 		    "true" : "false",
 		    snapshot->tx_queue->policy.dispatch_test_only != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_real_kiss != 0 ?
 		    "true" : "false",
 		    (unsigned long long)
 		    snapshot->tx_queue->policy.dispatch_max_per_cycle,
@@ -720,8 +733,15 @@ format_tx_dispatch(const struct kn_control_snapshot *snapshot,
 		tx_rc = kn_tx_dispatch_run(snapshot->tx_queue,
 		    snapshot->tx_dispatch, port_name, &result);
 		if (tx_rc != KN_TX_DISPATCH_OK) {
-			if (snprintf(buf, bufsiz, "ERR %s\n",
-			    kn_tx_dispatch_error_name(tx_rc)) >= (int)bufsiz)
+			const char *error;
+
+			error = kn_tx_dispatch_error_name(tx_rc);
+			if (tx_rc == KN_TX_DISPATCH_ERR_GATE_BLOCKED &&
+			    result.gate_error != KN_TX_TRANSPORT_GATE_OK)
+				error = kn_tx_transport_gate_error_name(
+				    result.gate_error);
+			if (snprintf(buf, bufsiz, "ERR %s\n", error) >=
+			    (int)bufsiz)
 				return KN_CONTROL_ERR_IO;
 			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 		}
@@ -814,6 +834,114 @@ format_tx_dryrun_ui(const struct kn_control_snapshot *snapshot,
 invalid:
 	(void)snprintf(buf, bufsiz, "ERR invalid-tx-command\n");
 	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+format_tx_gates(const struct kn_control_snapshot *snapshot,
+	const char *command, char *buf, size_t bufsiz)
+{
+	const struct kn_tx_dispatch_target *target;
+	struct kn_tx_transport_gate_port gate_port;
+	enum kn_tx_transport_gate_error gate_rc;
+	const char *port_name;
+	const char *reason;
+	uint8_t allowed;
+	uint8_t writable;
+
+	if (strcmp(command, "GATES") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK TX GATES enabled=%s dry_run=%s "
+		    "dispatch_enabled=%s dispatch_test_only=%s "
+		    "dispatch_real_kiss=%s require_explicit_port_tx=%s\n"
+		    "END\n",
+		    snapshot->tx_queue->policy.enabled != 0 ? "true" :
+		    "false",
+		    snapshot->tx_queue->policy.dry_run != 0 ? "true" :
+		    "false",
+		    snapshot->tx_queue->policy.dispatch_enabled != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_test_only != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_real_kiss != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.require_explicit_port_tx != 0 ?
+		    "true" : "false") >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	port_name = command + 11;
+	if (port_name[0] == '\0' || strlen(port_name) >=
+	    KN_CONFIG_PORT_NAME_MAX || strchr(port_name, ' ') != NULL) {
+		(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (snapshot->tx_dispatch == NULL) {
+		(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	target = kn_tx_dispatch_target_find(snapshot->tx_dispatch, port_name);
+	if (target == NULL) {
+		(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+
+	writable = 0;
+	if (target->test_safe != 0)
+		writable = target->memory != NULL && target->memory->open != 0;
+	else
+		writable = target->transport != NULL &&
+		    target->transport->open != 0 &&
+		    target->transport->write_fd >= 0;
+
+	memset(&gate_port, 0, sizeof(gate_port));
+	(void)snprintf(gate_port.name, sizeof(gate_port.name), "%s",
+	    target->port_name);
+	gate_port.config_type = target->config_type;
+	gate_port.transport_kind = target->transport_kind;
+	gate_port.enabled = target->enabled;
+	gate_port.open = target->open;
+	gate_port.tx_enabled = target->tx_enabled;
+	gate_port.writable = writable;
+	gate_port.memory_test = target->test_safe;
+
+	if (snapshot->tx_queue->policy.dispatch_test_only != 0)
+		gate_rc = kn_tx_transport_gate_test(&snapshot->tx_queue->policy,
+		    &gate_port);
+	else
+		gate_rc = kn_tx_transport_gate_real(&snapshot->tx_queue->policy,
+		    &gate_port);
+	allowed = gate_rc == KN_TX_TRANSPORT_GATE_OK ? 1 : 0;
+
+	if (target->enabled == 0)
+		reason = kn_tx_transport_gate_error_name(
+		    KN_TX_TRANSPORT_GATE_ERR_PORT_DISABLED);
+	else if (target->test_safe == 0 && target->tx_enabled == 0)
+		reason = kn_tx_transport_gate_error_name(
+		    KN_TX_TRANSPORT_GATE_ERR_PORT_TX_DISABLED);
+	else if (target->open == 0)
+		reason = kn_tx_transport_gate_error_name(
+		    KN_TX_TRANSPORT_GATE_ERR_PORT_NOT_OPEN);
+	else if (target->test_safe == 0 &&
+	    kn_tx_transport_gate_kind_real_allowed(target->transport_kind) == 0)
+		reason = kn_tx_transport_gate_error_name(
+		    KN_TX_TRANSPORT_GATE_ERR_UNSAFE_TRANSPORT);
+	else
+		reason = kn_tx_transport_gate_error_name(gate_rc);
+
+	if (snprintf(buf, bufsiz,
+	    "OK TX GATES PORT name=%s enabled=%s tx_enabled=%s "
+	    "transport=%s writable=%s allowed=%s reason=%s\nEND\n",
+	    target->port_name,
+	    target->enabled != 0 ? "true" : "false",
+	    target->tx_enabled != 0 ? "true" : "false",
+	    kn_transport_kind_name(target->transport_kind),
+	    writable != 0 ? "true" : "false",
+	    allowed != 0 ? "true" : "false",
+	    reason) >= (int)bufsiz)
+		return KN_CONTROL_ERR_IO;
+
+	return KN_CONTROL_OK;
 }
 
 static enum kn_control_error

@@ -307,6 +307,24 @@ command_tx(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "TX DISPATCH STATUS");
 	}
+	if (strcmp(sub, "gates") == 0) {
+		if (*index + 2 >= argc) {
+			*index += 1;
+			return command_set(dst, dst_len, "TX GATES");
+		}
+		if (strcmp(argv[*index + 2], "--port") == 0) {
+			if (*index + 3 >= argc)
+				return 1;
+			needed = snprintf(dst, dst_len, "TX GATES PORT %s",
+			    argv[*index + 3]);
+			if (needed < 0 || (size_t)needed >= dst_len)
+				return 1;
+			*index += 3;
+			return 0;
+		}
+		*index += 1;
+		return command_set(dst, dst_len, "TX GATES");
+	}
 	if (strcmp(sub, "dispatch-run") == 0) {
 		if (*index + 2 >= argc) {
 			*index += 1;
@@ -517,5 +535,6 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH tx dispatch-status\n", argv0);
 	fprintf(out, "       %s --socket PATH tx dispatch-run [--port PORT]\n",
 	    argv0);
+	fprintf(out, "       %s --socket PATH tx gates [--port PORT]\n", argv0);
 	fprintf(out, "       %s --socket PATH help\n", argv0);
 }

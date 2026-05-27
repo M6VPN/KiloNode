@@ -22,7 +22,9 @@ transmit {
 	allow-shell-enqueue false
 	dispatch-enabled false
 	dispatch-test-only true
+	dispatch-real-kiss false
 	dispatch-max-per-cycle 4
+	require-explicit-port-tx true
 }
 ```
 
@@ -50,10 +52,12 @@ Transmit policy is deliberately conservative:
 - `allow-control-enqueue false` rejects control-socket dry-run enqueue
 - `allow-shell-enqueue false` keeps local shell enqueue disabled
 - `dispatch-enabled false` disables dispatch by default
-- `dispatch-test-only true` is required for the M1.22 harness
+- `dispatch-test-only true` keeps dispatch memory-test only
+- `dispatch-real-kiss false` blocks real KISS transport writes
+- `require-explicit-port-tx true` requires each real TX port to opt in
 
 Tests can construct frames directly where needed, but runtime user surfaces do
-not enqueue transmit frames in this pass.
+not expose transmit through the node shell or BBS shell.
 
 ## Control Queries
 

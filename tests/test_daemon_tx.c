@@ -17,6 +17,7 @@ static int test_disabled_policy_rejects(void);
 static int test_dispatch_config(void);
 static int test_dispatch_memory_control_path(void);
 static int test_queue_from_config(void);
+static int test_real_dispatch_lab_config(void);
 
 int
 main(void)
@@ -28,6 +29,8 @@ main(void)
 	if (test_dispatch_config() != 0)
 		return 1;
 	if (test_dispatch_memory_control_path() != 0)
+		return 1;
+	if (test_real_dispatch_lab_config() != 0)
 		return 1;
 
 	return 0;
@@ -135,6 +138,41 @@ test_dispatch_memory_control_path(void)
 	return result.sent == 1 && frame != NULL &&
 	    frame->status == KN_TX_FRAME_SENT && memory.len == frame->kiss_len ?
 	    0 : 1;
+}
+
+static int
+test_real_dispatch_lab_config(void)
+{
+	const char text[] =
+	    "node {\n"
+	    "\tcallsign M6VPN-1\n"
+	    "}\n"
+	    "transmit {\n"
+	    "\tenabled true\n"
+	    "\tdry-run true\n"
+	    "\tallow-ui true\n"
+	    "\tallow-control-enqueue true\n"
+	    "\tdispatch-enabled true\n"
+	    "\tdispatch-test-only false\n"
+	    "\tdispatch-real-kiss true\n"
+	    "\trequire-explicit-port-tx true\n"
+	    "}\n"
+	    "port kiss0 {\n"
+	    "\ttype tcp-connect\n"
+	    "\thost 127.0.0.1\n"
+	    "\tport 8001\n"
+	    "\tenabled true\n"
+	    "\ttx-enabled false\n"
+	    "}\n";
+	struct kn_config config;
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.transmit.policy.dispatch_real_kiss == 0 ||
+	    config.transmit.policy.dispatch_test_only != 0)
+		return 1;
+
+	return config.ports[0].tx_enabled == 0 ? 0 : 1;
 }
 
 static int

@@ -140,6 +140,8 @@ struct kn_config_transmit {
 	uint8_t has_allow_shell_enqueue;
 	uint8_t has_dispatch_enabled;
 	uint8_t has_dispatch_test_only;
+	uint8_t has_dispatch_real_kiss;
+	uint8_t has_require_explicit_port_tx;
 	uint8_t has_dispatch_max_per_cycle;
 };
 
@@ -167,6 +169,7 @@ struct kn_config_port {
 	unsigned int baud;
 	size_t max_frame;
 	uint8_t enabled;
+	uint8_t tx_enabled;
 	uint8_t flow_control;
 	uint8_t has_type;
 	uint8_t has_host;
@@ -176,6 +179,7 @@ struct kn_config_port {
 	uint8_t has_baud;
 	uint8_t has_max_frame;
 	uint8_t has_enabled;
+	uint8_t has_tx_enabled;
 	uint8_t has_flow_control;
 };
 

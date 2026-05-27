@@ -86,18 +86,30 @@ config_validate(struct kn_config *config)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "invalid transmit policy");
 	if (config->transmit.policy.dry_run == 0 &&
-	    (config->transmit.policy.allow_control_enqueue != 0 ||
-	    config->transmit.policy.allow_shell_enqueue != 0))
+	    config->transmit.policy.allow_shell_enqueue != 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
-		    "transmit enqueue requires dry-run");
+		    "shell transmit enqueue requires dry-run");
+	if (config->transmit.policy.dry_run == 0 &&
+	    config->transmit.policy.allow_control_enqueue != 0 &&
+	    (config->transmit.policy.dispatch_enabled == 0 ||
+	    config->transmit.policy.dispatch_test_only != 0 ||
+	    config->transmit.policy.dispatch_real_kiss == 0))
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "control transmit enqueue requires dry-run or real dispatch");
 	if (config->transmit.policy.dispatch_enabled != 0 &&
 	    config->transmit.policy.enabled == 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "transmit dispatch requires enabled transmit");
 	if (config->transmit.policy.dispatch_enabled != 0 &&
-	    config->transmit.policy.dispatch_test_only == 0)
+	    config->transmit.policy.dispatch_test_only == 0 &&
+	    config->transmit.policy.dispatch_real_kiss == 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
-		    "transmit dispatch is test-only in this pass");
+		    "real transmit dispatch requires dispatch-real-kiss");
+	if (config->transmit.policy.dispatch_enabled != 0 &&
+	    config->transmit.policy.dispatch_test_only == 0 &&
+	    config->transmit.policy.require_explicit_port_tx == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "real transmit dispatch requires explicit port tx");
 
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
@@ -754,6 +766,32 @@ transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
 		return KN_CONFIG_OK;
 	}
 
+	if (strcmp(tokens[0], "dispatch-real-kiss") == 0) {
+		if (key_seen(&config->transmit.has_dispatch_real_kiss,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.dispatch_real_kiss) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit dispatch-real-kiss value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "require-explicit-port-tx") == 0) {
+		if (key_seen(&config->transmit.has_require_explicit_port_tx,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.require_explicit_port_tx) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit require-explicit-port-tx value");
+		return KN_CONFIG_OK;
+	}
+
 	if (strcmp(tokens[0], "max-queued") == 0) {
 		if (key_seen(&config->transmit.has_max_queued, config,
 		    line_no) != 0)
@@ -1252,6 +1290,16 @@ port_key_set(struct parser *parser, char **tokens, size_t token_count,
 		if (parse_bool(tokens[1], &port->enabled) != KN_CONFIG_OK)
 			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
 			    line_no, "invalid enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "tx-enabled") == 0) {
+		if (key_seen(&port->has_tx_enabled, parser->config,
+		    line_no) != 0)
+			return parser->config->error;
+		if (parse_bool(tokens[1], &port->tx_enabled) != KN_CONFIG_OK)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid tx-enabled value");
 		return KN_CONFIG_OK;
 	}
 

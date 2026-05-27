@@ -56,6 +56,7 @@ add_library(packetcore STATIC
 	src/rf/tx_frame.c
 	src/rf/tx_policy.c
 	src/rf/tx_queue.c
+	src/rf/tx_transport_gate.c
 	src/transport/transport.c
 	src/transport/transport_memory.c
 	src/transport/transport_pty.c
@@ -194,6 +195,11 @@ add_executable(test_tx_policy tests/test_tx_policy.c)
 target_link_libraries(test_tx_policy PRIVATE packetcore)
 kilonode_target_defaults(test_tx_policy)
 add_test(NAME tx_policy COMMAND test_tx_policy)
+
+add_executable(test_tx_transport_gate tests/test_tx_transport_gate.c)
+target_link_libraries(test_tx_transport_gate PRIVATE packetcore)
+kilonode_target_defaults(test_tx_transport_gate)
+add_test(NAME tx_transport_gate COMMAND test_tx_transport_gate)
 
 add_executable(test_daemon_tx tests/test_daemon_tx.c)
 target_link_libraries(test_daemon_tx PRIVATE packetcore)

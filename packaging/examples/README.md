@@ -12,5 +12,10 @@ tracking.
 `kilonode.conf` is a balanced local example with control, shell, BBS, and a
 localhost TCP KISS listener.
 
+`kilonode-tx-test-only.conf` enables memory-only TX dispatch testing.
+
+`kilonode-tx-lab-only.conf` documents real KISS TX gates but still blocks TX by
+default.
+
 All examples avoid public network listeners and keep hardware ports disabled by
 default.

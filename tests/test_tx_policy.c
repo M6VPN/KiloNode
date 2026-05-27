@@ -112,8 +112,17 @@ test_dispatch_policy(void)
 	policy.dispatch_enabled = 1;
 	policy.dispatch_test_only = 0;
 	if (kn_tx_policy_allow_dispatch(&policy) !=
-	    KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED)
+	    KN_TX_POLICY_ERR_DRY_RUN_REQUIRED)
 		return 1;
+	policy.dry_run = 0;
+	if (kn_tx_policy_allow_dispatch(&policy) !=
+	    KN_TX_POLICY_ERR_REAL_KISS_DISABLED)
+		return 1;
+	policy.dispatch_real_kiss = 1;
+	if (kn_tx_policy_allow_dispatch(&policy) != KN_TX_POLICY_OK)
+		return 1;
+	policy.dry_run = 1;
+	policy.dispatch_real_kiss = 0;
 	policy.dispatch_test_only = 1;
 
 	return kn_tx_policy_allow_dispatch(&policy) == KN_TX_POLICY_OK ?

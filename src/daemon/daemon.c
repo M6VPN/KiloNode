@@ -164,6 +164,22 @@ kn_daemon_run_foreground(const struct kn_config *config)
 		kn_port_stats_init(&ports[port_count].stats, &config->ports[i]);
 		ports[port_count].config = &config->ports[i];
 		if (config->ports[i].enabled == 0) {
+			kn_transport_reset(&ports[port_count].transport);
+			if (config->ports[i].type != KN_CONFIG_PORT_MEMORY_TEST) {
+				if (kn_tx_dispatch_add_transport_target(
+				    &tx_dispatch, config->ports[i].name,
+				    &ports[port_count].transport,
+				    config->ports[i].type,
+				    kn_config_port_transport_kind(
+				    &config->ports[i]), 0, 0,
+				    config->ports[i].tx_enabled) !=
+				    KN_TX_DISPATCH_OK) {
+					close_ports(ports, port_count + 1);
+					kn_control_socket_close(&control);
+					kn_message_store_close(&bbs_store);
+					return KN_DAEMON_ERR_RUNTIME;
+				}
+			}
 			port_count++;
 			continue;
 		}
@@ -179,6 +195,19 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			if (kn_tx_dispatch_add_memory_target(&tx_dispatch,
 			    config->ports[i].name, &ports[port_count].memory,
 			    1, 1) != KN_TX_DISPATCH_OK) {
+				close_ports(ports, port_count + 1);
+				kn_control_socket_close(&control);
+				kn_message_store_close(&bbs_store);
+				return KN_DAEMON_ERR_RUNTIME;
+			}
+		} else {
+			if (kn_tx_dispatch_add_transport_target(&tx_dispatch,
+			    config->ports[i].name,
+			    &ports[port_count].transport,
+			    config->ports[i].type,
+			    kn_config_port_transport_kind(&config->ports[i]),
+			    1, 1, config->ports[i].tx_enabled) !=
+			    KN_TX_DISPATCH_OK) {
 				close_ports(ports, port_count + 1);
 				kn_control_socket_close(&control);
 				kn_message_store_close(&bbs_store);

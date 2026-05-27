@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "kilonode/ax25.h"
 #include "kilonode/callsign.h"
@@ -59,6 +60,9 @@ static int test_stats_response(void);
 static int test_status_response(void);
 static int test_tx_frame_existing(void);
 static int test_tx_frame_missing(void);
+static int test_tx_gates_default(void);
+static int test_tx_gates_port_tx_disabled(void);
+static int test_tx_gates_port_tx_enabled(void);
 static int test_tx_dryrun_default_rejected(void);
 static int test_tx_dryrun_invalid_callsign(void);
 static int test_tx_dryrun_invalid_port(void);
@@ -69,6 +73,7 @@ static int test_tx_dryrun_valid(void);
 static int test_tx_dryrun_via_valid(void);
 static int test_tx_dispatch_run_default_rejected(void);
 static int test_tx_dispatch_run_enabled(void);
+static int test_tx_dispatch_run_real_enabled(void);
 static int test_tx_dispatch_run_port(void);
 static int test_tx_dispatch_run_port_invalid(void);
 static int test_tx_dispatch_status_default(void);
@@ -160,6 +165,12 @@ main(void)
 		return 1;
 	if (test_tx_status() != 0)
 		return 1;
+	if (test_tx_gates_default() != 0)
+		return 1;
+	if (test_tx_gates_port_tx_disabled() != 0)
+		return 1;
+	if (test_tx_gates_port_tx_enabled() != 0)
+		return 1;
 	if (test_tx_dryrun_default_rejected() != 0)
 		return 1;
 	if (test_tx_dryrun_valid() != 0)
@@ -183,6 +194,8 @@ main(void)
 	if (test_tx_dispatch_status_enabled() != 0)
 		return 1;
 	if (test_tx_dispatch_run_enabled() != 0)
+		return 1;
+	if (test_tx_dispatch_run_real_enabled() != 0)
 		return 1;
 	if (test_tx_dispatch_run_port() != 0)
 		return 1;
@@ -1024,6 +1037,101 @@ test_tx_dryrun_default_rejected(void)
 	return strcmp(out, "ERR tx-disabled\n") == 0 ? 0 : 1;
 }
 
+static int
+test_tx_gates_default(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX GATES", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "dispatch_real_kiss=false") != NULL &&
+	    strstr(out, "require_explicit_port_tx=true") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_gates_port_tx_disabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_transport transport;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+	kn_transport_reset(&transport);
+	transport.kind = KN_TRANSPORT_KIND_TCP_CLIENT;
+	transport.write_fd = -1;
+	transport.open = 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	(void)kn_tx_dispatch_add_transport_target(&dispatcher, "kiss0",
+	    &transport, KN_CONFIG_PORT_TCP_CONNECT,
+	    KN_TRANSPORT_KIND_TCP_CLIENT, 1, 1, 0);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX GATES PORT kiss0", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "tx_enabled=false") != NULL &&
+	    strstr(out, "reason=port-tx-disabled") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_gates_port_tx_enabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_transport transport;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	policy.dry_run = 0;
+	policy.dispatch_enabled = 1;
+	policy.dispatch_test_only = 0;
+	policy.dispatch_real_kiss = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+	kn_transport_reset(&transport);
+	transport.kind = KN_TRANSPORT_KIND_TCP_CLIENT;
+	transport.write_fd = 1;
+	transport.open = 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	(void)kn_tx_dispatch_add_transport_target(&dispatcher, "kiss0",
+	    &transport, KN_CONFIG_PORT_TCP_CONNECT,
+	    KN_TRANSPORT_KIND_TCP_CLIENT, 1, 1, 1);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX GATES PORT kiss0", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	transport.write_fd = -1;
+	return strstr(out, "tx_enabled=true") != NULL &&
+	    strstr(out, "allowed=true") != NULL &&
+	    strstr(out, "reason=ok") != NULL ? 0 : 1;
+}
+
 static void
 tx_policy_control_allowed(struct kn_tx_policy *policy)
 {
@@ -1282,6 +1390,53 @@ test_tx_dispatch_run_port(void)
 		return 1;
 
 	return strstr(out, "sent=1") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_run_real_enabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_transport transport;
+	char out[KN_CONTROL_QUEUE_MAX];
+	int fds[2];
+
+	kn_tx_policy_defaults(&policy);
+	policy.enabled = 1;
+	policy.dry_run = 0;
+	policy.allow_ui = 1;
+	policy.dispatch_enabled = 1;
+	policy.dispatch_test_only = 0;
+	policy.dispatch_real_kiss = 1;
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_add_frame(&queue);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+	if (pipe(fds) != 0)
+		return 1;
+	kn_transport_reset(&transport);
+	transport.kind = KN_TRANSPORT_KIND_TCP_CLIENT;
+	transport.write_fd = fds[1];
+	transport.open = 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	(void)kn_tx_dispatch_add_transport_target(&dispatcher, "kiss0",
+	    &transport, KN_CONFIG_PORT_TCP_CONNECT,
+	    KN_TRANSPORT_KIND_TCP_CLIENT, 1, 1, 1);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX DISPATCH RUN", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK) {
+		(void)close(fds[0]);
+		kn_transport_close(&transport);
+		return 1;
+	}
+	(void)close(fds[0]);
+	kn_transport_close(&transport);
+
+	return strstr(out, "OK TX DISPATCH sent=1 failed=0") != NULL ? 0 : 1;
 }
 
 static int

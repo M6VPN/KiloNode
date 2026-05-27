@@ -13,12 +13,13 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | TX queue skeleton | tested | Outbound frames can be built and queued, dispatch is disabled |
 | TX dry-run enqueue | tested | Builds AX.25/KISS frames and queues them without writing to TNC transports |
 | TX dispatch test harness | tested | Memory/mock-only dispatch path, no real TNC writes |
-| KISS stdin/stdout | implemented | Live monitor can read stdin KISS streams |
-| KISS TCP client | partial | Configured daemon and monitor support, no reconnect or auth |
-| KISS TCP server | partial | Configured daemon and monitor support, single-client only |
-| KISS serial | partial | Configured daemon and monitor support, no hardware CI |
-| KISS PTY | implemented | Configured daemon and monitor support with PTY tests |
-| Unix socket KISS | implemented | Configured daemon and monitor support with local tests |
+| Real KISS TX dispatch | partial | Control-triggered and blocked unless all global and per-port TX gates pass |
+| KISS stdin/stdout | implemented | RX supported, real TX blocked by default |
+| KISS TCP client | partial | RX supported, TX gated by `tx-enabled` and transmit policy |
+| KISS TCP server | partial | RX supported, TX gated after an accepted client exists |
+| KISS serial | partial | RX supported, TX gated, no hardware CI |
+| KISS PTY | implemented | RX supported, TX gated with local write-path tests |
+| Unix socket KISS | implemented | RX supported, TX gated after socket connect or accept |
 | KiloTNC | partial | Serial KISS can consume it, dedicated tests pending |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |

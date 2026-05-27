@@ -29,6 +29,8 @@ enum kn_tx_policy_error {
 	KN_TX_POLICY_ERR_TOO_LARGE,
 	KN_TX_POLICY_ERR_DISPATCH_DISABLED,
 	KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED,
+	KN_TX_POLICY_ERR_REAL_KISS_DISABLED,
+	KN_TX_POLICY_ERR_DRY_RUN_REQUIRED,
 	KN_TX_POLICY_ERR_CONTROL_DISABLED,
 	KN_TX_POLICY_ERR_SHELL_DISABLED
 };
@@ -44,6 +46,8 @@ struct kn_tx_policy {
 	uint8_t allow_shell_enqueue;
 	uint8_t dispatch_enabled;
 	uint8_t dispatch_test_only;
+	uint8_t dispatch_real_kiss;
+	uint8_t require_explicit_port_tx;
 	size_t dispatch_max_per_cycle;
 };
 

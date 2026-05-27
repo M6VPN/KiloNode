@@ -59,9 +59,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Control TX dry-run diagnostics | tested | `kilonodectl tx dryrun-ui`, `tx queue`, and `tx frame` |
 | TX dispatch test harness | tested | Test-only memory dispatch, no RF writes |
 | Memory/mock transport | tested | In-process bounded byte sink for dispatch tests |
+| Real KISS TX dispatch | partial | Control-triggered only and blocked unless all safety gates pass |
+| TX safety gates | tested | Global transmit gates plus per-port `tx-enabled` |
+| Local-admin TX dispatch command | tested | `kilonodectl tx dispatch-run` only, no shell or BBS TX |
 | AX.25 connected-mode receive state | planned | Not implemented |
-| Real KISS transport TX dispatch | planned | Not implemented |
-| Actual RF transmit dispatch | planned | Not implemented |
+| Real KISS transport TX dispatch | partial | Implemented behind disabled-by-default gates |
+| Actual RF transmit dispatch | partial | Control-triggered lab path only, no scheduler |
 | AX.25 transmit path | partial | Builder and queue only, no dispatch |
 | RF node shell transmit | planned | Not implemented |
 | RF BBS replies | planned | Not implemented |

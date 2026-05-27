@@ -64,6 +64,7 @@ static int test_transmit_invalid_allow_control(void);
 static int test_transmit_invalid_allow_shell(void);
 static int test_transmit_invalid_dispatch_max(void);
 static int test_transmit_omitted_defaults(void);
+static int test_transmit_real_dispatch_config(void);
 static int test_transmit_test_dispatch_config(void);
 static int test_transmit_dispatch_without_enabled_rejected(void);
 static int test_transmit_dispatch_not_test_only_rejected(void);
@@ -133,6 +134,8 @@ main(void)
 	if (test_transmit_allow_ui_false_control_config() != 0)
 		return 1;
 	if (test_transmit_test_dispatch_config() != 0)
+		return 1;
+	if (test_transmit_real_dispatch_config() != 0)
 		return 1;
 	if (test_transmit_dispatch_without_enabled_rejected() != 0)
 		return 1;
@@ -1144,9 +1147,47 @@ test_transmit_omitted_defaults(void)
 		return 1;
 	if (config.transmit.policy.dispatch_test_only == 0)
 		return 1;
+	if (config.transmit.policy.dispatch_real_kiss != 0)
+		return 1;
+	if (config.transmit.policy.require_explicit_port_tx == 0)
+		return 1;
 
 	return config.transmit.policy.allow_shell_enqueue == 0 &&
 	    config.transmit.policy.dispatch_max_per_cycle == 4 ? 0 : 1;
+}
+
+static int
+test_transmit_real_dispatch_config(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dry-run false\n"
+		"allow-ui true\n"
+		"allow-control-enqueue true\n"
+		"dispatch-enabled true\n"
+		"dispatch-test-only false\n"
+		"dispatch-real-kiss true\n"
+		"require-explicit-port-tx true\n"
+		"}\n"
+		"port kiss0 {\n"
+		"type tcp-connect\n"
+		"host 127.0.0.1\n"
+		"port 8001\n"
+		"tx-enabled true\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.transmit.policy.dispatch_real_kiss != 1 ||
+	    config.transmit.policy.dispatch_test_only != 0)
+		return 1;
+
+	return config.ports[0].tx_enabled == 1 ? 0 : 1;
 }
 
 static int
