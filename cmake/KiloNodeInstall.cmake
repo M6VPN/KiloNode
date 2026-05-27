@@ -16,6 +16,7 @@ option(KILONODE_INSTALL_SERVICE_EXAMPLES
 function(kilonode_install_targets)
 	install(TARGETS
 		kilonode
+		kilonode-compat
 		kilonode-monitor
 		kilonode-msg
 		kilonode-store
@@ -36,6 +37,7 @@ endfunction()
 function(kilonode_install_manpages)
 	install(FILES
 		docs/man/kilonodectl.1
+		docs/man/kilonode-compat.1
 		docs/man/kilonode-monitor.1
 		docs/man/kilonode-msg.1
 		docs/man/kilonode-store.1

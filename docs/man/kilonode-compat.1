@@ -1,0 +1,65 @@
+.Dd May 27, 2026
+.Dt KILONODE-COMPAT 1
+.Os
+.Sh NAME
+.Nm kilonode-compat
+.Nd replay KiloNode compatibility lab transcripts
+.Sh SYNOPSIS
+.Nm
+.Cm check-transcript
+.Ar path
+.Nm
+.Cm replay-transcript
+.Ar path
+.Nm
+.Cm replay-dir
+.Ar path
+.Nm
+.Cm report-transcript
+.Ar path
+.Sh DESCRIPTION
+.Nm
+validates and replays KiloNode-native compatibility transcripts.
+The current replay mode is synthetic RF UI command ingress.
+.Pp
+The tool does not run LinBPQ, inspect GPL source, open real transports, or
+dispatch queued transmit frames.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -help
+Show command usage.
+.El
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm check-transcript Ar path
+Validate transcript syntax.
+.It Cm replay-transcript Ar path
+Replay one transcript and print a text report.
+.It Cm replay-dir Ar path
+Replay all
+.Pa *.transcript
+files in sorted order.
+.It Cm report-transcript Ar path
+Print the parsed transcript fields without replay.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa tests/fixtures/compat
+Synthetic KiloNode-native baseline fixtures.
+.El
+.Sh EXAMPLES
+.Bd -literal
+kilonode-compat check-transcript tests/fixtures/compat/rf-ping.transcript
+kilonode-compat replay-dir tests/fixtures/compat
+.Ed
+.Sh SECURITY NOTES
+Treat transcript files as hostile input.
+Synthetic replay never dispatches TX frames.
+Future LinBPQ observations must be black-box behaviour only.
+.Sh SEE ALSO
+.Xr kilonodectl 1 ,
+.Xr kilonoded 8
+.Sh AUTHORS
+M6VPN
+.Sh LICENSE
+ISC

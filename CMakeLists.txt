@@ -23,6 +23,9 @@ function(kilonode_target_defaults target_name)
 endfunction()
 
 add_library(packetcore STATIC
+	src/compat/compat_report.c
+	src/compat/compat_replay.c
+	src/compat/compat_transcript.c
 	src/control/control_protocol.c
 	src/control/control_socket.c
 	src/bbs/bbs_area.c
@@ -94,6 +97,10 @@ add_executable(kilonode-store src/tools/kilonode-store.c)
 target_link_libraries(kilonode-store PRIVATE packetcore)
 kilonode_target_defaults(kilonode-store)
 
+add_executable(kilonode-compat src/tools/kilonode-compat.c)
+target_link_libraries(kilonode-compat PRIVATE packetcore)
+kilonode_target_defaults(kilonode-compat)
+
 add_executable(kilonoded src/tools/kilonoded.c)
 target_link_libraries(kilonoded PRIVATE packetcore)
 kilonode_target_defaults(kilonoded)
@@ -140,6 +147,21 @@ add_executable(test_control_socket tests/test_control_socket.c)
 target_link_libraries(test_control_socket PRIVATE packetcore)
 kilonode_target_defaults(test_control_socket)
 add_test(NAME control_socket COMMAND test_control_socket)
+
+add_executable(test_compat_transcript tests/test_compat_transcript.c)
+target_link_libraries(test_compat_transcript PRIVATE packetcore)
+kilonode_target_defaults(test_compat_transcript)
+add_test(NAME compat_transcript COMMAND test_compat_transcript)
+
+add_executable(test_compat_replay tests/test_compat_replay.c)
+target_link_libraries(test_compat_replay PRIVATE packetcore)
+kilonode_target_defaults(test_compat_replay)
+add_test(NAME compat_replay COMMAND test_compat_replay)
+
+add_executable(test_compat_report tests/test_compat_report.c)
+target_link_libraries(test_compat_report PRIVATE packetcore)
+kilonode_target_defaults(test_compat_report)
+add_test(NAME compat_report COMMAND test_compat_report)
 
 add_executable(test_daemon_config tests/test_daemon_config.c)
 target_link_libraries(test_daemon_config PRIVATE packetcore)

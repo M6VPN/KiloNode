@@ -16,6 +16,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Real KISS TX dispatch | partial | Control-triggered and blocked unless all global and per-port TX gates pass |
 | RF command ingress | tested | Configured KISS RX transports can feed UI command parsing when enabled |
 | RF command replies | partial | Replies are queued through TX gates and are not auto-dispatched |
+| Compatibility replay | tested | Synthetic RF UI transcripts run without real TNC hardware or dispatch |
 | KISS stdin/stdout | implemented | RX supported, real TX blocked by default |
 | KISS TCP client | partial | RX supported, TX gated by `tx-enabled` and transmit policy |
 | KISS TCP server | partial | RX supported, TX gated after an accepted client exists |

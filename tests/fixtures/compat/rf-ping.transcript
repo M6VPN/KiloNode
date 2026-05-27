@@ -1,0 +1,14 @@
+# KiloNode compatibility transcript v1
+# Synthetic KiloNode-native baseline, not a LinBPQ observation.
+name rf-ping
+mode rf-ui
+node M6VPN-1
+port kiss0
+source N0CALL
+destination M6VPN-1
+pid 0xf0
+input PING
+expect-event command=PING status=ok
+expect-reply contains=PONG
+expect-reply-queued true
+expect-no-dispatch true

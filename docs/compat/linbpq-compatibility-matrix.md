@@ -69,6 +69,14 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | RF reply suppression | tested | Reply window suppresses TX queue insertion |
 | RF ignore list | tested | Native manual ignore file and diagnostics |
 | RF auto-ignore | tested | Runtime temporary ignore after repeated rejects |
+| KiloNode synthetic RF command fixtures | tested | Synthetic KiloNode-native baseline transcripts |
+| Compatibility transcript parser | tested | Native line-based transcript parser |
+| Compatibility replay harness | tested | Synthetic RF UI replay without real transports |
+| Black-box LinBPQ execution harness | planned | Future manual lab pass only |
+| BPQ/LinBPQ RF command observations | planned | Future black-box transcripts |
+| BPQ/LinBPQ command compatibility implementation | planned | Not implemented |
+| RF BBS compatibility observations | planned | Future black-box transcripts |
+| BBS forwarding compatibility observations | planned | Future protocol-boundary observations |
 | AX.25 connected-mode receive state | planned | Not implemented |
 | Real KISS transport TX dispatch | partial | Implemented behind disabled-by-default gates |
 | Actual RF transmit dispatch | partial | Control-triggered lab path only, no scheduler |
