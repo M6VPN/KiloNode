@@ -10,7 +10,11 @@
 #include <time.h>
 
 #include "kilonode/compat_capture.h"
+#include "kilonode/compat_capture_report.h"
+#include "kilonode/compat_axip_capture.h"
+#include "kilonode/compat_kiss_capture.h"
 #include "kilonode/compat_observe.h"
+#include "kilonode/compat_packet_capture.h"
 #include "kilonode/compat_process.h"
 #include "kilonode/compat_report.h"
 #include "kilonode/compat_replay.h"
@@ -27,23 +31,35 @@ struct compat_dir_entry {
 
 static int command_check_transcript(const char *);
 static int command_check_observation(const char *);
+static int command_check_capture(const char *);
 static int command_compare_observations(const char *, const char *);
+static int command_capture_report(const char *);
+static int command_capture_to_transcript(int, char *[]);
+static int command_decode_capture(const char *);
 static int command_make_transcript(int, char *[]);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
+static int command_replay_capture(const char *);
+static int command_replay_capture_dir(const char *);
 static int command_replay_transcript(const char *);
 static int command_report_transcript(const char *);
 static int command_show_observation(const char *);
 static int compare_entries(const void *, const void *);
 static void date_today(char *, size_t);
 static int has_transcript_suffix(const char *);
+static int has_capture_suffix(const char *);
+static int decode_capture_file(const char *, struct kn_compat_packet_capture *,
+	struct kn_compat_packet_decode *);
 static enum kn_compat_observe_mode mode_from_text(const char *);
 static const char *option_value(int, char *[], int *, const char *);
 static int parse_observation_file(const char *, struct kn_compat_observation *);
+static int parse_capture_file(const char *, struct kn_compat_packet_capture *);
 static int parse_file(const char *, struct kn_compat_transcript *);
 static void print_observation_error(const char *,
 	const struct kn_compat_observe_error_info *);
+static void print_capture_error(const char *,
+	const struct kn_compat_packet_capture_error_info *);
 static void print_parse_error(const char *,
 	const struct kn_compat_transcript_error_info *);
 static void usage(void);
@@ -64,6 +80,14 @@ main(int argc, char *argv[])
 		return command_check_transcript(argv[2]);
 	if (strcmp(argv[1], "check-observation") == 0 && argc == 3)
 		return command_check_observation(argv[2]);
+	if (strcmp(argv[1], "check-capture") == 0 && argc == 3)
+		return command_check_capture(argv[2]);
+	if (strcmp(argv[1], "decode-capture") == 0 && argc == 3)
+		return command_decode_capture(argv[2]);
+	if (strcmp(argv[1], "capture-report") == 0 && argc == 3)
+		return command_capture_report(argv[2]);
+	if (strcmp(argv[1], "capture-to-transcript") == 0)
+		return command_capture_to_transcript(argc, argv);
 	if (strcmp(argv[1], "show-observation") == 0 && argc == 3)
 		return command_show_observation(argv[2]);
 	if (strcmp(argv[1], "compare-observations") == 0 && argc == 4)
@@ -76,6 +100,10 @@ main(int argc, char *argv[])
 		return command_observe_tcp(argc, argv);
 	if (strcmp(argv[1], "replay-transcript") == 0 && argc == 3)
 		return command_replay_transcript(argv[2]);
+	if (strcmp(argv[1], "replay-capture") == 0 && argc == 3)
+		return command_replay_capture(argv[2]);
+	if (strcmp(argv[1], "replay-capture-dir") == 0 && argc == 3)
+		return command_replay_capture_dir(argv[2]);
 	if (strcmp(argv[1], "replay-dir") == 0 && argc == 3)
 		return command_replay_dir(argv[2]);
 	if (strcmp(argv[1], "report-transcript") == 0 && argc == 3)
@@ -113,6 +141,21 @@ command_check_observation(const char *path)
 }
 
 static int
+command_check_capture(const char *path)
+{
+	struct kn_compat_packet_capture capture;
+
+	if (parse_capture_file(path, &capture) != 0)
+		return 1;
+
+	printf("OK capture=%s method=%s direction=%s frame_bytes=%llu\n",
+	    capture.name, kn_compat_packet_method_name(capture.method),
+	    kn_compat_packet_direction_name(capture.direction),
+	    (unsigned long long)capture.frame_len);
+	return 0;
+}
+
+static int
 command_compare_observations(const char *left_path, const char *right_path)
 {
 	struct kn_compat_observation left;
@@ -128,6 +171,57 @@ command_compare_observations(const char *left_path, const char *right_path)
 		return 1;
 	}
 	printf("%s\n", report);
+	return 0;
+}
+
+static int
+command_capture_report(const char *path)
+{
+	return command_decode_capture(path);
+}
+
+static int
+command_capture_to_transcript(int argc, char *argv[])
+{
+	struct kn_compat_packet_capture capture;
+	struct kn_compat_packet_decode decode;
+	char text[KN_COMPAT_CAPTURE_REPORT_MAX];
+
+	if (argc != 5 || strcmp(argv[3], "--output") != 0) {
+		usage();
+		return 1;
+	}
+	if (decode_capture_file(argv[2], &capture, &decode) != 0)
+		return 1;
+	if (kn_compat_capture_to_transcript(&capture, &decode, text,
+	    sizeof(text)) != KN_COMPAT_CAPTURE_REPORT_OK) {
+		fprintf(stderr, "ERR capture-to-transcript\n");
+		return 1;
+	}
+	if (kn_compat_capture_write_text(text, argv[4]) !=
+	    KN_COMPAT_CAPTURE_OK) {
+		fprintf(stderr, "ERR write-output\n");
+		return 1;
+	}
+	printf("OK capture-transcript=%s\n", argv[4]);
+	return 0;
+}
+
+static int
+command_decode_capture(const char *path)
+{
+	struct kn_compat_packet_capture capture;
+	struct kn_compat_packet_decode decode;
+	char report[KN_COMPAT_CAPTURE_REPORT_MAX];
+
+	if (decode_capture_file(path, &capture, &decode) != 0)
+		return 1;
+	if (kn_compat_capture_report_format(&decode, report,
+	    sizeof(report)) != KN_COMPAT_CAPTURE_REPORT_OK) {
+		fprintf(stderr, "ERR capture-report\n");
+		return 1;
+	}
+	printf("%s", report);
 	return 0;
 }
 
@@ -361,6 +455,74 @@ command_replay_dir(const char *path)
 }
 
 static int
+command_replay_capture(const char *path)
+{
+	struct kn_compat_packet_capture capture;
+	struct kn_compat_packet_decode decode;
+	char report[KN_COMPAT_CAPTURE_REPORT_MAX];
+
+	if (decode_capture_file(path, &capture, &decode) != 0)
+		return 1;
+	if (kn_compat_capture_report_format(&decode, report,
+	    sizeof(report)) != KN_COMPAT_CAPTURE_REPORT_OK)
+		return 1;
+	printf("%s", report);
+
+	return decode.passed != 0 ? 0 : 1;
+}
+
+static int
+command_replay_capture_dir(const char *path)
+{
+	struct compat_dir_entry entries[COMPAT_DIR_MAX];
+	DIR *dir;
+	struct dirent *entry;
+	size_t count;
+	size_t i;
+	int failed;
+	int needed;
+
+	dir = opendir(path);
+	if (dir == NULL) {
+		fprintf(stderr, "ERR open-dir path=%s\n", path);
+		return 1;
+	}
+	count = 0;
+	while ((entry = readdir(dir)) != NULL) {
+		if (has_capture_suffix(entry->d_name) == 0)
+			continue;
+		if (count >= COMPAT_DIR_MAX) {
+			closedir(dir);
+			fprintf(stderr, "ERR too-many-captures\n");
+			return 1;
+		}
+		needed = snprintf(entries[count].path,
+		    sizeof(entries[count].path), "%s/%s", path,
+		    entry->d_name);
+		if (needed < 0 ||
+		    (size_t)needed >= sizeof(entries[count].path)) {
+			closedir(dir);
+			fprintf(stderr, "ERR path-too-long\n");
+			return 1;
+		}
+		count++;
+	}
+	closedir(dir);
+	qsort(entries, count, sizeof(entries[0]), compare_entries);
+	failed = 0;
+	for (i = 0; i < count; i++) {
+		if (command_replay_capture(entries[i].path) != 0)
+			failed = 1;
+	}
+	if (count == 0) {
+		fprintf(stderr, "ERR no-captures\n");
+		return 1;
+	}
+
+	return failed;
+}
+
+static int
 command_replay_transcript(const char *path)
 {
 	struct kn_compat_transcript transcript;
@@ -458,6 +620,51 @@ has_transcript_suffix(const char *name)
 	return strcmp(name + name_len - suffix_len, suffix) == 0 ? 1 : 0;
 }
 
+static int
+has_capture_suffix(const char *name)
+{
+	const char suffix[] = ".capture";
+	size_t name_len;
+	size_t suffix_len;
+
+	if (name == NULL)
+		return 0;
+	name_len = strlen(name);
+	suffix_len = strlen(suffix);
+	if (name_len < suffix_len)
+		return 0;
+
+	return strcmp(name + name_len - suffix_len, suffix) == 0 ? 1 : 0;
+}
+
+static int
+decode_capture_file(const char *path, struct kn_compat_packet_capture *capture,
+	struct kn_compat_packet_decode *decode)
+{
+	if (parse_capture_file(path, capture) != 0)
+		return 1;
+	if (capture->method == KN_COMPAT_PACKET_METHOD_KISS) {
+		if (kn_compat_kiss_capture_decode(capture, decode) ==
+		    KN_COMPAT_KISS_CAPTURE_ERR_DECODE) {
+			fprintf(stderr, "ERR capture-decode path=%s\n", path);
+			return 1;
+		}
+		return 0;
+	}
+	if (capture->method == KN_COMPAT_PACKET_METHOD_AXIP ||
+	    capture->method == KN_COMPAT_PACKET_METHOD_AXUDP) {
+		if (kn_compat_axip_capture_decode(capture, decode) ==
+		    KN_COMPAT_AXIP_CAPTURE_ERR_DECODE) {
+			fprintf(stderr, "ERR capture-decode path=%s\n", path);
+			return 1;
+		}
+		return 0;
+	}
+
+	fprintf(stderr, "ERR unsupported-capture-method\n");
+	return 1;
+}
+
 static enum kn_compat_observe_mode
 mode_from_text(const char *text)
 {
@@ -493,6 +700,22 @@ parse_observation_file(const char *path,
 	rc = kn_compat_observation_parse_file(path, observation, &error);
 	if (rc != KN_COMPAT_OBSERVE_OK) {
 		print_observation_error(path, &error);
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
+parse_capture_file(const char *path, struct kn_compat_packet_capture *capture)
+{
+	struct kn_compat_packet_capture_error_info error;
+	enum kn_compat_packet_capture_error rc;
+
+	memset(&error, 0, sizeof(error));
+	rc = kn_compat_packet_capture_parse_file(path, capture, &error);
+	if (rc != KN_COMPAT_PACKET_CAPTURE_OK) {
+		print_capture_error(path, &error);
 		return 1;
 	}
 
@@ -538,11 +761,28 @@ print_observation_error(const char *path,
 }
 
 static void
+print_capture_error(const char *path,
+	const struct kn_compat_packet_capture_error_info *error)
+{
+	fprintf(stderr, "ERR capture=%s error=%s line=%llu detail=%s\n",
+	    path == NULL ? "-" : path,
+	    kn_compat_packet_capture_error_name(error->error),
+	    (unsigned long long)error->line,
+	    error->message[0] == '\0' ? "-" : error->message);
+}
+
+static void
 usage(void)
 {
 	fprintf(stderr,
 	    "usage: kilonode-compat check-transcript PATH\n"
 	    "       kilonode-compat check-observation PATH\n"
+	    "       kilonode-compat check-capture PATH\n"
+	    "       kilonode-compat decode-capture PATH\n"
+	    "       kilonode-compat replay-capture PATH\n"
+	    "       kilonode-compat replay-capture-dir PATH\n"
+	    "       kilonode-compat capture-report PATH\n"
+	    "       kilonode-compat capture-to-transcript PATH --output PATH\n"
 	    "       kilonode-compat show-observation PATH\n"
 	    "       kilonode-compat replay-transcript PATH\n"
 	    "       kilonode-compat replay-dir PATH\n"

@@ -76,6 +76,14 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Process observation harness | tested | Explicit binary path only, no shell |
 | TCP observation harness | tested | Explicit endpoint, bounded line capture |
 | Transcript generation from observations | tested | Generates marked candidate data |
+| Packet capture format | tested | Native packet-boundary text captures |
+| KISS capture parser | tested | Offline KISS frame decode and expectations |
+| AXIP/AXUDP capture parser | tested | Offline raw AX.25 payload observations |
+| Capture expectation reports | tested | Deterministic pass/fail mismatch reports |
+| Capture to transcript conversion | tested | RF UI payload candidate generation |
+| Live KISS capture | planned | Not implemented |
+| Live AXIP capture | planned | Not implemented |
+| BPQ/LinBPQ packet observations | planned | Future manual black-box captures |
 | Automated LinBPQ compatibility observations | planned | Manual explicit action only |
 | Black-box LinBPQ execution harness | partial | Optional explicit CLI, not used by tests |
 | BPQ/LinBPQ RF command observations | planned | Future black-box transcripts |

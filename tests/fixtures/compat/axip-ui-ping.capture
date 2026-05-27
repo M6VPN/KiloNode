@@ -1,0 +1,21 @@
+# KiloNode packet capture v1
+# Synthetic KiloNode-native packet fixture, not a LinBPQ capture.
+name axip-ui-ping
+subject synthetic
+method axip
+date 2026-05-27
+observer M6VPN
+mode packet-boundary
+direction rx
+source-endpoint 127.0.0.1:10093
+destination-endpoint 127.0.0.1:10094
+timestamp 1710000002
+frame-begin hex
+86 a2 40 40 40 40 60 9c 60 86 82 98 98 61 03 f0 50 49 4e 47
+frame-end
+expect-decode ax25-ui
+expect-source N0CALL
+expect-destination CQ
+expect-pid 0xf0
+expect-payload-text PING
+expect-kind UI

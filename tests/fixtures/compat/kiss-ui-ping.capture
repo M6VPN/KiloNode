@@ -1,0 +1,20 @@
+# KiloNode packet capture v1
+# Synthetic KiloNode-native packet fixture, not a LinBPQ capture.
+name kiss-ui-ping
+subject synthetic
+method kiss
+date 2026-05-27
+observer M6VPN
+mode packet-boundary
+direction rx
+port kiss0
+timestamp 1710000000
+frame-begin hex
+c0 00 86 a2 40 40 40 40 60 9c 60 86 82 98 98 61 03 f0 50 49 4e 47 c0
+frame-end
+expect-decode ax25-ui
+expect-source N0CALL
+expect-destination CQ
+expect-pid 0xf0
+expect-payload-text PING
+expect-kind UI

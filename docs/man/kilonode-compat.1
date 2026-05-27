@@ -49,11 +49,30 @@
 .Cm compare-observations
 .Ar left
 .Ar right
+.Nm
+.Cm check-capture
+.Ar path
+.Nm
+.Cm decode-capture
+.Ar path
+.Nm
+.Cm replay-capture
+.Ar path
+.Nm
+.Cm replay-capture-dir
+.Ar path
+.Nm
+.Cm capture-report
+.Ar path
+.Nm
+.Cm capture-to-transcript
+.Ar path
+.Fl -output Ar path
 .Sh DESCRIPTION
 .Nm
 validates and replays KiloNode-native compatibility transcripts.
 The current replay mode is synthetic RF UI command ingress. It can also validate
-and store black-box observation files.
+and store black-box observation files and offline packet-boundary captures.
 .Pp
 The tool does not run LinBPQ, inspect GPL source, open real transports, or
 dispatch queued transmit frames unless the operator explicitly requests a
@@ -88,6 +107,20 @@ capture a bounded response.
 Write a transcript candidate marked as black-box observation data.
 .It Cm compare-observations Ar left Ar right
 Compare two observations at text level.
+.It Cm check-capture Ar path
+Validate one packet capture file.
+.It Cm decode-capture Ar path
+Decode one packet capture and print a bounded packet summary.
+.It Cm replay-capture Ar path
+Decode one packet capture and compare expected fields.
+.It Cm replay-capture-dir Ar path
+Replay all
+.Pa *.capture
+files in sorted order.
+.It Cm capture-report Ar path
+Print a full capture expectation report.
+.It Cm capture-to-transcript Ar path Fl -output Ar path
+Write an RF UI transcript candidate from a capture payload.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -100,6 +133,8 @@ kilonode-compat check-transcript tests/fixtures/compat/rf-ping.transcript
 kilonode-compat replay-dir tests/fixtures/compat
 kilonode-compat check-observation tests/fixtures/compat/blackbox-node-help.observation
 kilonode-compat show-observation tests/fixtures/compat/blackbox-node-help.observation
+kilonode-compat replay-capture tests/fixtures/compat/kiss-ui-ping.capture
+kilonode-compat capture-to-transcript tests/fixtures/compat/kiss-ui-ping.capture --output /tmp/kilonode-capture.transcript
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
@@ -107,6 +142,8 @@ Synthetic replay never dispatches TX frames.
 Future LinBPQ observations must be black-box behaviour only.
 LinBPQ is not run automatically; process observation requires an explicit
 binary path from the operator.
+Packet captures are offline text fixtures in this pass. No live capture, pcap
+input, real TNC hardware, or TX dispatch is used.
 .Sh SEE ALSO
 .Xr kilonodectl 1 ,
 .Xr kilonoded 8

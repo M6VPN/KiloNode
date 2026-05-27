@@ -40,6 +40,15 @@ packet capture reference.
 Packet captures should be reduced to externally visible fields needed for
 compatibility tests. Implementation code must remain KiloNode-native.
 
+M1.28 adds an offline packet-boundary capture format for KISS, AXIP, and AXUDP
+observations. These captures are text files containing observed frame bytes and
+expected decode fields. They are not pcap files and they do not require live
+capture support.
+
+Future KISS observations should store complete KISS frame bytes. Future AXIP and
+AXUDP observations should store raw AX.25 payload bytes unless a later document
+adds explicit encapsulation metadata.
+
 ## Explicit Process Observation Example
 
 This command shape is for a future manual lab only:
@@ -84,3 +93,15 @@ command parser structure, mailbox formats, or forwarding implementation.
 Mailbox files and forwarding sessions may be observed only as external outputs
 of a running binary. KiloNode import, export, and forwarding designs must remain
 separate KiloNode-native implementations.
+
+## Packet-Boundary Capture Examples
+
+Synthetic captures can be validated now:
+
+```text
+./build/kilonode-compat replay-capture tests/fixtures/compat/kiss-ui-ping.capture
+./build/kilonode-compat replay-capture-dir tests/fixtures/compat
+```
+
+Future LinBPQ captures must be produced by explicit manual black-box runs. Tests
+and scripts do not run the local LinBPQ binary.

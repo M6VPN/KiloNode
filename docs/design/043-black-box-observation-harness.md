@@ -57,8 +57,8 @@ Reports escape control characters.
 
 ## Deferred Work
 
-- KISS packet observation
-- AXIP observation
+- live KISS packet capture
+- live AXIP observation
 - mailbox file observation
 - forwarding-session observation
 - transcript review workflow

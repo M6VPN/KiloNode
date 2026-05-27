@@ -24,7 +24,11 @@ endfunction()
 
 add_library(packetcore STATIC
 	src/compat/compat_capture.c
+	src/compat/compat_capture_report.c
+	src/compat/compat_axip_capture.c
+	src/compat/compat_kiss_capture.c
 	src/compat/compat_observe.c
+	src/compat/compat_packet_capture.c
 	src/compat/compat_process.c
 	src/compat/compat_report.c
 	src/compat/compat_replay.c
@@ -179,6 +183,26 @@ add_executable(test_compat_capture tests/test_compat_capture.c)
 target_link_libraries(test_compat_capture PRIVATE packetcore)
 kilonode_target_defaults(test_compat_capture)
 add_test(NAME compat_capture COMMAND test_compat_capture)
+
+add_executable(test_compat_packet_capture tests/test_compat_packet_capture.c)
+target_link_libraries(test_compat_packet_capture PRIVATE packetcore)
+kilonode_target_defaults(test_compat_packet_capture)
+add_test(NAME compat_packet_capture COMMAND test_compat_packet_capture)
+
+add_executable(test_compat_kiss_capture tests/test_compat_kiss_capture.c)
+target_link_libraries(test_compat_kiss_capture PRIVATE packetcore)
+kilonode_target_defaults(test_compat_kiss_capture)
+add_test(NAME compat_kiss_capture COMMAND test_compat_kiss_capture)
+
+add_executable(test_compat_axip_capture tests/test_compat_axip_capture.c)
+target_link_libraries(test_compat_axip_capture PRIVATE packetcore)
+kilonode_target_defaults(test_compat_axip_capture)
+add_test(NAME compat_axip_capture COMMAND test_compat_axip_capture)
+
+add_executable(test_compat_capture_report tests/test_compat_capture_report.c)
+target_link_libraries(test_compat_capture_report PRIVATE packetcore)
+kilonode_target_defaults(test_compat_capture_report)
+add_test(NAME compat_capture_report COMMAND test_compat_capture_report)
 
 add_executable(test_compat_replay tests/test_compat_replay.c)
 target_link_libraries(test_compat_replay PRIVATE packetcore)
