@@ -12,6 +12,7 @@
 #include "kilonode/ax25_connection_diag.h"
 #include "kilonode/ax25_live_diag.h"
 #include "kilonode/ax25_prepared_diag.h"
+#include "kilonode/ax25_prepared_tx_diag.h"
 #include "kilonode/ax25_scheduler_diag.h"
 #include "kilonode/config.h"
 
@@ -330,7 +331,11 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    "scheduler_tx_blocked=%llu scheduler_tx_writes=%llu "
 	    "prepared_attempted=%llu prepared_stored=%llu "
 	    "prepared_failed=%llu prepared_full=%llu "
-	    "prepared_bridge_blocked=%llu prepared_tx_writes=%llu\nEND\n",
+	    "prepared_bridge_blocked=%llu prepared_tx_writes=%llu "
+	    "prepared_tx_checks=%llu prepared_tx_allowed=%llu "
+	    "prepared_tx_blocked=%llu prepared_tx_conversions=%llu "
+	    "prepared_tx_queue_writes=%llu prepared_tx_fx25_blocked=%llu\n"
+	    "END\n",
 	    (unsigned long long)rt->counters.events_accepted,
 	    (unsigned long long)rt->counters.events_rejected,
 	    (unsigned long long)rt->counters.connections_created,
@@ -362,7 +367,13 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    (unsigned long long)rt->prepared_counters.queue_full,
 	    (unsigned long long)rt->prepared_counters.bridge_blocked,
 	    (unsigned long long)
-	    rt->prepared_counters.tx_queue_writes_attempted);
+	    rt->prepared_counters.tx_queue_writes_attempted,
+	    (unsigned long long)rt->prepared_tx_counters.checks,
+	    (unsigned long long)rt->prepared_tx_counters.allowed,
+	    (unsigned long long)rt->prepared_tx_counters.blocked,
+	    (unsigned long long)rt->prepared_tx_counters.test_conversions,
+	    (unsigned long long)rt->prepared_tx_counters.tx_queue_writes,
+	    (unsigned long long)rt->prepared_tx_counters.fx25_blocked);
 	if (needed < 0 || (size_t)needed >= bufsiz)
 		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
 
@@ -381,6 +392,45 @@ kn_ax25_control_plane_format_prepared(const struct kn_ax25_runtime *runtime,
 	}
 	if (kn_ax25_prepared_diag_format_list(runtime, port, connection_id,
 	    buf, bufsiz) != KN_AX25_PREPARED_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_prepared_tx_diag_format_status(runtime, buf, bufsiz) !=
+	    KN_AX25_PREPARED_TX_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge_counters(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_prepared_tx_diag_format_counters(runtime, buf, bufsiz) !=
+	    KN_AX25_PREPARED_TX_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge_frame(
+	const struct kn_ax25_runtime *runtime, uint64_t id, char *buf,
+	size_t bufsiz)
+{
+	enum kn_ax25_prepared_tx_diag_error rc;
+
+	rc = kn_ax25_prepared_tx_diag_format_frame(runtime, id, buf,
+	    bufsiz);
+	if (rc == KN_AX25_PREPARED_TX_DIAG_ERR_NOT_FOUND)
+		return KN_AX25_CONTROL_PLANE_ERR_NOT_FOUND;
+	if (rc != KN_AX25_PREPARED_TX_DIAG_OK)
 		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
 
 	return KN_AX25_CONTROL_PLANE_OK;
@@ -532,6 +582,22 @@ kn_ax25_control_plane_format(const char *command,
 	if (strcmp(command, "PREPARED COUNTERS") == 0)
 		return kn_ax25_control_plane_format_prepared_counters(runtime,
 		    buf, bufsiz);
+	if (strcmp(command, "PREPARED BRIDGE") == 0)
+		return kn_ax25_control_plane_format_prepared_bridge(runtime,
+		    buf, bufsiz);
+	if (strncmp(command, "PREPARED BRIDGE FRAME ", 22) == 0) {
+		id = strtoul(command + 22, &end, 10);
+		if (*end != '\0' || id == 0) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR invalid-prepared-frame-id\n");
+			return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;
+		}
+		return kn_ax25_control_plane_format_prepared_bridge_frame(
+		    runtime, (uint64_t)id, buf, bufsiz);
+	}
+	if (strcmp(command, "PREPARED BRIDGE COUNTERS") == 0)
+		return kn_ax25_control_plane_format_prepared_bridge_counters(
+		    runtime, buf, bufsiz);
 
 	(void)snprintf(buf, bufsiz, "ERR invalid-ax25-command\n");
 	return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;

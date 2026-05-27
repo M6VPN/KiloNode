@@ -94,6 +94,10 @@ add_library(packetcore STATIC
 	src/proto/ax25_prepared_queue.c
 	src/proto/ax25_prepared_replay_check.c
 	src/proto/ax25_prepared_replay_report.c
+	src/proto/ax25_prepared_tx_bridge.c
+	src/proto/ax25_prepared_tx_diag.c
+	src/proto/ax25_prepared_tx_gate.c
+	src/proto/ax25_prepared_tx_policy.c
 	src/proto/ax25_retry.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
@@ -287,6 +291,32 @@ target_link_libraries(test_ax25_prepared_replay_report PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_prepared_replay_report)
 add_test(NAME ax25_prepared_replay_report
 	COMMAND test_ax25_prepared_replay_report)
+
+add_executable(test_ax25_prepared_tx_bridge
+	tests/test_ax25_prepared_tx_bridge.c)
+target_link_libraries(test_ax25_prepared_tx_bridge PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_tx_bridge)
+add_test(NAME ax25_prepared_tx_bridge
+	COMMAND test_ax25_prepared_tx_bridge)
+
+add_executable(test_ax25_prepared_tx_diag
+	tests/test_ax25_prepared_tx_diag.c)
+target_link_libraries(test_ax25_prepared_tx_diag PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_tx_diag)
+add_test(NAME ax25_prepared_tx_diag COMMAND test_ax25_prepared_tx_diag)
+
+add_executable(test_ax25_prepared_tx_gate
+	tests/test_ax25_prepared_tx_gate.c)
+target_link_libraries(test_ax25_prepared_tx_gate PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_tx_gate)
+add_test(NAME ax25_prepared_tx_gate COMMAND test_ax25_prepared_tx_gate)
+
+add_executable(test_ax25_prepared_tx_policy
+	tests/test_ax25_prepared_tx_policy.c)
+target_link_libraries(test_ax25_prepared_tx_policy PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_tx_policy)
+add_test(NAME ax25_prepared_tx_policy
+	COMMAND test_ax25_prepared_tx_policy)
 
 add_executable(test_ax25_retry tests/test_ax25_retry.c)
 target_link_libraries(test_ax25_retry PRIVATE packetcore)

@@ -212,6 +212,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 prepared response diagnostics queue | implemented | Generated AX.25 response plans and bytes are retained for inspection only if tests pass. |
 | AX.25 response bytes for diagnostics | implemented | Raw AX.25 body bytes can be built without TX queue writes if tests pass. |
 | AX.25 prepared-frame replay assertions | implemented | Offline bench and timer replay can compare expected prepared diagnostics if tests pass. |
+| AX.25 prepared-to-TX bridge gate | implemented | Disabled diagnostic gate evaluates prepared frames without real TX queue writes if tests pass. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |
 | Real connected-mode response TX | planned | Prepared diagnostics are not transmitted. |
 | BPQ/LinBPQ connected-mode interop | planned | Future black-box tests only. |

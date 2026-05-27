@@ -47,6 +47,10 @@ static int test_ax25_malformed_command(void);
 static int test_ax25_no_write_commands(void);
 static int test_ax25_params(void);
 static int test_ax25_prepared(void);
+static int test_ax25_prepared_bridge(void);
+static int test_ax25_prepared_bridge_counters(void);
+static int test_ax25_prepared_bridge_frame(void);
+static int test_ax25_prepared_bridge_frame_missing(void);
 static int test_ax25_prepared_connection(void);
 static int test_ax25_prepared_counters(void);
 static int test_ax25_prepared_frame(void);
@@ -211,6 +215,14 @@ main(void)
 	if (test_ax25_prepared_frame_missing() != 0)
 		return 1;
 	if (test_ax25_prepared_counters() != 0)
+		return 1;
+	if (test_ax25_prepared_bridge() != 0)
+		return 1;
+	if (test_ax25_prepared_bridge_frame() != 0)
+		return 1;
+	if (test_ax25_prepared_bridge_frame_missing() != 0)
+		return 1;
+	if (test_ax25_prepared_bridge_counters() != 0)
 		return 1;
 	if (test_ax25_prepared_malformed() != 0)
 		return 1;
@@ -574,6 +586,73 @@ test_ax25_prepared(void)
 		return 1;
 
 	return strstr(out, "OK AX25 PREPARED count=1") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_prepared_bridge(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 PREPARED BRIDGE", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 PREPARED BRIDGE enabled=false") !=
+	    NULL ? 0 : 1;
+}
+
+static int
+test_ax25_prepared_bridge_counters(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 PREPARED BRIDGE COUNTERS",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "checks=0") != NULL &&
+	    strstr(out, "tx_writes=0") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_prepared_bridge_frame(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (ax25_runtime_populate(&runtime) != 0)
+		return 1;
+	snapshot.ax25_runtime = &runtime;
+	if (kn_control_protocol_handle("AX25 PREPARED BRIDGE FRAME 1",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "allowed=false") != NULL &&
+	    strstr(out, "reason=bridge-disabled") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_prepared_bridge_frame_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 PREPARED BRIDGE FRAME 1",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR prepared-frame-not-found\n") == 0 ? 0 : 1;
 }
 
 static int

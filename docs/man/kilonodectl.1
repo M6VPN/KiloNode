@@ -60,6 +60,12 @@ Show prepared AX.25 response frame diagnostics.
 Show one prepared AX.25 response frame diagnostic.
 .It Cm ax25 prepared-counters
 Show prepared AX.25 response frame counters.
+.It Cm ax25 prepared-bridge
+Show prepared-to-TX bridge gate policy.
+.It Cm ax25 prepared-bridge-frame Ar id
+Show the read-only bridge gate decision for one prepared frame.
+.It Cm ax25 prepared-bridge-counters
+Show prepared-to-TX bridge gate counters.
 .It Cm bbs status | stats | areas | users | messages | message Ar id
 Show read-only local BBS state.
 .It Cm rx status
@@ -117,6 +123,9 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-frame 1
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-counters
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge-frame 1
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge-counters
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx gates
 .Dl kilonodectl --socket /tmp/kilonode/control.sock heard
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages

@@ -101,7 +101,12 @@
 | Manual capture prepared assertion support | partial | Manual replay reports prepared frame counts; optional reviewed expectations remain file-based workflow. |
 | Prepared replay TX writes zero assertion | implemented | Prepared replay checks fail if any TX write counter becomes non-zero. |
 | Prepared-to-TX bridge blocked | implemented | Bridge helper returns blocked and config rejects `prepared-bridge-to-tx true`. |
+| Prepared-to-TX bridge gate | implemented | Disabled-by-default gate evaluates prepared AX.25 frames without real TX queue writes. |
+| Bridge decision diagnostics | implemented | Read-only control output reports bridge policy, per-frame decision, and counters. |
+| Test-only TX frame conversion | implemented | Unit tests can build an in-memory dry-run TX frame from a prepared frame after all gates pass. |
+| Prepared bridge runtime disabled | implemented | Runtime bridge calls remain blocked and do not enqueue frames. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
+| Dispatch planned              | planned     | Prepared bridge diagnostics do not run TX dispatch. |
 | Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |
 | FCS handling                   | deferred    | KISS-facing code operates at AX.25 body boundary. |
 | KISS payload boundary          | implemented | Existing KISS encode/decode treats AX.25 bytes as payload. |

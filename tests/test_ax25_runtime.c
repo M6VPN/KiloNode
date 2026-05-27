@@ -29,6 +29,7 @@ static int test_prepared_defaults_enabled(void);
 static int test_prepared_disabled_stores_none(void);
 static int test_prepared_queue_full_counter(void);
 static int test_prepared_raw_build_disabled(void);
+static int test_prepared_tx_policy_defaults(void);
 static int test_reset_clears_live_counters(void);
 static int test_reset_clears_live_scheduler(void);
 static int test_reset_clears_prepared_queue(void);
@@ -59,6 +60,8 @@ main(void)
 	if (test_scheduler_policy_validates_dependencies() != 0)
 		return 1;
 	if (test_prepared_defaults_enabled() != 0)
+		return 1;
+	if (test_prepared_tx_policy_defaults() != 0)
 		return 1;
 	if (test_inject_sabm_creates_connection() != 0)
 		return 1;
@@ -337,7 +340,8 @@ test_no_tx_queue_writes(void)
 		return 1;
 
 	return result.plans.count > 0 &&
-	    runtime.counters.frame_plans_generated == result.plans.count ?
+	    runtime.counters.frame_plans_generated == result.plans.count &&
+	    runtime.prepared_tx_counters.tx_queue_writes == 0 ?
 	    0 : 1;
 }
 
@@ -392,6 +396,9 @@ test_prepared_bridge_blocked_counter(void)
 		return 1;
 
 	return runtime.prepared_counters.bridge_blocked == 1 &&
+	    runtime.prepared_tx_counters.checks == 1 &&
+	    runtime.prepared_tx_counters.blocked == 1 &&
+	    runtime.prepared_tx_counters.tx_queue_writes == 0 &&
 	    runtime.prepared_counters.tx_queue_writes_attempted == 0 ? 0 : 1;
 }
 
@@ -475,6 +482,26 @@ test_prepared_raw_build_disabled(void)
 
 	return frame->raw_len == 0 &&
 	    runtime.prepared_counters.frames_stored == 1 ? 0 : 1;
+}
+
+static int
+test_prepared_tx_policy_defaults(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_prepared_tx_policy policy;
+
+	kn_ax25_runtime_init(&runtime);
+	if (runtime.prepared_tx_policy.bridge_enabled != 0 ||
+	    runtime.prepared_tx_policy.test_only == 0)
+		return 1;
+	kn_ax25_prepared_tx_policy_default(&policy);
+	policy.bridge_enabled = 1;
+	policy.allow_control_frames = 1;
+	if (kn_ax25_runtime_set_prepared_tx_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+
+	return runtime.prepared_tx_policy.bridge_enabled == 1 ? 0 : 1;
 }
 
 static int

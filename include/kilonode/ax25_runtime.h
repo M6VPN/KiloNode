@@ -11,6 +11,7 @@
 #include "kilonode/ax25_connection_table.h"
 #include "kilonode/ax25_live_scheduler.h"
 #include "kilonode/ax25_prepared_queue.h"
+#include "kilonode/ax25_prepared_tx_policy.h"
 #include "kilonode/ax25_scheduler.h"
 
 enum kn_ax25_runtime_error {
@@ -60,6 +61,15 @@ struct kn_ax25_prepared_counters {
 	uint64_t tx_queue_writes_attempted;
 };
 
+struct kn_ax25_prepared_tx_counters {
+	uint64_t checks;
+	uint64_t allowed;
+	uint64_t blocked;
+	uint64_t test_conversions;
+	uint64_t tx_queue_writes;
+	uint64_t fx25_blocked;
+};
+
 struct kn_ax25_runtime {
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -71,10 +81,12 @@ struct kn_ax25_runtime {
 	struct kn_ax25_live_scheduler live_scheduler;
 	struct kn_ax25_prepared_queue prepared_queue;
 	struct kn_ax25_prepared_policy prepared_policy;
+	struct kn_ax25_prepared_tx_policy prepared_tx_policy;
 	struct kn_ax25_runtime_counters counters;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_live_counters live_counters;
 	struct kn_ax25_prepared_counters prepared_counters;
+	struct kn_ax25_prepared_tx_counters prepared_tx_counters;
 };
 
 void kn_ax25_runtime_free(struct kn_ax25_runtime *);
@@ -100,6 +112,8 @@ enum kn_ax25_runtime_error kn_ax25_runtime_set_scheduler_policy(
 	const struct kn_ax25_scheduler_policy *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_prepared_policy(
 	struct kn_ax25_runtime *, const struct kn_ax25_prepared_policy *);
+enum kn_ax25_runtime_error kn_ax25_runtime_set_prepared_tx_policy(
+	struct kn_ax25_runtime *, const struct kn_ax25_prepared_tx_policy *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_params(
 	struct kn_ax25_runtime *, const struct kn_ax25_params *, size_t);
 

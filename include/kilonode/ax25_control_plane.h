@@ -37,6 +37,15 @@ enum kn_ax25_control_plane_error kn_ax25_control_plane_format_prepared_counters(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_prepared_frame(
 	const struct kn_ax25_runtime *, uint64_t, char *, size_t);
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge(
+	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge_counters(
+	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_bridge_frame(
+	const struct kn_ax25_runtime *, uint64_t, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler_counters(
