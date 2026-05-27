@@ -12,6 +12,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 action intents | tested | Bounded intents only, no frame bytes or TX queue writes |
 | AX.25 response frame builder | tested | Raw AX.25 SABM/SABME/UA/DM/DISC/RR/RNR/REJ builder only |
 | AX.25 action-to-frame mapper | tested | Action intents map to frame plans only, no queue or dispatch |
+| AX.25 connection table scaffold | tested | Bounded key and table layer feeds isolated state core and retains frame plans |
+| AX.25 connection diagnostics | tested | Read-only formatters for keys, records, actions, frame plans, and table summary |
+| Live AX.25 connection table in daemon | planned | Not implemented |
 | AX.25 live response queueing | planned | Not implemented |
 | AX.25 connected-mode state machine | partial | First core exists, live sessions are planned |
 | Live AX.25 connected sessions | planned | Not implemented |

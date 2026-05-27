@@ -22,6 +22,12 @@
 | RNR frame build                | implemented | Raw AX.25 body builder emits RNR frames with modulo 8 N(R). |
 | REJ frame build                | implemented | Raw AX.25 body builder emits REJ frames with modulo 8 N(R). |
 | Action-to-frame mapping        | implemented | Send action intents map to frame plans only. No TX queue writes or dispatch occur. |
+| Connection key model           | implemented | Bounded port, local callsign, remote callsign, and digipeater path key with deterministic formatting. |
+| Connection table scaffold      | implemented | Fixed-size in-memory table stores state, counters, actions, and frame plans. No daemon integration. |
+| Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |
+| Inbound DISC table handling    | implemented | Unit tests update an existing record and retain a UA frame plan. No response is queued. |
+| Local-connect unit-test event  | implemented | Internal test helper drives the state core and produces a SABM frame plan. It is not user exposed. |
+| Action-to-frame-plan retention | implemented | Last generated frame plans remain in record diagnostics only. |
 | I-frame data build             | planned     | Connected information transfer frame generation is deferred. |
 | Live TX queue integration      | planned     | Response frame queueing is not wired to runtime paths. |
 | Connected-mode state machine   | partial     | First isolated unit-tested core exists. It is not wired to runtime RX/TX. |
@@ -32,5 +38,7 @@
 | FRMR handling                  | partial     | Control subtype and protocol-error action placeholder exist. |
 | TEST/XID handling              | scaffold    | Control subtype names exist. No procedures are implemented. |
 | Live connected-mode sessions   | planned     | CONNECT, RF shell binding, BBS binding, and dispatch integration are not implemented. |
+| Control-plane connection diagnostics | planned | Formatter helpers exist, but no control socket command is exposed. |
+| Timers real scheduling         | planned     | Timeout events are unit-test inputs only. No scheduler is started. |
 | FCS handling                   | deferred    | KISS-facing code operates at AX.25 body boundary. |
 | KISS payload boundary          | implemented | Existing KISS encode/decode treats AX.25 bytes as payload. |

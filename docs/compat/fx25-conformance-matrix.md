@@ -16,3 +16,5 @@
 | Test vectors            | planned  | Synthetic and reference-derived vectors are needed. |
 | Interop captures        | planned  | Future black-box captures only. |
 | Connected-mode boundary | scaffold | FX.25 remains separate. Future decode must produce AX.25 bytes before AX.25 connection state handling. |
+| Connection table boundary | scaffold | AX.25 connection records operate only on decoded AX.25 frames and AX.25 frame plans. |
+| Live FX.25 integration   | planned  | No RX unwrap or TX wrap path is wired into runtime. |
