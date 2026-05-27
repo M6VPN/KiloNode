@@ -33,6 +33,14 @@
 #define KN_CONFIG_RECEIVE_PREVIEW_MIN   1
 #define KN_CONFIG_RECEIVE_SESSIONS_MAX  128
 #define KN_CONFIG_RECEIVE_SESSIONS_MIN  1
+#define KN_CONFIG_RF_COMMAND_BYTES_MAX  128
+#define KN_CONFIG_RF_COMMAND_BYTES_MIN  1
+#define KN_CONFIG_RF_COMMAND_DEST_MAX   16
+#define KN_CONFIG_RF_COMMAND_DESTS_MAX  8
+#define KN_CONFIG_RF_COMMAND_EVENTS_MAX 128
+#define KN_CONFIG_RF_COMMAND_EVENTS_MIN 1
+#define KN_CONFIG_RF_REPLY_BYTES_MAX    200
+#define KN_CONFIG_RF_REPLY_BYTES_MIN    1
 #define KN_CONFIG_SHELL_BANNER_MAX      128
 #define KN_CONFIG_SHELL_MAX_CLIENTS     16
 #define KN_CONFIG_SHELL_MAX_CLIENTS_MIN 1
@@ -145,6 +153,26 @@ struct kn_config_transmit {
 	uint8_t has_dispatch_max_per_cycle;
 };
 
+struct kn_config_rf_command {
+	char accept_destinations[KN_CONFIG_RF_COMMAND_DESTS_MAX]
+	    [KN_CONFIG_RF_COMMAND_DEST_MAX];
+	size_t accept_destination_count;
+	size_t max_events;
+	size_t max_command_bytes;
+	size_t max_reply_bytes;
+	uint8_t enabled;
+	uint8_t reply_enabled;
+	uint8_t require_node_destination;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_reply_enabled;
+	uint8_t has_max_events;
+	uint8_t has_max_command_bytes;
+	uint8_t has_max_reply_bytes;
+	uint8_t has_accept_destinations;
+	uint8_t has_require_node_destination;
+};
+
 struct kn_config_shell {
 	char host[KN_CONFIG_HOST_MAX];
 	char port[KN_CONFIG_PORT_NAME_MAX];
@@ -191,6 +219,7 @@ struct kn_config {
 	struct kn_config_heard heard;
 	struct kn_config_receive receive;
 	struct kn_config_transmit transmit;
+	struct kn_config_rf_command rf_command;
 	struct kn_config_shell shell;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;

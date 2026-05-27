@@ -14,6 +14,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | TX dry-run enqueue | tested | Builds AX.25/KISS frames and queues them without writing to TNC transports |
 | TX dispatch test harness | tested | Memory/mock-only dispatch path, no real TNC writes |
 | Real KISS TX dispatch | partial | Control-triggered and blocked unless all global and per-port TX gates pass |
+| RF command ingress | tested | Configured KISS RX transports can feed UI command parsing when enabled |
+| RF command replies | partial | Replies are queued through TX gates and are not auto-dispatched |
 | KISS stdin/stdout | implemented | RX supported, real TX blocked by default |
 | KISS TCP client | partial | RX supported, TX gated by `tx-enabled` and transmit policy |
 | KISS TCP server | partial | RX supported, TX gated after an accepted client exists |

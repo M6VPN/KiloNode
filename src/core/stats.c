@@ -38,6 +38,7 @@ kn_port_stats_init(struct kn_port_stats *stats, const struct kn_config_port *por
 		stats->name[0] = '\0';
 	stats->type = port->type;
 	stats->enabled = port->enabled;
+	stats->tx_enabled = port->tx_enabled;
 }
 
 void

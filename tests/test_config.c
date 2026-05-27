@@ -52,6 +52,12 @@ static int test_quoted_string(void);
 static int test_receive_block(void);
 static int test_receive_omitted_defaults(void);
 static int test_receive_unknown_key(void);
+static int test_rf_command_block(void);
+static int test_rf_command_duplicate_block(void);
+static int test_rf_command_invalid_destination(void);
+static int test_rf_command_invalid_max(void);
+static int test_rf_command_omitted_defaults(void);
+static int test_rf_command_unknown_key(void);
 static int test_shell_block(void);
 static int test_shell_duplicate_block(void);
 static int test_shell_omitted_disabled(void);
@@ -120,6 +126,18 @@ main(void)
 	if (test_invalid_receive_max_sessions() != 0)
 		return 1;
 	if (test_invalid_receive_preview() != 0)
+		return 1;
+	if (test_rf_command_omitted_defaults() != 0)
+		return 1;
+	if (test_rf_command_block() != 0)
+		return 1;
+	if (test_rf_command_duplicate_block() != 0)
+		return 1;
+	if (test_rf_command_unknown_key() != 0)
+		return 1;
+	if (test_rf_command_invalid_max() != 0)
+		return 1;
+	if (test_rf_command_invalid_destination() != 0)
 		return 1;
 	if (test_transmit_omitted_defaults() != 0)
 		return 1;
@@ -565,6 +583,119 @@ test_receive_unknown_key(void)
 		"callsign M6VPN-1\n"
 		"}\n"
 		"receive {\n"
+		"unknown true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
+}
+
+static int
+test_rf_command_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"enabled true\n"
+		"reply-enabled true\n"
+		"max-events 32\n"
+		"max-command-bytes 64\n"
+		"max-reply-bytes 120\n"
+		"accept-destinations node,cq\n"
+		"require-node-destination true\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.rf_command.enabled != 1 ||
+	    config.rf_command.reply_enabled != 1)
+		return 1;
+	if (config.rf_command.max_events != 32 ||
+	    config.rf_command.max_command_bytes != 64 ||
+	    config.rf_command.max_reply_bytes != 120)
+		return 1;
+	if (config.rf_command.accept_destination_count != 2)
+		return 1;
+
+	return strcmp(config.rf_command.accept_destinations[0], "NODE") == 0 ?
+	    0 : 1;
+}
+
+static int
+test_rf_command_duplicate_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"enabled false\n"
+		"}\n"
+		"rf-command {\n"
+		"enabled false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_rf_command_invalid_destination(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"accept-destinations NODE,bad*\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_rf_command_invalid_max(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"max-events 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_rf_command_omitted_defaults(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.rf_command.enabled != 0 ||
+	    config.rf_command.reply_enabled != 0)
+		return 1;
+	if (config.rf_command.require_node_destination != 1)
+		return 1;
+
+	return config.rf_command.accept_destination_count == 2 ? 0 : 1;
+}
+
+static int
+test_rf_command_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
 		"unknown true\n"
 		"}\n";
 

@@ -46,6 +46,12 @@ Show recent receive events.
 Show one receive event.
 .It Cm rx sessions Op Fl -port Ar name | Fl -from Ar callsign
 Show observed receive-side sessions.
+.It Cm rf status
+Show RF command ingress status.
+.It Cm rf commands Op Fl -limit Ar n | Fl -port Ar name | Fl -from Ar callsign
+Show recent RF command events.
+.It Cm rf command Ar id
+Show one RF command event.
 .It Cm tx status
 Show transmit policy and queue status.
 .It Cm tx queue Op Fl -port Ar name
@@ -71,6 +77,8 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx events
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx sessions
+.Dl kilonodectl --socket /tmp/kilonode/control.sock rf status
+.Dl kilonodectl --socket /tmp/kilonode/control.sock rf commands
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx status
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx queue
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx dryrun-ui --port kiss0 --from M6VPN-1 --to CQ --text "hello"

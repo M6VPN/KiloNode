@@ -11,6 +11,7 @@
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
+#include "kilonode/rf_command_queue.h"
 #include "kilonode/rx_event.h"
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
@@ -47,6 +48,13 @@ static int test_ping_response(void);
 static int test_ports_one_port(void);
 static int test_ports_zero_ports(void);
 static int test_response_line_cap(void);
+static int test_rf_command_existing(void);
+static int test_rf_command_missing(void);
+static int test_rf_commands_empty(void);
+static int test_rf_commands_filters(void);
+static int test_rf_commands_one(void);
+static int test_rf_malformed_command(void);
+static int test_rf_status_default(void);
 static int test_rx_event_existing(void);
 static int test_rx_event_missing(void);
 static int test_rx_events_empty(void);
@@ -163,6 +171,20 @@ main(void)
 		return 1;
 	if (test_rx_malformed_command() != 0)
 		return 1;
+	if (test_rf_status_default() != 0)
+		return 1;
+	if (test_rf_commands_empty() != 0)
+		return 1;
+	if (test_rf_commands_one() != 0)
+		return 1;
+	if (test_rf_commands_filters() != 0)
+		return 1;
+	if (test_rf_command_existing() != 0)
+		return 1;
+	if (test_rf_command_missing() != 0)
+		return 1;
+	if (test_rf_malformed_command() != 0)
+		return 1;
 	if (test_tx_status() != 0)
 		return 1;
 	if (test_tx_gates_default() != 0)
@@ -238,6 +260,8 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->rx_sessions = NULL;
 	snapshot->tx_queue = NULL;
 	snapshot->tx_dispatch = NULL;
+	snapshot->rf_config = NULL;
+	snapshot->rf_commands = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -733,6 +757,35 @@ rx_add_event(struct kn_rx_queue *queue, struct kn_rx_session_table *sessions)
 }
 
 static void
+rf_snapshot_init(struct kn_control_snapshot *snapshot,
+	struct kn_daemon_stats *daemon, struct kn_config_rf_command *config,
+	struct kn_rf_command_queue *queue)
+{
+	snapshot_init(snapshot, daemon, NULL, 0);
+	snapshot->rf_config = config;
+	snapshot->rf_commands = queue;
+}
+
+static void
+rf_add_event(struct kn_rf_command_queue *queue)
+{
+	struct kn_rf_command_event event;
+
+	kn_rf_command_event_clear(&event);
+	event.id = kn_rf_command_queue_reserve_id(queue);
+	event.timestamp = 10;
+	event.rx_event_id = 3;
+	(void)snprintf(event.port_name, sizeof(event.port_name), "%s",
+	    "kiss0");
+	(void)kn_callsign_parse("N0CALL", &event.source);
+	(void)kn_callsign_parse("M6VPN-1", &event.destination);
+	event.command = KN_RF_COMMAND_PING;
+	event.status = KN_RF_COMMAND_STATUS_OK;
+	(void)snprintf(event.raw, sizeof(event.raw), "%s", "PING");
+	(void)kn_rf_command_queue_push(queue, &event);
+}
+
+static void
 tx_snapshot_init(struct kn_control_snapshot *snapshot,
 	struct kn_daemon_stats *daemon, struct kn_tx_queue *queue)
 {
@@ -966,6 +1019,150 @@ test_rx_status(void)
 		return 1;
 
 	return strstr(out, "OK RX STATUS events_enabled=true") != NULL ? 0 : 1;
+}
+
+static int
+test_rf_command_existing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_add_event(&queue);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF COMMAND 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK RF COMMAND id=1\n") != NULL &&
+	    strstr(out, "raw=\"PING\"") != NULL ? 0 : 1;
+}
+
+static int
+test_rf_command_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF COMMAND 9", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR command-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_commands_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF COMMANDS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK RF COMMANDS count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_commands_filters(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_add_event(&queue);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF COMMANDS FROM N0CALL", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "count=1") == NULL)
+		return 1;
+	if (kn_control_protocol_handle("RF COMMANDS FROM BAD@", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-callsign\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_commands_one(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_add_event(&queue);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF COMMANDS LIMIT 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RF COMMAND id=1") != NULL ? 0 : 1;
+}
+
+static int
+test_rf_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	rf_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue);
+
+	if (kn_control_protocol_handle("RF NOPE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-rf-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_status_default(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("RF STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK RF STATUS enabled=false") != NULL ? 0 : 1;
 }
 
 static int

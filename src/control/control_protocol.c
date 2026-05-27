@@ -14,6 +14,8 @@
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
+#include "kilonode/rf_command.h"
+#include "kilonode/rf_command_queue.h"
 #include "kilonode/rx_event.h"
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
@@ -38,6 +40,8 @@ static enum kn_control_error format_help(char *, size_t);
 static enum kn_control_error format_ports(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_rx(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
+static enum kn_control_error format_rf(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
 static enum kn_control_error format_stats(const struct kn_control_snapshot *,
 	char *, size_t);
@@ -236,7 +240,7 @@ format_help(char *buf, size_t bufsiz)
 
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
-	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX TX HELP "
+	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX TX RF HELP "
 	    "QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
@@ -494,6 +498,141 @@ format_rx(const struct kn_control_snapshot *snapshot, const char *command,
 	}
 
 	(void)snprintf(buf, bufsiz, "ERR invalid-rx-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+format_rf_command_list(const struct kn_rf_command_event **events, size_t count,
+	char *buf, size_t bufsiz)
+{
+	char line[KN_CONTROL_LINE_MAX];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset, "OK RF COMMANDS count=%llu\n",
+	    (unsigned long long)count);
+	if (rc != KN_CONTROL_OK)
+		return rc;
+
+	for (i = 0; i < count; i++) {
+		if (kn_rf_command_format_brief(events[i], line,
+		    sizeof(line)) != KN_RF_COMMAND_OK)
+			return KN_CONTROL_ERR_IO;
+		rc = append_format(buf, bufsiz, &offset, "%s\n", line);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
+format_rf(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	const struct kn_rf_command_event *events[KN_RF_COMMAND_QUEUE_MAX];
+	const struct kn_rf_command_event *event;
+	char line[KN_CONTROL_LINE_MAX];
+	char *end;
+	unsigned long id;
+	unsigned long limit;
+	size_t count;
+
+	if (snapshot->rf_config == NULL || snapshot->rf_commands == NULL) {
+		if (snprintf(buf, bufsiz,
+		    "OK RF STATUS enabled=false reply_enabled=false "
+		    "commands=0 max_events=0 max_command_bytes=0 "
+		    "max_reply_bytes=0\nEND\n") >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "STATUS") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK RF STATUS enabled=%s reply_enabled=%s commands=%llu "
+		    "max_events=%llu max_command_bytes=%llu "
+		    "max_reply_bytes=%llu\nEND\n",
+		    snapshot->rf_config->enabled != 0 ? "true" : "false",
+		    snapshot->rf_config->reply_enabled != 0 ? "true" :
+		    "false",
+		    (unsigned long long)kn_rf_command_queue_count(
+		    snapshot->rf_commands),
+		    (unsigned long long)snapshot->rf_config->max_events,
+		    (unsigned long long)
+		    snapshot->rf_config->max_command_bytes,
+		    (unsigned long long)snapshot->rf_config->max_reply_bytes) >=
+		    (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "COMMANDS") == 0) {
+		if (kn_rf_command_queue_list(snapshot->rf_commands, events,
+		    100, &count) != KN_RF_COMMAND_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rf_command_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "COMMANDS LIMIT ", 15) == 0) {
+		limit = strtoul(command + 15, &end, 10);
+		if (*end != '\0' || limit == 0 || limit > 100) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-rf-command\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rf_command_queue_list(snapshot->rf_commands, events,
+		    (size_t)limit, &count) != KN_RF_COMMAND_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rf_command_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "COMMANDS PORT ", 14) == 0) {
+		if (command[14] == '\0' ||
+		    strlen(command + 14) >= KN_CONFIG_PORT_NAME_MAX ||
+		    strchr(command + 14, ' ') != NULL) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rf_command_queue_list_by_port(snapshot->rf_commands,
+		    command + 14, events, 100, &count) !=
+		    KN_RF_COMMAND_QUEUE_OK)
+			return KN_CONTROL_ERR_IO;
+		return format_rf_command_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "COMMANDS FROM ", 14) == 0) {
+		if (kn_rf_command_queue_list_by_source(snapshot->rf_commands,
+		    command + 14, events, 100, &count) !=
+		    KN_RF_COMMAND_QUEUE_OK) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-callsign\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		return format_rf_command_list(events, count, buf, bufsiz);
+	}
+
+	if (strncmp(command, "COMMAND ", 8) == 0) {
+		id = strtoul(command + 8, &end, 10);
+		if (*end != '\0' || id == 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-command-id\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		event = kn_rf_command_queue_get(snapshot->rf_commands,
+		    (uint64_t)id);
+		if (event == NULL) {
+			(void)snprintf(buf, bufsiz, "ERR command-not-found\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_rf_command_format_full(event, line, sizeof(line)) !=
+		    KN_RF_COMMAND_OK)
+			return KN_CONTROL_ERR_IO;
+		if (snprintf(buf, bufsiz, "OK RF COMMAND id=%llu\n%s\nEND\n",
+		    (unsigned long long)event->id, line) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	(void)snprintf(buf, bufsiz, "ERR invalid-rf-command\n");
 	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 }
 
@@ -1093,6 +1232,13 @@ kn_control_protocol_handle(const char *command,
 	if (strncmp(command, "TX ", 3) == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_tx(snapshot, command + 3, out, out_len));
+	if (strcmp(command, "RF") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-rf-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "RF ", 3) == 0)
+		return return_with_cap(snapshot, out, out_len,
+		    format_rf(snapshot, command + 3, out, out_len));
 	if (strcmp(command, "HELP") == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_help(out, out_len));

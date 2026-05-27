@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@ enum parser_block {
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
 	BLOCK_RECEIVE,
+	BLOCK_RF_COMMAND,
 	BLOCK_SHELL,
 	BLOCK_TRANSMIT,
 	BLOCK_PORT
@@ -59,6 +61,11 @@ static enum kn_config_error port_key_set(struct parser *, char **, size_t,
 	size_t);
 static enum kn_config_error receive_key_set(struct kn_config *, char **,
 	size_t, size_t);
+static enum kn_config_error rf_command_key_set(struct kn_config *, char **,
+	size_t, size_t);
+static enum kn_config_error rf_command_destinations_set(struct kn_config *,
+	const char *, size_t);
+static uint8_t rf_command_destination_valid(const char *);
 static enum kn_config_port_type port_type_parse(const char *);
 static enum kn_config_error set_error(struct kn_config *, enum kn_config_error,
 	size_t, const char *);
@@ -244,6 +251,15 @@ kn_config_init(struct kn_config *config)
 	config->receive.max_sessions = KN_CONFIG_RECEIVE_SESSIONS_MAX;
 	config->receive.payload_preview_bytes =
 	    KN_RX_EVENT_PREVIEW_DEFAULT;
+	config->rf_command.max_events = KN_CONFIG_RF_COMMAND_EVENTS_MAX;
+	config->rf_command.max_command_bytes = KN_CONFIG_RF_COMMAND_BYTES_MAX;
+	config->rf_command.max_reply_bytes = KN_CONFIG_RF_REPLY_BYTES_MAX;
+	config->rf_command.require_node_destination = 1;
+	(void)snprintf(config->rf_command.accept_destinations[0],
+	    sizeof(config->rf_command.accept_destinations[0]), "NODE");
+	(void)snprintf(config->rf_command.accept_destinations[1],
+	    sizeof(config->rf_command.accept_destinations[1]), "CQ");
+	config->rf_command.accept_destination_count = 2;
 	kn_tx_policy_defaults(&config->transmit.policy);
 	config->shell.max_clients = 4;
 }
@@ -671,6 +687,178 @@ receive_key_set(struct kn_config *config, char **tokens, size_t token_count,
 }
 
 static enum kn_config_error
+rf_command_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid rf-command key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->rf_command.has_enabled, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->rf_command.enabled) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "reply-enabled") == 0) {
+		if (key_seen(&config->rf_command.has_reply_enabled, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->rf_command.reply_enabled) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command reply-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "require-node-destination") == 0) {
+		if (key_seen(&config->rf_command.has_require_node_destination,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->rf_command.require_node_destination) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid rf-command require-node-destination value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "accept-destinations") == 0) {
+		if (key_seen(&config->rf_command.has_accept_destinations,
+		    config, line_no) != 0)
+			return config->error;
+		return rf_command_destinations_set(config, tokens[1], line_no);
+	}
+
+	if (strcmp(tokens[0], "max-events") == 0) {
+		if (key_seen(&config->rf_command.has_max_events, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RF_COMMAND_EVENTS_MIN ||
+		    value > KN_CONFIG_RF_COMMAND_EVENTS_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command max-events");
+		config->rf_command.max_events = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-command-bytes") == 0) {
+		if (key_seen(&config->rf_command.has_max_command_bytes,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RF_COMMAND_BYTES_MIN ||
+		    value > KN_CONFIG_RF_COMMAND_BYTES_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command max-command-bytes");
+		config->rf_command.max_command_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-reply-bytes") == 0) {
+		if (key_seen(&config->rf_command.has_max_reply_bytes,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_RF_REPLY_BYTES_MIN ||
+		    value > KN_CONFIG_RF_REPLY_BYTES_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command max-reply-bytes");
+		config->rf_command.max_reply_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown rf-command key");
+}
+
+static enum kn_config_error
+rf_command_destinations_set(struct kn_config *config, const char *input,
+	size_t line_no)
+{
+	char token[KN_CONFIG_RF_COMMAND_DEST_MAX];
+	size_t count;
+	size_t i;
+	size_t token_len;
+
+	if (input == NULL || input[0] == '\0')
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+		    line_no, "invalid rf-command accept-destinations");
+
+	count = 0;
+	token_len = 0;
+	memset(config->rf_command.accept_destinations, 0,
+	    sizeof(config->rf_command.accept_destinations));
+
+	for (i = 0;; i++) {
+		if (input[i] == ',' || input[i] == '\0') {
+			if (token_len == 0 ||
+			    token_len >= sizeof(token) ||
+			    count >= KN_CONFIG_RF_COMMAND_DESTS_MAX)
+				return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+				    line_no,
+				    "invalid rf-command accept-destinations");
+			token[token_len] = '\0';
+			if (rf_command_destination_valid(token) == 0)
+				return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+				    line_no,
+				    "invalid rf-command accept-destinations");
+			(void)snprintf(
+			    config->rf_command.accept_destinations[count],
+			    sizeof(config->rf_command.accept_destinations[count]),
+			    "%s", token);
+			count++;
+			token_len = 0;
+			if (input[i] == '\0')
+				break;
+			continue;
+		}
+		if (token_len + 1 >= sizeof(token))
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command accept-destinations");
+		token[token_len++] = (char)toupper((unsigned char)input[i]);
+	}
+
+	config->rf_command.accept_destination_count = count;
+	return KN_CONFIG_OK;
+}
+
+static uint8_t
+rf_command_destination_valid(const char *input)
+{
+	size_t i;
+
+	if (input == NULL || input[0] == '\0')
+		return 0;
+
+	for (i = 0; input[i] != '\0'; i++) {
+		if ((input[i] >= 'A' && input[i] <= 'Z') ||
+		    (input[i] >= '0' && input[i] <= '9') ||
+		    input[i] == '-')
+			continue;
+		return 0;
+	}
+
+	return 1;
+}
+
+static enum kn_config_error
 transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
 	size_t line_no)
 {
@@ -927,6 +1115,10 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 		return receive_key_set(parser->config, tokens, token_count,
 		    line_no);
 
+	if (parser->block == BLOCK_RF_COMMAND)
+		return rf_command_key_set(parser->config, tokens, token_count,
+		    line_no);
+
 	if (parser->block == BLOCK_SHELL)
 		return shell_key_set(parser->config, tokens, token_count, line_no);
 
@@ -1008,6 +1200,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    "duplicate receive block");
 		parser->config->receive.has_block = 1;
 		parser->block = BLOCK_RECEIVE;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "rf-command") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid rf-command block");
+		if (parser->config->rf_command.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate rf-command block");
+		parser->config->rf_command.has_block = 1;
+		parser->block = BLOCK_RF_COMMAND;
 		return KN_CONFIG_OK;
 	}
 

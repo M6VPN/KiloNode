@@ -10,6 +10,7 @@
 
 #include "kilonode/heard.h"
 #include "kilonode/message_store.h"
+#include "kilonode/rf_command_queue.h"
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
@@ -44,6 +45,8 @@ struct kn_control_snapshot {
 	const struct kn_rx_session_table *rx_sessions;
 	struct kn_tx_queue *tx_queue;
 	struct kn_tx_dispatcher *tx_dispatch;
+	const struct kn_config_rf_command *rf_config;
+	const struct kn_rf_command_queue *rf_commands;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

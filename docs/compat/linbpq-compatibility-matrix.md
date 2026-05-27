@@ -62,6 +62,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Real KISS TX dispatch | partial | Control-triggered only and blocked unless all safety gates pass |
 | TX safety gates | tested | Global transmit gates plus per-port `tx-enabled` |
 | Local-admin TX dispatch command | tested | `kilonodectl tx dispatch-run` only, no shell or BBS TX |
+| RF UI command ingress | tested | UI-frame-only KiloNode-native command parser |
+| KiloNode-native RF HELP/INFO/PORTS/HEARD/STATS/PING | tested | Minimal receive-side command set |
+| Gated RF UI replies | partial | Replies queue only when RF and TX gates allow it, no auto dispatch |
 | AX.25 connected-mode receive state | planned | Not implemented |
 | Real KISS transport TX dispatch | partial | Implemented behind disabled-by-default gates |
 | Actual RF transmit dispatch | partial | Control-triggered lab path only, no scheduler |
@@ -71,6 +74,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 connected-mode transmit | planned | Not implemented |
 | NET/ROM transmit/routing | planned | Not implemented |
 | RF node shell access | planned | Not implemented |
+| BPQ/LinBPQ node command compatibility | planned | Not implemented |
 | Bulletin area discovery | tested | Indexed area list with counts and newest ID |
 | KiloNode-native local BBS shell | tested | Local node shell BBS mode |
 | Local LIST command | tested | Lists non-deleted message summaries |

@@ -17,6 +17,7 @@ struct kn_port_stats {
 	char name[KN_CONFIG_PORT_NAME_MAX];
 	enum kn_config_port_type type;
 	uint8_t enabled;
+	uint8_t tx_enabled;
 	uint8_t open;
 	uint64_t bytes_received;
 	uint64_t kiss_frames_received;

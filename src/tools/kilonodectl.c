@@ -16,6 +16,7 @@
 
 static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
+static int command_rf(char *, size_t, int *, int, char **);
 static int command_rx(char *, size_t, int *, int, char **);
 static int command_set(char *, size_t, const char *);
 static int command_tx_dryrun_ui(char *, size_t, int *, int, char **);
@@ -77,6 +78,14 @@ main(int argc, char *argv[])
 		}
 		if (strcmp(argv[i], "rx") == 0) {
 			if (command_rx(command, sizeof(command), &i, argc,
+			    argv) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			continue;
+		}
+		if (strcmp(argv[i], "rf") == 0) {
+			if (command_rf(command, sizeof(command), &i, argc,
 			    argv) != 0) {
 				usage(stderr, argv[0]);
 				return 1;
@@ -272,6 +281,59 @@ command_map(const char *input)
 		return "HELP";
 
 	return NULL;
+}
+
+static int
+command_rf(char *dst, size_t dst_len, int *index, int argc, char *argv[])
+{
+	const char *sub;
+	const char *filter;
+	int needed;
+
+	if (*index + 1 >= argc)
+		return 1;
+
+	sub = argv[*index + 1];
+	if (strcmp(sub, "status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "RF STATUS");
+	}
+	if (strcmp(sub, "command") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "RF COMMAND %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "commands") != 0)
+		return 1;
+	if (*index + 2 >= argc) {
+		*index += 1;
+		return command_set(dst, dst_len, "RF COMMANDS");
+	}
+	if (strcmp(argv[*index + 2], "--limit") == 0 ||
+	    strcmp(argv[*index + 2], "--port") == 0 ||
+	    strcmp(argv[*index + 2], "--from") == 0) {
+		if (*index + 3 >= argc)
+			return 1;
+		if (strcmp(argv[*index + 2], "--limit") == 0)
+			filter = "LIMIT";
+		else if (strcmp(argv[*index + 2], "--port") == 0)
+			filter = "PORT";
+		else
+			filter = "FROM";
+		needed = snprintf(dst, dst_len, "RF COMMANDS %s %s",
+		    filter, argv[*index + 3]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 3;
+		return 0;
+	}
+	*index += 1;
+	return command_set(dst, dst_len, "RF COMMANDS");
 }
 
 static int
@@ -525,6 +587,10 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH rx events --from CALLSIGN\n", argv0);
 	fprintf(out, "       %s --socket PATH rx event ID\n", argv0);
 	fprintf(out, "       %s --socket PATH rx sessions\n", argv0);
+	fprintf(out, "       %s --socket PATH rf status\n", argv0);
+	fprintf(out, "       %s --socket PATH rf commands\n", argv0);
+	fprintf(out, "       %s --socket PATH rf commands --from CALLSIGN\n", argv0);
+	fprintf(out, "       %s --socket PATH rf command ID\n", argv0);
 	fprintf(out, "       %s --socket PATH tx status\n", argv0);
 	fprintf(out, "       %s --socket PATH tx queue\n", argv0);
 	fprintf(out, "       %s --socket PATH tx queue --port NAME\n", argv0);
