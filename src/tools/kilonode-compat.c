@@ -11,6 +11,9 @@
 
 #include "kilonode/ax25_timer_replay.h"
 #include "kilonode/ax25_timer_replay_report.h"
+#include "kilonode/ax25_prepared_expect.h"
+#include "kilonode/ax25_prepared_replay_check.h"
+#include "kilonode/ax25_prepared_replay_report.h"
 #include "kilonode/bench_ax25_diag_replay.h"
 #include "kilonode/bench_replay.h"
 #include "kilonode/bench_replay_report.h"
@@ -52,6 +55,7 @@ static int command_check_observation(const char *);
 static int command_check_capture(const char *);
 static int command_check_command_profiles(const char *);
 static int command_check_pack(const char *);
+static int command_check_prepared_expect(const char *);
 static int command_check_requirements(const char *);
 static int command_check_risk_register(const char *);
 static int command_command_profile_report(const char *);
@@ -79,6 +83,9 @@ static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
 static int command_replay_ax25_timer_dir(const char *);
 static int command_replay_ax25_timer(const char *);
+static int command_replay_ax25_timer_prepared_dir(const char *);
+static int command_replay_ax25_timer_prepared(const char *);
+static int command_replay_bench_prepared(int, char *[]);
 static int command_replay_bench_pack(const char *);
 static int command_replay_bench_diagnostics(const char *);
 static int command_replay_bench_diagnostics_dir(const char *);
@@ -156,6 +163,8 @@ main(int argc, char *argv[])
 		return command_check_bench_pack(argv[2]);
 	if (strcmp(argv[1], "check-bench-expected") == 0 && argc == 3)
 		return command_check_bench_expected(argv[2]);
+	if (strcmp(argv[1], "check-prepared-expect") == 0 && argc == 3)
+		return command_check_prepared_expect(argv[2]);
 	if (strcmp(argv[1], "check-observation") == 0 && argc == 3)
 		return command_check_observation(argv[2]);
 	if (strcmp(argv[1], "check-capture") == 0 && argc == 3)
@@ -226,6 +235,11 @@ main(int argc, char *argv[])
 		return command_replay_ax25_timer(argv[2]);
 	if (strcmp(argv[1], "run-ax25-timer-replay-dir") == 0 && argc == 3)
 		return command_replay_ax25_timer_dir(argv[2]);
+	if (strcmp(argv[1], "run-ax25-timer-prepared") == 0 && argc == 3)
+		return command_replay_ax25_timer_prepared(argv[2]);
+	if (strcmp(argv[1], "run-ax25-timer-prepared-dir") == 0 &&
+	    argc == 3)
+		return command_replay_ax25_timer_prepared_dir(argv[2]);
 	if (strcmp(argv[1], "replay-capture") == 0 && argc == 3)
 		return command_replay_capture(argv[2]);
 	if (strcmp(argv[1], "replay-capture-dir") == 0 && argc == 3)
@@ -237,6 +251,8 @@ main(int argc, char *argv[])
 	if (strcmp(argv[1], "replay-bench-diagnostics-dir") == 0 &&
 	    argc == 3)
 		return command_replay_bench_diagnostics_dir(argv[2]);
+	if (strcmp(argv[1], "replay-bench-prepared") == 0)
+		return command_replay_bench_prepared(argc, argv);
 	if (strcmp(argv[1], "replay-pack") == 0 && argc == 3)
 		return command_replay_pack(argv[2]);
 	if (strcmp(argv[1], "replay-dir") == 0 && argc == 3)
@@ -389,6 +405,26 @@ command_check_bench_expected(const char *path)
 		return 1;
 	printf("OK bench-expected=%s captures=%llu\n", path,
 	    (unsigned long long)expected.capture_count);
+	return 0;
+}
+
+static int
+command_check_prepared_expect(const char *path)
+{
+	struct kn_ax25_prepared_expect_file expected;
+	struct kn_ax25_prepared_expect_error_info error;
+
+	if (kn_ax25_prepared_expect_parse_file(path, &expected, &error) !=
+	    KN_AX25_PREPARED_EXPECT_OK) {
+		fprintf(stderr, "ERR prepared-expect path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_prepared_expect_error_name(error.error),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	printf("OK prepared-expect=%s blocks=%llu\n", path,
+	    (unsigned long long)expected.block_count);
 	return 0;
 }
 
@@ -1171,7 +1207,14 @@ command_replay_ax25_timer(const char *path)
 	    sizeof(report)) != KN_AX25_TIMER_REPLAY_REPORT_OK)
 		return 1;
 	printf("%s", report);
-	return result.pass != 0 && result.tx_writes_observed == 0 ? 0 : 1;
+	return result.pass != 0 && result.tx_writes_observed == 0 &&
+	    result.prepared_tx_writes_observed == 0 ? 0 : 1;
+}
+
+static int
+command_replay_ax25_timer_prepared(const char *path)
+{
+	return command_replay_ax25_timer(path);
 }
 
 static int
@@ -1223,6 +1266,12 @@ command_replay_ax25_timer_dir(const char *path)
 	}
 
 	return failed;
+}
+
+static int
+command_replay_ax25_timer_prepared_dir(const char *path)
+{
+	return command_replay_ax25_timer_dir(path);
 }
 
 static int
@@ -1382,6 +1431,80 @@ command_replay_bench_diagnostics_dir(const char *path)
 	if (count == 0) {
 		fprintf(stderr, "ERR no-captures\n");
 		return 1;
+	}
+
+	return failed;
+}
+
+static int
+command_replay_bench_prepared(int argc, char *argv[])
+{
+	struct kn_compat_bench_pack pack;
+	struct kn_ax25_prepared_expect_file expected;
+	struct kn_ax25_prepared_expect_error_info expect_error;
+	struct kn_bench_diag_result diag;
+	struct kn_ax25_prepared_replay_check_result check;
+	const struct kn_ax25_prepared_expect_block *block;
+	char fixture_path[COMPAT_PATH_MAX];
+	char report[512];
+	const char *name;
+	const char *base;
+	uint64_t tx_writes;
+	size_t i;
+	int failed;
+
+	if (argc != 5 || strcmp(argv[3], "--expect") != 0) {
+		fprintf(stderr, "ERR usage replay-bench-prepared MANIFEST "
+		    "--expect PATH\n");
+		return 1;
+	}
+	if (parse_bench_file(argv[2], &pack) != 0)
+		return 1;
+	if (kn_ax25_prepared_expect_parse_file(argv[4], &expected,
+	    &expect_error) != KN_AX25_PREPARED_EXPECT_OK) {
+		fprintf(stderr, "ERR prepared-expect path=%s error=%s "
+		    "line=%llu detail=%s\n", argv[4],
+		    kn_ax25_prepared_expect_error_name(expect_error.error),
+		    (unsigned long long)expect_error.line,
+		    expect_error.message[0] == '\0' ? "-" :
+		    expect_error.message);
+		return 1;
+	}
+	failed = 0;
+	for (i = 0; i < pack.fixture_count; i++) {
+		if (kn_compat_bench_pack_join_path(&pack,
+		    pack.fixtures[i].path, fixture_path,
+		    sizeof(fixture_path)) != KN_COMPAT_BENCH_OK)
+			return 1;
+		if (kn_bench_diag_replay_capture(fixture_path, &diag) !=
+		    KN_BENCH_DIAG_REPLAY_OK) {
+			failed = 1;
+			continue;
+		}
+		base = strrchr(pack.fixtures[i].path, '/');
+		name = base == NULL ? pack.fixtures[i].path : base + 1;
+		block = kn_ax25_prepared_expect_find(&expected,
+		    KN_AX25_PREPARED_EXPECT_BLOCK_CAPTURE, name);
+		if (block == NULL)
+			block = kn_ax25_prepared_expect_find(&expected,
+			    KN_AX25_PREPARED_EXPECT_BLOCK_CAPTURE,
+			    diag.capture_name);
+		if (block == NULL)
+			continue;
+		tx_writes = diag.tx_writes_attempted;
+		tx_writes += diag.prepared_tx_writes_attempted;
+		if (kn_ax25_prepared_replay_check_frames(block,
+		    diag.prepared,
+		    diag.prepared_count > KN_BENCH_DIAG_PREPARED_MAX ?
+		    KN_BENCH_DIAG_PREPARED_MAX : (size_t)diag.prepared_count,
+		    tx_writes, &check) !=
+		    KN_AX25_PREPARED_REPLAY_CHECK_OK)
+			failed = 1;
+		if (kn_ax25_prepared_replay_report_format(name, &check,
+		    report, sizeof(report)) !=
+		    KN_AX25_PREPARED_REPLAY_REPORT_OK)
+			return 1;
+		printf("%s", report);
 	}
 
 	return failed;
@@ -1985,6 +2108,7 @@ usage(void)
 	    "       kilonode-compat check-ax25-timer-replay PATH\n"
 	    "       kilonode-compat check-bench-pack PATH\n"
 	    "       kilonode-compat check-bench-expected PATH\n"
+	    "       kilonode-compat check-prepared-expect PATH\n"
 	    "       kilonode-compat check-observation PATH\n"
 	    "       kilonode-compat check-capture PATH\n"
 	    "       kilonode-compat check-command-profiles PATH\n"
@@ -2001,6 +2125,7 @@ usage(void)
 	    "       kilonode-compat replay-bench-pack PATH\n"
 	    "       kilonode-compat replay-bench-diagnostics PATH\n"
 	    "       kilonode-compat replay-bench-diagnostics-dir PATH\n"
+	    "       kilonode-compat replay-bench-prepared MANIFEST --expect PATH\n"
 	    "       kilonode-compat bench-diagnostics-report PATH\n"
 	    "       kilonode-compat bench-coverage PATH\n"
 	    "       kilonode-compat capture-to-transcript PATH --output PATH\n"
@@ -2013,6 +2138,8 @@ usage(void)
 	    "       kilonode-compat replay-transcript PATH\n"
 	    "       kilonode-compat run-ax25-timer-replay PATH\n"
 	    "       kilonode-compat run-ax25-timer-replay-dir PATH\n"
+	    "       kilonode-compat run-ax25-timer-prepared PATH\n"
+	    "       kilonode-compat run-ax25-timer-prepared-dir PATH\n"
 	    "       kilonode-compat ax25-timer-replay-report PATH\n"
 	    "       kilonode-compat replay-dir PATH\n"
 	    "       kilonode-compat report-transcript PATH\n"

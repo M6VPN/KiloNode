@@ -11,6 +11,7 @@
 #include "kilonode/ax25_connection.h"
 #include "kilonode/ax25_frame_plan.h"
 #include "kilonode/ax25_params.h"
+#include "kilonode/ax25_prepared_expect.h"
 #include "kilonode/ax25_timer.h"
 
 #define KN_AX25_TIMER_REPLAY_COMMAND_MAX 128
@@ -48,7 +49,9 @@ enum kn_ax25_timer_replay_expect_type {
 	KN_AX25_TIMER_REPLAY_EXPECT_COUNTER,
 	KN_AX25_TIMER_REPLAY_EXPECT_TX_WRITES,
 	KN_AX25_TIMER_REPLAY_EXPECT_CONNECTION_COUNT,
-	KN_AX25_TIMER_REPLAY_EXPECT_LAST_ERROR
+	KN_AX25_TIMER_REPLAY_EXPECT_LAST_ERROR,
+	KN_AX25_TIMER_REPLAY_EXPECT_PREPARED_COUNT,
+	KN_AX25_TIMER_REPLAY_EXPECT_PREPARED
 };
 
 enum kn_ax25_timer_replay_counter {
@@ -70,6 +73,7 @@ struct kn_ax25_timer_replay_expect {
 	enum kn_ax25_frame_plan_type plan;
 	enum kn_ax25_timer_replay_counter counter;
 	char last_error[KN_AX25_TIMER_REPLAY_TEXT_MAX];
+	struct kn_ax25_prepared_expect_frame prepared;
 	uint64_t value;
 	uint8_t bool_value;
 };

@@ -60,8 +60,12 @@ test_ax25_sabm_replay(void)
 		return 1;
 	if (strcmp(result.final_state, "connected") != 0)
 		return 1;
+	if (result.prepared_count != 1 ||
+	    result.prepared[0].type != KN_AX25_FRAME_PLAN_UA)
+		return 1;
 
-	return result.tx_writes_attempted == 0 ? 0 : 1;
+	return result.tx_writes_attempted == 0 &&
+	    result.prepared_tx_writes_attempted == 0 ? 0 : 1;
 }
 
 static int
@@ -75,7 +79,8 @@ test_fx25_placeholder(void)
 		return 1;
 
 	return result.unsupported != 0 && result.pass != 0 &&
-	    result.tx_writes_attempted == 0 ? 0 : 1;
+	    result.tx_writes_attempted == 0 &&
+	    result.prepared_tx_writes_attempted == 0 ? 0 : 1;
 }
 
 static int
@@ -97,8 +102,12 @@ test_kiss_sabm_replay(void)
 		return 1;
 	if (result.frame_plans_retained == 0)
 		return 1;
+	if (result.prepared_count != 1 ||
+	    result.prepared[0].type != KN_AX25_FRAME_PLAN_UA)
+		return 1;
 
-	return result.tx_writes_attempted == 0 ? 0 : 1;
+	return result.tx_writes_attempted == 0 &&
+	    result.prepared_tx_writes_attempted == 0 ? 0 : 1;
 }
 
 static int
@@ -112,7 +121,8 @@ test_sequence_placeholder(void)
 		return 1;
 
 	return result.unsupported != 0 && result.pass != 0 &&
-	    result.tx_writes_attempted == 0 ? 0 : 1;
+	    result.tx_writes_attempted == 0 &&
+	    result.prepared_tx_writes_attempted == 0 ? 0 : 1;
 }
 
 static int
@@ -129,5 +139,6 @@ test_ui_ignored(void)
 	if (result.ui_ignored != 1 || result.final_connections != 0)
 		return 1;
 
-	return result.tx_writes_attempted == 0 ? 0 : 1;
+	return result.prepared_count == 0 && result.tx_writes_attempted == 0 &&
+	    result.prepared_tx_writes_attempted == 0 ? 0 : 1;
 }

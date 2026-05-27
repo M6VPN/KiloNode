@@ -6,10 +6,12 @@ port kiss0
 now 0
 params modulo=8 window=1 t1=1000 t2=500 t3=300000 n2=2
 event local-connect
+expect prepared-count 1
 advance 1000
 process-expired
 expect state=awaiting-connection
 expect retry=1
+expect prepared-count 2
 advance 1000
 process-expired
 expect state=disconnected

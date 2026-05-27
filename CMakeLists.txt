@@ -88,9 +88,12 @@ add_library(packetcore STATIC
 	src/proto/ax25_live_scheduler.c
 	src/proto/ax25_params.c
 	src/proto/ax25_prepared_diag.c
+	src/proto/ax25_prepared_expect.c
 	src/proto/ax25_prepared_frame.c
 	src/proto/ax25_prepared_policy.c
 	src/proto/ax25_prepared_queue.c
+	src/proto/ax25_prepared_replay_check.c
+	src/proto/ax25_prepared_replay_report.c
 	src/proto/ax25_retry.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
@@ -250,6 +253,12 @@ target_link_libraries(test_ax25_prepared_diag PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_prepared_diag)
 add_test(NAME ax25_prepared_diag COMMAND test_ax25_prepared_diag)
 
+add_executable(test_ax25_prepared_expect
+	tests/test_ax25_prepared_expect.c)
+target_link_libraries(test_ax25_prepared_expect PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_expect)
+add_test(NAME ax25_prepared_expect COMMAND test_ax25_prepared_expect)
+
 add_executable(test_ax25_prepared_frame tests/test_ax25_prepared_frame.c)
 target_link_libraries(test_ax25_prepared_frame PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_prepared_frame)
@@ -264,6 +273,20 @@ add_executable(test_ax25_prepared_queue tests/test_ax25_prepared_queue.c)
 target_link_libraries(test_ax25_prepared_queue PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_prepared_queue)
 add_test(NAME ax25_prepared_queue COMMAND test_ax25_prepared_queue)
+
+add_executable(test_ax25_prepared_replay_check
+	tests/test_ax25_prepared_replay_check.c)
+target_link_libraries(test_ax25_prepared_replay_check PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_replay_check)
+add_test(NAME ax25_prepared_replay_check
+	COMMAND test_ax25_prepared_replay_check)
+
+add_executable(test_ax25_prepared_replay_report
+	tests/test_ax25_prepared_replay_report.c)
+target_link_libraries(test_ax25_prepared_replay_report PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_replay_report)
+add_test(NAME ax25_prepared_replay_report
+	COMMAND test_ax25_prepared_replay_report)
 
 add_executable(test_ax25_retry tests/test_ax25_retry.c)
 target_link_libraries(test_ax25_retry PRIVATE packetcore)

@@ -1,0 +1,38 @@
+# KiloNode AX.25 prepared frame expectations v1
+
+capture kiss-ui-cq.capture {
+	prepared-count 0
+	tx-writes 0
+}
+
+capture kiss-ui-ping-node.capture {
+	prepared-count 0
+	tx-writes 0
+}
+
+capture kiss-sabm-node.capture {
+	prepared-count 1
+	prepared 1 kind=UA local=M6VPN-1 remote=N0CALL action=send-ua status=prepared tx-writes=0
+	tx-writes 0
+}
+
+capture kiss-disc-node.capture {
+	prepared-count 0
+	tx-writes 0
+}
+
+capture kiss-rr-node.capture {
+	prepared-count 0
+	tx-writes 0
+}
+
+capture ax25-ui-cq.capture {
+	prepared-count 0
+	tx-writes 0
+}
+
+capture ax25-sabm-node.capture {
+	prepared-count 1
+	prepared 1 kind=UA local=M6VPN-1 remote=N0CALL action=send-ua status=prepared tx-writes=0
+	tx-writes 0
+}

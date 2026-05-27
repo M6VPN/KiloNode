@@ -13,6 +13,7 @@ static int parse_fixture(const char *);
 static int test_invalid_callsign(void);
 static int test_invalid_expectation(void);
 static int test_invalid_params(void);
+static int test_invalid_prepared_expectation(void);
 static int test_missing_name(void);
 static int test_overlong_line(void);
 static int test_unknown_command(void);
@@ -34,6 +35,8 @@ main(void)
 	if (test_invalid_params() != 0)
 		return 1;
 	if (test_invalid_expectation() != 0)
+		return 1;
+	if (test_invalid_prepared_expectation() != 0)
 		return 1;
 	if (test_overlong_line() != 0)
 		return 1;
@@ -104,6 +107,30 @@ test_invalid_expectation(void)
 	    "remote N0CALL\n"
 	    "port kiss0\n"
 	    "expect unknown=1\n";
+
+	if (write_temp(text, path, sizeof(path)) != 0)
+		return 1;
+	if (kn_ax25_timer_replay_script_parse_file(path, &script, &error) !=
+	    KN_AX25_TIMER_REPLAY_ERR_PARSE) {
+		(void)unlink(path);
+		return 1;
+	}
+	(void)unlink(path);
+	return error.line == 5 ? 0 : 1;
+}
+
+static int
+test_invalid_prepared_expectation(void)
+{
+	char path[128];
+	struct kn_ax25_timer_replay_script script;
+	struct kn_ax25_timer_replay_error_info error;
+	const char text[] =
+	    "name invalid-prepared-expect\n"
+	    "node M6VPN-1\n"
+	    "remote N0CALL\n"
+	    "port kiss0\n"
+	    "expect prepared kind=BAD\n";
 
 	if (write_temp(text, path, sizeof(path)) != 0)
 		return 1;

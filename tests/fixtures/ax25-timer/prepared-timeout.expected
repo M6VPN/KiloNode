@@ -1,0 +1,14 @@
+# KiloNode AX.25 prepared frame expectations v1
+
+replay connect-timeout-retry.replay {
+	prepared-count 2
+	prepared 1 kind=SABM action=send-sabm status=prepared tx-writes=0
+	prepared 2 kind=SABM action=send-sabm status=prepared tx-writes=0
+	tx-writes 0
+}
+
+replay connect-ua-stops-t1.replay {
+	prepared-count 1
+	prepared 1 kind=SABM action=send-sabm status=prepared tx-writes=0
+	tx-writes 0
+}

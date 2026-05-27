@@ -75,7 +75,8 @@ run_fixture(const char *path)
 	if (kn_ax25_timer_replay_run_file(path, &result, &error) !=
 	    KN_AX25_TIMER_REPLAY_OK)
 		return 1;
-	if (result.pass == 0 || result.tx_writes_observed != 0)
+	if (result.pass == 0 || result.tx_writes_observed != 0 ||
+	    result.prepared_tx_writes_observed != 0)
 		return 1;
 
 	return 0;
@@ -148,8 +149,8 @@ test_mismatch_fails(void)
 		return 1;
 	}
 	(void)unlink(path);
-	return result.mismatch_count == 1 && result.tx_writes_observed == 0 ?
-	    0 : 1;
+	return result.mismatch_count == 1 && result.tx_writes_observed == 0 &&
+	    result.prepared_tx_writes_observed == 0 ? 0 : 1;
 }
 
 static int

@@ -22,7 +22,8 @@ kn_bench_diag_result_format(const struct kn_bench_diag_result *result,
 	    "BENCH-DIAG capture=%s method=%s result=%s unsupported=%s "
 	    "frames=%llu decoded=%llu ui_ignored=%llu accepted=%llu "
 	    "ignored=%llu malformed=%llu created=%llu final=%llu "
-	    "state=%s plans=%llu tx_writes=%llu mismatches=%llu\n",
+	    "state=%s plans=%llu prepared=%llu tx_writes=%llu "
+	    "prepared_tx_writes=%llu mismatches=%llu\n",
 	    result->capture_name,
 	    kn_compat_packet_method_name(result->method),
 	    result->pass != 0 ? "pass" : "fail",
@@ -37,7 +38,9 @@ kn_bench_diag_result_format(const struct kn_bench_diag_result *result,
 	    (unsigned long long)result->final_connections,
 	    result->final_state,
 	    (unsigned long long)result->frame_plans_retained,
+	    (unsigned long long)result->prepared_count,
 	    (unsigned long long)result->tx_writes_attempted,
+	    (unsigned long long)result->prepared_tx_writes_attempted,
 	    (unsigned long long)result->mismatch_count);
 	if (needed < 0 || (size_t)needed >= bufsiz)
 		return KN_BENCH_REPLAY_REPORT_ERR_BUFFER;
@@ -80,11 +83,12 @@ kn_bench_pack_diag_result_format(
 	for (i = 0; i < result->result_count; i++) {
 		needed = snprintf(buf + off, bufsiz - off,
 		    "BENCH-DIAG-ITEM capture=%s result=%s unsupported=%s "
-		    "state=%s tx_writes=%llu\n",
+		    "state=%s prepared=%llu tx_writes=%llu\n",
 		    result->results[i].capture_name,
 		    result->results[i].pass != 0 ? "pass" : "fail",
 		    result->results[i].unsupported != 0 ? "true" : "false",
 		    result->results[i].final_state,
+		    (unsigned long long)result->results[i].prepared_count,
 		    (unsigned long long)
 		    result->results[i].tx_writes_attempted);
 		if (needed < 0 || (size_t)needed >= bufsiz - off)

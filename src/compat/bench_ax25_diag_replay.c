@@ -124,7 +124,8 @@ kn_bench_diag_replay_capture_parsed(const char *path,
 	result_from_runtime(result, &runtime);
 	kn_ax25_runtime_free(&runtime);
 
-	if (result->tx_writes_attempted != 0) {
+	if (result->tx_writes_attempted != 0 ||
+	    result->prepared_tx_writes_attempted != 0) {
 		result->pass = 0;
 		add_mismatch(result, "tx-writes");
 		return KN_BENCH_DIAG_REPLAY_ERR_MISMATCH;
@@ -235,6 +236,9 @@ static void
 result_from_runtime(struct kn_bench_diag_result *result,
 	const struct kn_ax25_runtime *runtime)
 {
+	size_t count;
+	size_t i;
+
 	result->ui_ignored = runtime->live_counters.ui_ignored;
 	result->connected_frames_accepted =
 	    runtime->live_counters.frames_accepted;
@@ -246,6 +250,14 @@ result_from_runtime(struct kn_bench_diag_result *result,
 	    runtime->live_counters.frame_plans_retained;
 	result->tx_writes_attempted =
 	    runtime->live_counters.tx_queue_writes_attempted;
+	result->prepared_count = runtime->prepared_queue.count;
+	result->prepared_tx_writes_attempted =
+	    runtime->prepared_counters.tx_queue_writes_attempted;
+	count = runtime->prepared_queue.count;
+	if (count > KN_BENCH_DIAG_PREPARED_MAX)
+		count = KN_BENCH_DIAG_PREPARED_MAX;
+	for (i = 0; i < count; i++)
+		result->prepared[i] = runtime->prepared_queue.frames[i];
 	(void)snprintf(result->final_state, sizeof(result->final_state),
 	    "%s", final_state_name(runtime));
 }

@@ -44,13 +44,16 @@ kn_ax25_timer_replay_report_format(
 	used = 0;
 	needed = snprintf(line, sizeof(line),
 	    "AX25-TIMER-REPLAY name=%s result=%s state=%s retry=%u "
-	    "connections=%llu plans=%llu tx_writes=%llu mismatches=%llu\n",
+	    "connections=%llu plans=%llu prepared=%llu tx_writes=%llu "
+	    "prepared_tx_writes=%llu mismatches=%llu\n",
 	    result->name, result->pass != 0 ? "pass" : "fail",
 	    kn_ax25_connection_state_name(result->final_state),
 	    (unsigned int)result->retry_count,
 	    (unsigned long long)result->connection_count,
 	    (unsigned long long)result->frame_plans_seen,
+	    (unsigned long long)result->prepared_count,
 	    (unsigned long long)result->tx_writes_observed,
+	    (unsigned long long)result->prepared_tx_writes_observed,
 	    (unsigned long long)result->mismatch_count);
 	if (needed < 0 || (size_t)needed >= sizeof(line))
 		return KN_AX25_TIMER_REPLAY_REPORT_ERR_BUFFER;

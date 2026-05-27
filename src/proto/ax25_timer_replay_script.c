@@ -30,6 +30,8 @@ static enum kn_ax25_timer_replay_error parse_command(size_t, char **,
 static enum kn_ax25_timer_replay_error parse_expect(
 	struct kn_ax25_timer_replay_command *, int, char **,
 	struct kn_ax25_timer_replay_error_info *);
+static enum kn_ax25_timer_replay_error parse_prepared_token(
+	struct kn_ax25_prepared_expect_frame *, const char *);
 static enum kn_ax25_timer_replay_error parse_event(
 	struct kn_ax25_timer_replay_command *, int, char **,
 	struct kn_ax25_timer_replay_error_info *);
@@ -346,6 +348,23 @@ parse_expect(struct kn_ax25_timer_replay_command *command, int count,
 			goto invalid;
 		return KN_AX25_TIMER_REPLAY_OK;
 	}
+	if (strcmp(tokens[1], "prepared-count") == 0 && count == 3) {
+		command->expect.type =
+		    KN_AX25_TIMER_REPLAY_EXPECT_PREPARED_COUNT;
+		if (parse_u64(tokens[2], &command->expect.value) != 0)
+			goto invalid;
+		return KN_AX25_TIMER_REPLAY_OK;
+	}
+	if (strcmp(tokens[1], "prepared") == 0 && count >= 3) {
+		command->expect.type = KN_AX25_TIMER_REPLAY_EXPECT_PREPARED;
+		command->expect.prepared.line = command->line;
+		for (needed = 2; needed < count; needed++) {
+			if (parse_prepared_token(&command->expect.prepared,
+			    tokens[needed]) != KN_AX25_TIMER_REPLAY_OK)
+				goto invalid;
+		}
+		return KN_AX25_TIMER_REPLAY_OK;
+	}
 	value = strchr(tokens[1], '=');
 	if (value != NULL)
 		goto invalid;
@@ -354,6 +373,70 @@ invalid:
 	append_error(error, KN_AX25_TIMER_REPLAY_ERR_PARSE, command->line,
 	    "invalid-expectation");
 	return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+}
+
+static enum kn_ax25_timer_replay_error
+parse_prepared_token(struct kn_ax25_prepared_expect_frame *frame,
+	const char *token)
+{
+	struct kn_callsign callsign;
+	uint64_t value;
+	int needed;
+
+	if (frame == NULL || token == NULL)
+		return KN_AX25_TIMER_REPLAY_ERR_INVALID_ARGUMENT;
+	if (strncmp(token, "kind=", 5) == 0) {
+		if (kn_ax25_prepared_expect_kind_from_text(token + 5,
+		    &frame->kind) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->has_kind = 1;
+	} else if (strncmp(token, "action=", 7) == 0) {
+		if (kn_ax25_prepared_expect_action_from_text(token + 7,
+		    &frame->action) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->has_action = 1;
+	} else if (strncmp(token, "status=", 7) == 0) {
+		if (kn_ax25_prepared_expect_status_from_text(token + 7,
+		    &frame->status) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->has_status = 1;
+	} else if (strncmp(token, "local=", 6) == 0) {
+		if (kn_callsign_parse(token + 6, &callsign) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		(void)snprintf(frame->local, sizeof(frame->local), "%s",
+		    token + 6);
+		frame->has_local = 1;
+	} else if (strncmp(token, "remote=", 7) == 0) {
+		if (kn_callsign_parse(token + 7, &callsign) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		(void)snprintf(frame->remote, sizeof(frame->remote), "%s",
+		    token + 7);
+		frame->has_remote = 1;
+	} else if (strncmp(token, "port=", 5) == 0) {
+		if (token[5] == '\0' || token[5] == '/' ||
+		    strstr(token + 5, "..") != NULL ||
+		    strchr(token + 5, '\\') != NULL)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		needed = snprintf(frame->port, sizeof(frame->port), "%s",
+		    token + 5);
+		if (needed < 0 || (size_t)needed >= sizeof(frame->port))
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->has_port = 1;
+	} else if (strncmp(token, "ax25-len=", 9) == 0) {
+		if (parse_u64(token + 9, &value) != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->ax25_len = (size_t)value;
+		frame->has_ax25_len = 1;
+	} else if (strncmp(token, "tx-writes=", 10) == 0) {
+		if (parse_u64(token + 10, &value) != 0 || value != 0)
+			return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+		frame->tx_writes = value;
+		frame->has_tx_writes = 1;
+	} else {
+		return KN_AX25_TIMER_REPLAY_ERR_PARSE;
+	}
+
+	return KN_AX25_TIMER_REPLAY_OK;
 }
 
 static enum kn_ax25_timer_replay_error

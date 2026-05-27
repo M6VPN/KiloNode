@@ -29,11 +29,18 @@ Run direct commands:
 ./build/kilonode-compat replay-bench-diagnostics tests/fixtures/bench/kiss-sabm-node.capture
 ./build/kilonode-compat bench-diagnostics-report tests/fixtures/bench/kiss-sabm-node.capture
 ./build/kilonode-compat check-bench-expected tests/fixtures/bench/ax25-diag-replay.expected
+./build/kilonode-compat check-prepared-expect tests/fixtures/bench/prepared-frames.expected
+./build/kilonode-compat replay-bench-prepared tests/fixtures/bench/manifest.bench --expect tests/fixtures/bench/prepared-frames.expected
 ```
 
 Reports include parsed frame counts, ignored UI counts, accepted connected
 frames, created diagnostic connections, retained frame plans, final connection
-state, and attempted TX writes. TX writes must remain zero.
+state, prepared diagnostic frame counts, and attempted TX writes. TX writes
+must remain zero.
+
+Prepared-frame checks compare the replay result against
+`tests/fixtures/bench/prepared-frames.expected`. They inspect only the AX.25
+prepared diagnostics queue. They do not bridge frames to the real TX queue.
 
 FX.25 placeholder captures are reported as planned or unsupported. They do not
 claim FX.25 decode or FEC support.

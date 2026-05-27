@@ -42,6 +42,8 @@ static enum kn_ax25_timer_replay_error map_actions_for_record(
 	const struct kn_ax25_action_list *);
 static uint8_t plan_seen(const struct kn_ax25_frame_plan_list *,
 	enum kn_ax25_frame_plan_type);
+static uint8_t prepared_seen(const struct kn_ax25_prepared_queue *,
+	const struct kn_ax25_prepared_expect_frame *);
 static enum kn_ax25_timer_replay_error replay_init(
 	const struct kn_ax25_timer_replay_script *, struct replay_context *,
 	struct kn_ax25_timer_replay_result *,
@@ -262,6 +264,7 @@ execute_expect(struct replay_context *ctx,
 		break;
 	case KN_AX25_TIMER_REPLAY_EXPECT_TX_WRITES:
 		actual = ctx->runtime.scheduler.counters.tx_queue_writes_attempted;
+		actual += ctx->runtime.prepared_counters.tx_queue_writes_attempted;
 		if (actual != command->expect.value)
 			add_mismatch(ctx, command->line, "tx-writes");
 		break;
@@ -273,6 +276,15 @@ execute_expect(struct replay_context *ctx,
 	case KN_AX25_TIMER_REPLAY_EXPECT_LAST_ERROR:
 		if (strcmp(ctx->last_error, command->expect.last_error) != 0)
 			add_mismatch(ctx, command->line, "last-error");
+		break;
+	case KN_AX25_TIMER_REPLAY_EXPECT_PREPARED_COUNT:
+		if (ctx->runtime.prepared_queue.count != command->expect.value)
+			add_mismatch(ctx, command->line, "prepared-count");
+		break;
+	case KN_AX25_TIMER_REPLAY_EXPECT_PREPARED:
+		if (prepared_seen(&ctx->runtime.prepared_queue,
+		    &command->expect.prepared) == 0)
+			add_mismatch(ctx, command->line, "prepared");
 		break;
 	}
 
@@ -344,6 +356,9 @@ map_actions_for_record(struct replay_context *ctx,
 	record->last_actions = *actions;
 	ctx->result->last_plans = record->last_plans;
 	ctx->result->frame_plans_seen += record->last_plans.count;
+	(void)kn_ax25_runtime_prepare_plans(&ctx->runtime,
+	    TIMER_REPLAY_CONNECTION_ID, record->key.port_name, ctx->now_ms,
+	    &record->last_plans);
 	return KN_AX25_TIMER_REPLAY_OK;
 }
 
@@ -358,6 +373,51 @@ plan_seen(const struct kn_ax25_frame_plan_list *plans,
 	for (i = 0; i < plans->count; i++) {
 		if (plans->plans[i].type == plan)
 			return 1;
+	}
+
+	return 0;
+}
+
+static uint8_t
+prepared_seen(const struct kn_ax25_prepared_queue *queue,
+	const struct kn_ax25_prepared_expect_frame *expect)
+{
+	const struct kn_ax25_prepared_frame *frame;
+	char local[KN_CALLSIGN_MAX + 4];
+	char remote[KN_CALLSIGN_MAX + 4];
+	size_t i;
+
+	if (queue == NULL || expect == NULL)
+		return 0;
+	for (i = 0; i < queue->count; i++) {
+		frame = &queue->frames[i];
+		if (expect->has_kind != 0 && frame->type != expect->kind)
+			continue;
+		if (expect->has_action != 0 &&
+		    frame->action_source != expect->action)
+			continue;
+		if (expect->has_status != 0 &&
+		    frame->status != expect->status)
+			continue;
+		if (expect->has_local != 0) {
+			if (kn_callsign_format(&frame->local, local,
+			    sizeof(local)) != 0 ||
+			    strcmp(local, expect->local) != 0)
+				continue;
+		}
+		if (expect->has_remote != 0) {
+			if (kn_callsign_format(&frame->remote, remote,
+			    sizeof(remote)) != 0 ||
+			    strcmp(remote, expect->remote) != 0)
+				continue;
+		}
+		if (expect->has_port != 0 &&
+		    strcmp(frame->port_name, expect->port) != 0)
+			continue;
+		if (expect->has_ax25_len != 0 &&
+		    frame->raw_len != expect->ax25_len)
+			continue;
+		return 1;
 	}
 
 	return 0;
@@ -461,6 +521,14 @@ update_final(struct replay_context *ctx)
 	ctx->result->t3_running = running;
 	ctx->result->tx_writes_observed =
 	    ctx->runtime.scheduler.counters.tx_queue_writes_attempted;
+	ctx->result->prepared_count = ctx->runtime.prepared_queue.count;
+	ctx->result->prepared_tx_writes_observed =
+	    ctx->runtime.prepared_counters.tx_queue_writes_attempted;
+	for (running = 0;
+	    running < ctx->runtime.prepared_queue.count &&
+	    running < KN_AX25_TIMER_REPLAY_PREPARED_MAX; running++)
+		ctx->result->prepared[running] =
+		    ctx->runtime.prepared_queue.frames[running];
 	ctx->result->scheduler_counters = ctx->runtime.scheduler.counters;
 }
 
@@ -504,7 +572,8 @@ kn_ax25_timer_replay_run(const struct kn_ax25_timer_replay_script *script,
 	update_final(&ctx);
 	if (result->mismatch_count > 0)
 		return KN_AX25_TIMER_REPLAY_ERR_MISMATCH;
-	if (result->tx_writes_observed != 0) {
+	if (result->tx_writes_observed != 0 ||
+	    result->prepared_tx_writes_observed != 0) {
 		add_mismatch(&ctx, 0, "tx-writes-nonzero");
 		return KN_AX25_TIMER_REPLAY_ERR_MISMATCH;
 	}

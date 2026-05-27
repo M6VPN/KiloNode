@@ -10,10 +10,12 @@
 
 #include "kilonode/ax25_action.h"
 #include "kilonode/ax25_frame_plan.h"
+#include "kilonode/ax25_prepared_frame.h"
 #include "kilonode/ax25_runtime.h"
 #include "kilonode/ax25_timer_replay_script.h"
 
 #define KN_AX25_TIMER_REPLAY_MISMATCH_MAX 16
+#define KN_AX25_TIMER_REPLAY_PREPARED_MAX 16
 
 struct kn_ax25_timer_replay_mismatch {
 	size_t line;
@@ -30,9 +32,13 @@ struct kn_ax25_timer_replay_result {
 	uint8_t t3_running;
 	size_t connection_count;
 	uint64_t frame_plans_seen;
+	uint64_t prepared_count;
 	uint64_t tx_writes_observed;
+	uint64_t prepared_tx_writes_observed;
 	uint64_t events_accepted;
 	uint64_t protocol_errors;
+	struct kn_ax25_prepared_frame
+	    prepared[KN_AX25_TIMER_REPLAY_PREPARED_MAX];
 	struct kn_ax25_action_list last_actions;
 	struct kn_ax25_frame_plan_list last_plans;
 	struct kn_ax25_scheduler_counters scheduler_counters;

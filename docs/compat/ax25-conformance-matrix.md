@@ -95,6 +95,11 @@
 | Prepared response frame queue | implemented | Bounded diagnostics queue stores generated AX.25 response frame plans and optional raw AX.25 bytes. |
 | Raw AX.25 response bytes      | implemented | Existing frame builder output is retained for inspection only, without HDLC flags, FCS, KISS, or FX.25. |
 | Prepared frame diagnostics control plane | implemented | Read-only `AX25 PREPARED` commands list prepared diagnostic records and counters. |
+| Prepared frame replay assertions | implemented | Bench and timer replay can assert expected prepared diagnostic frames without TX queue writes. |
+| Bench prepared assertion fixtures | implemented | `prepared-frames.expected` checks UI captures produce no prepared frames and SABM captures produce UA diagnostics. |
+| Timer prepared assertion fixtures | implemented | Timer replay scripts assert prepared retry/poll/disconnect frame diagnostics. |
+| Manual capture prepared assertion support | partial | Manual replay reports prepared frame counts; optional reviewed expectations remain file-based workflow. |
+| Prepared replay TX writes zero assertion | implemented | Prepared replay checks fail if any TX write counter becomes non-zero. |
 | Prepared-to-TX bridge blocked | implemented | Bridge helper returns blocked and config rejects `prepared-bridge-to-tx true`. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
 | Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |

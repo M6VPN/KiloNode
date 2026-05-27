@@ -107,6 +107,8 @@ test_import_and_replay(void)
 	    KN_MANUAL_CAPTURE_OK)
 		return 1;
 	if (replay.diag.tx_writes_attempted != 0 ||
+	    replay.diag.prepared_tx_writes_attempted != 0 ||
+	    replay.diag.prepared_count != 1 ||
 	    strcmp(replay.diag.final_state, "connected") != 0)
 		return 1;
 	request.source_path = fixture_path("fx25-manual-placeholder.capture");

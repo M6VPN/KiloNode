@@ -150,8 +150,9 @@ kn_manual_capture_replay_one(const char *root, uint32_t id,
 	    KN_MANUAL_CAPTURE_OK)
 		return KN_MANUAL_CAPTURE_ERR_IO;
 
-	return result->diag.tx_writes_attempted == 0 ? KN_MANUAL_CAPTURE_OK :
-	    KN_MANUAL_CAPTURE_ERR_REPLAY;
+	return result->diag.tx_writes_attempted == 0 &&
+	    result->diag.prepared_tx_writes_attempted == 0 ?
+	    KN_MANUAL_CAPTURE_OK : KN_MANUAL_CAPTURE_ERR_REPLAY;
 }
 
 enum kn_manual_capture_error
@@ -179,6 +180,7 @@ kn_manual_capture_replay_all(const char *root,
 		}
 		result->count++;
 		result->tx_writes += one.diag.tx_writes_attempted;
+		result->tx_writes += one.diag.prepared_tx_writes_attempted;
 		if (one.replay == KN_MANUAL_CAPTURE_REPLAY_UNSUPPORTED)
 			result->unsupported_count++;
 		else if (one.replay == KN_MANUAL_CAPTURE_REPLAY_PASS)

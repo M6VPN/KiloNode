@@ -13,3 +13,4 @@ if [ ! -x "$compat" ]; then
 fi
 
 "$compat" run-ax25-timer-replay-dir "$fixtures"
+"$compat" run-ax25-timer-prepared-dir "$fixtures"

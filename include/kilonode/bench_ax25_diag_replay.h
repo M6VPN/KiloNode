@@ -15,6 +15,7 @@
 #define KN_BENCH_DIAG_MISMATCH_TEXT_MAX 160
 #define KN_BENCH_DIAG_NAME_MAX          96
 #define KN_BENCH_DIAG_REPORT_MAX        4096
+#define KN_BENCH_DIAG_PREPARED_MAX      16
 
 enum kn_bench_diag_replay_error {
 	KN_BENCH_DIAG_REPLAY_OK = 0,
@@ -46,6 +47,10 @@ struct kn_bench_diag_result {
 	uint64_t final_connections;
 	uint64_t frame_plans_retained;
 	uint64_t tx_writes_attempted;
+	uint64_t prepared_count;
+	uint64_t prepared_tx_writes_attempted;
+	struct kn_ax25_prepared_frame
+	    prepared[KN_BENCH_DIAG_PREPARED_MAX];
 	char final_state[32];
 	size_t mismatch_count;
 	struct kn_bench_diag_mismatch mismatches[KN_BENCH_DIAG_MISMATCH_MAX];

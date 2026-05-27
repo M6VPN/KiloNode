@@ -15,6 +15,12 @@
 .Cm run-ax25-timer-replay-dir
 .Ar path
 .Nm
+.Cm run-ax25-timer-prepared
+.Ar path
+.Nm
+.Cm run-ax25-timer-prepared-dir
+.Ar path
+.Nm
 .Cm ax25-timer-replay-report
 .Ar path
 .Nm
@@ -114,6 +120,13 @@
 .Cm check-bench-expected
 .Ar path
 .Nm
+.Cm check-prepared-expect
+.Ar path
+.Nm
+.Cm replay-bench-prepared
+.Ar manifest
+.Fl -expect Ar path
+.Nm
 .Cm replay-bench-diagnostics
 .Ar path
 .Nm
@@ -209,6 +222,11 @@ Run one offline AX.25 timer replay script.
 Run all
 .Pa *.replay
 files in sorted order.
+.It Cm run-ax25-timer-prepared Ar path
+Run one offline AX.25 timer replay script including prepared-frame assertions.
+.It Cm run-ax25-timer-prepared-dir Ar path
+Run all timer replay scripts in sorted order including prepared-frame
+assertions.
 .It Cm ax25-timer-replay-report Ar path
 Run one replay and print a detailed timer diagnostic report.
 .It Cm replay-transcript Ar path
@@ -268,6 +286,11 @@ Replay supported bench capture fixtures and skip planned FX.25 placeholders.
 Print receive-only bench fixture coverage counts.
 .It Cm check-bench-expected Ar path
 Validate AX.25 diagnostic replay expected results.
+.It Cm check-prepared-expect Ar path
+Validate AX.25 prepared-frame replay expectations.
+.It Cm replay-bench-prepared Ar manifest Fl -expect Ar path
+Replay a receive-only bench manifest and compare prepared diagnostic frames
+against the expected file. The command does not bridge prepared frames to TX.
 .It Cm replay-bench-diagnostics Ar path
 Replay one bench capture or bench manifest into the offline AX.25 diagnostics
 runtime. The command does not open transports, queue frames, or dispatch TX.
@@ -338,6 +361,9 @@ kilonode-compat risk-report tests/fixtures/compat/linbpq-node/requirements.plan
 kilonode-compat check-bench-pack tests/fixtures/bench/manifest.bench
 kilonode-compat replay-bench-pack tests/fixtures/bench/manifest.bench
 kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
+kilonode-compat check-prepared-expect tests/fixtures/bench/prepared-frames.expected
+kilonode-compat replay-bench-prepared tests/fixtures/bench/manifest.bench --expect tests/fixtures/bench/prepared-frames.expected
+kilonode-compat run-ax25-timer-prepared-dir tests/fixtures/ax25-timer
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.

@@ -10,6 +10,8 @@ expect state=awaiting-connection
 expect retry=0
 expect action send-sabm
 expect plan SABM
+expect prepared-count 1
+expect prepared kind=SABM action=send-sabm status=prepared
 expect timer-running T1 true
 advance 3000
 process-expired
@@ -17,6 +19,8 @@ expect state=awaiting-connection
 expect retry=1
 expect action send-sabm
 expect plan SABM
+expect prepared-count 2
+expect prepared kind=SABM action=send-sabm status=prepared
 expect timer-running T1 true
 expect counter retries-incremented 1
 expect tx-writes 0

@@ -8,11 +8,14 @@ params modulo=8 window=1 t1=3000 t2=1000 t3=5000 n2=3
 event rx-sabm
 expect state=connected
 expect action start-t3
+expect prepared-count 1
 expect timer-running T3 true
 advance 5000
 process-expired
 expect state=connected
 expect action send-rr
 expect plan RR
+expect prepared-count 2
+expect prepared kind=RR action=send-rr status=prepared
 expect timer-running T3 false
 expect tx-writes 0

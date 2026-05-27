@@ -20,6 +20,14 @@ Direct commands:
 ./build/kilonode-compat manual-replay-all --workspace /tmp/kilonode-manual-captures
 ```
 
+Manual replay reports include prepared diagnostic frame counts when imported
+captures generate AX.25 response plans. These are diagnostics only. They are
+not copied to the real TX queue.
+
+Prepared expectations are optional for manual captures. Use the same expected
+format documented for bench replay when a reviewed manual capture has stable
+expected prepared-frame output.
+
 Captures may come from USB sound card plus Dire Wolf TCP KISS, KiloTNC KISS,
 serial KISS, TCP KISS, PTY KISS, or Unix socket KISS. Replay itself needs no
 hardware.

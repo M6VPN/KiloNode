@@ -55,13 +55,15 @@ kn_manual_capture_entry_report_format(
 		return KN_MANUAL_CAPTURE_ERR_INVALID_ARGUMENT;
 	needed = snprintf(buf, bufsiz,
 	    "MANUAL-REPORT id=%u file=%s method=%s status=%s replay=%s "
-	    "state=%s tx_writes=%llu unsupported=%s\n",
+	    "state=%s prepared=%llu tx_writes=%llu unsupported=%s\n",
 	    entry->id, entry->file, entry->method,
 	    kn_manual_capture_status_name(entry->status),
 	    kn_manual_capture_replay_status_name(entry->replay),
 	    diag == NULL ? "not-run" : diag->final_state,
+	    diag == NULL ? 0ULL : (unsigned long long)diag->prepared_count,
 	    diag == NULL ? 0ULL :
-	    (unsigned long long)diag->tx_writes_attempted,
+	    (unsigned long long)(diag->tx_writes_attempted +
+	    diag->prepared_tx_writes_attempted),
 	    diag != NULL && diag->unsupported != 0 ? "true" : "false");
 	if (needed < 0 || (size_t)needed >= bufsiz)
 		return KN_MANUAL_CAPTURE_ERR_BUFFER;
