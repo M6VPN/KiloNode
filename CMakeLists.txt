@@ -43,6 +43,10 @@ add_library(packetcore STATIC
 	src/compat/compat_risk.c
 	src/compat/compat_session.c
 	src/compat/compat_transcript.c
+	src/compat/manual_capture_index.c
+	src/compat/manual_capture_replay.c
+	src/compat/manual_capture_report.c
+	src/compat/manual_capture_workspace.c
 	src/control/control_protocol.c
 	src/control/control_socket.c
 	src/bbs/bbs_area.c
@@ -382,6 +386,27 @@ add_executable(test_bench_replay_report tests/test_bench_replay_report.c)
 target_link_libraries(test_bench_replay_report PRIVATE packetcore)
 kilonode_target_defaults(test_bench_replay_report)
 add_test(NAME bench_replay_report COMMAND test_bench_replay_report)
+
+add_executable(test_manual_capture_workspace
+	tests/test_manual_capture_workspace.c)
+target_link_libraries(test_manual_capture_workspace PRIVATE packetcore)
+kilonode_target_defaults(test_manual_capture_workspace)
+add_test(NAME manual_capture_workspace COMMAND test_manual_capture_workspace)
+
+add_executable(test_manual_capture_index tests/test_manual_capture_index.c)
+target_link_libraries(test_manual_capture_index PRIVATE packetcore)
+kilonode_target_defaults(test_manual_capture_index)
+add_test(NAME manual_capture_index COMMAND test_manual_capture_index)
+
+add_executable(test_manual_capture_replay tests/test_manual_capture_replay.c)
+target_link_libraries(test_manual_capture_replay PRIVATE packetcore)
+kilonode_target_defaults(test_manual_capture_replay)
+add_test(NAME manual_capture_replay COMMAND test_manual_capture_replay)
+
+add_executable(test_manual_capture_report tests/test_manual_capture_report.c)
+target_link_libraries(test_manual_capture_report PRIVATE packetcore)
+kilonode_target_defaults(test_manual_capture_report)
+add_test(NAME manual_capture_report COMMAND test_manual_capture_report)
 
 add_executable(test_compat_replay tests/test_compat_replay.c)
 target_link_libraries(test_compat_replay PRIVATE packetcore)

@@ -45,6 +45,10 @@
 | DISC/RR bench replay          | partial     | Single-frame DISC/RR fixtures decode and are ignored without an existing connection. Multi-frame sequence fixtures are planned placeholders. |
 | UI ignored by connected diagnostics | implemented | UI captures increment ignored UI counters and do not create connected-mode records. |
 | TX writes zero assertion      | implemented | Diagnostic replay reports and expected checks require TX write attempts to remain zero. |
+| Manual capture workspace      | implemented | User-provided receive-only captures can be kept outside committed fixtures. |
+| Manual capture import         | implemented | `.capture` files import into a bounded workspace index without opening transports. |
+| Manual AX.25 diagnostic replay | implemented | Imported captures replay through the offline AX.25 diagnostics harness with zero TX writes. |
+| Manual connected-mode capture replay | planned | Multi-frame manual connected-mode replay remains future work beyond single capture files. |
 | Real AX.25 source validation   | planned     | Manual bench validation with receive-only hardware is planned. CI remains synthetic. |
 | Manual bench captures          | planned     | Future imported manual captures require review before becoming committed fixtures. |
 | Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |

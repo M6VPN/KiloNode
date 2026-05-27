@@ -1,0 +1,19 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/tests/fixtures/manual-captures/import-source/fx25-manual-placeholder.capture
+# KiloNode packet capture v1
+# Synthetic FX.25 manual-import placeholder. FX.25 decode is not implemented.
+name manual-fx25-placeholder
+subject manual-import-test
+method axip
+date 2026-05-27
+observer M6VPN
+mode fx25-planned-placeholder
+direction rx
+source-endpoint synthetic
+destination-endpoint kilonode
+timestamp 1710001107
+frame-begin hex
+00
+frame-end
+expect-decode malformed
+expect-kind FX25-PLANNED

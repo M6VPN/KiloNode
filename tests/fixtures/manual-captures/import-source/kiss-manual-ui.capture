@@ -1,0 +1,22 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/tests/fixtures/manual-captures/import-source/kiss-manual-ui.capture
+# KiloNode packet capture v1
+# Synthetic manual-import source, not a LinBPQ capture.
+name manual-kiss-ui
+subject manual-import-test
+method kiss
+date 2026-05-27
+observer M6VPN
+mode receive-only-manual
+direction rx
+port kiss0
+timestamp 1710001100
+frame-begin hex
+c0 00 86 a2 40 40 40 40 60 9c 60 86 82 98 98 61 03 f0 43 51 20 54 45 53 54 c0
+frame-end
+expect-decode ax25-ui
+expect-source N0CALL
+expect-destination CQ
+expect-pid 0xf0
+expect-payload-text CQ TEST
+expect-kind UI

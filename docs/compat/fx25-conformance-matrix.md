@@ -24,6 +24,8 @@
 | FX.25 placeholder replay | scaffold | Diagnostic replay reports FX.25 placeholders as planned and unsupported. |
 | FX.25 decode from fixture | planned  | Placeholder does not claim valid FX.25 decode. |
 | FX.25 diagnostic replay   | planned  | Future FX.25 replay must decode or reject FX.25 frames before AX.25 diagnostics. |
+| Manual FX.25 capture import | scaffold | Manual workspace can catalog FX.25 placeholders as unsupported/planned. |
+| Manual FX.25 replay        | planned  | Replay remains unsupported until FX.25 decode and FEC exist. |
 | FX.25 receive validation | planned  | Future bench work must validate FX.25 detection, FEC stats, payload extraction, and fallback. |
 | Manual FX.25 captures    | planned  | Future captures need known-good, corrected, uncorrectable, and fallback cases. |
 | FX.25 pre-decode integration | planned | No FX.25 unwrap path feeds AX.25 diagnostics yet. |

@@ -1,0 +1,11 @@
+# KiloNode - Developed by M6VPN (M6VPN@tuta.com)
+# kilonode/tests/fixtures/manual-captures/workspace.manifest
+# KiloNode manual capture workspace v1
+name manual-rx-captures
+type manual-capture-workspace
+created 2026-05-27
+clean-room true
+source-code-used false
+hardware-required optional
+transmit-required false
+notes Test manual receive-only captures.

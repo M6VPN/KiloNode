@@ -137,11 +137,13 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Receive-only AX.25 bench validation docs | implemented | Bench docs, examples, and helper scripts cover RX-only validation paths |
 | Receive-only bench capture fixture pack | tested | Synthetic KISS and AX.25 bench captures replay without hardware |
 | Offline AX.25 diagnostic replay from bench captures | tested | Bench captures feed the AX.25 diagnostics runtime and assert zero TX writes |
+| Manual black-box KISS captures import | tested | Manual workspace imports receive-only captures without using them as implementation sources |
 | Dire Wolf/KISS receive bench plan | implemented | USB sound card to Dire Wolf TCP KISS to KiloNode workflow documented |
 | KiloTNC receive bench plan | implemented | Serial and TCP KISS receive-only workflow documented |
 | Live LinBPQ/KISS receive observation | planned | Future manual black-box observation only |
 | BPQ/LinBPQ connected-mode capture comparison | planned | Future manual captures only, no compatibility implementation in this pass |
 | Manual LinBPQ/KISS connected-mode capture replay | planned | Future receive-only black-box captures only |
+| Live LinBPQ interop | planned | Not implemented |
 | Live AX.25 connected sessions | planned | Not implemented |
 | RF CONNECT command | planned | Not implemented |
 | BPQ/LinBPQ connected-mode interop | planned | Not implemented |

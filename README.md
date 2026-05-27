@@ -147,7 +147,11 @@ diagnostics runtime and checks that TX write attempts stay at zero.
 ./scripts/bench-rx-check-configs.sh
 ./scripts/bench-rx-replay-fixtures.sh
 ./scripts/bench-rx-replay-diagnostics.sh
+./scripts/bench-rx-workspace-init.sh /tmp/kilonode-manual-captures
 ```
+
+Manual capture workspaces are covered in
+[manual-capture-workspace.md](docs/bench/manual-capture-workspace.md).
 
 ## Compatibility
 

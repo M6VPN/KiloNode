@@ -111,6 +111,38 @@
 .Cm bench-diagnostics-report
 .Ar path
 .Nm
+.Cm manual-workspace-init
+.Ar path
+.Nm
+.Cm manual-workspace-check
+.Ar path
+.Nm
+.Cm manual-import
+.Ar path
+.Fl -workspace Ar path
+.Op Fl -notes Ar text
+.Op Fl -source Ar source
+.Nm
+.Cm manual-list
+.Fl -workspace Ar path
+.Nm
+.Cm manual-validate
+.Fl -workspace Ar path
+.Nm
+.Cm manual-replay
+.Ar id
+.Fl -workspace Ar path
+.Nm
+.Cm manual-replay-all
+.Fl -workspace Ar path
+.Nm
+.Cm manual-report
+.Ar id
+.Fl -workspace Ar path
+.Nm
+.Cm manual-summary
+.Fl -workspace Ar path
+.Nm
 .Cm check-requirements
 .Ar path
 .Nm
@@ -223,6 +255,25 @@ Replay all
 files in sorted order through the offline AX.25 diagnostics runtime.
 .It Cm bench-diagnostics-report Ar path
 Print a detailed offline AX.25 diagnostic replay report for one capture.
+.It Cm manual-workspace-init Ar path
+Create a receive-only manual capture workspace.
+.It Cm manual-workspace-check Ar path
+Validate a manual capture workspace manifest.
+.It Cm manual-import Ar path Fl -workspace Ar path Op Fl -notes Ar text Op Fl -source Ar source
+Copy one `.capture` file into a manual workspace, validate it, and add an index
+entry. Source may be `manual`, `synthetic`, or `black-box`.
+.It Cm manual-list Fl -workspace Ar path
+Print indexed manual captures.
+.It Cm manual-validate Fl -workspace Ar path
+Validate all indexed capture files and update status.
+.It Cm manual-replay Ar id Fl -workspace Ar path
+Replay one indexed capture through the offline AX.25 diagnostics harness.
+.It Cm manual-replay-all Fl -workspace Ar path
+Replay all valid or unsupported indexed captures in deterministic index order.
+.It Cm manual-report Ar id Fl -workspace Ar path
+Replay and print a per-capture report.
+.It Cm manual-summary Fl -workspace Ar path
+Print status and replay counts for a manual workspace.
 .It Cm check-requirements Ar path
 Validate a node command requirements planning file.
 .It Cm requirements-report Ar path

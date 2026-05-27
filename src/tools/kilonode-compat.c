@@ -29,6 +29,10 @@
 #include "kilonode/compat_risk.h"
 #include "kilonode/compat_session.h"
 #include "kilonode/compat_transcript.h"
+#include "kilonode/manual_capture_index.h"
+#include "kilonode/manual_capture_replay.h"
+#include "kilonode/manual_capture_report.h"
+#include "kilonode/manual_capture_workspace.h"
 
 #define COMPAT_DIR_MAX   128
 #define COMPAT_PATH_MAX  512
@@ -58,6 +62,15 @@ static int command_capture_to_transcript(int, char *[]);
 static int command_decode_capture(const char *);
 static int command_generate_node_plan(int, char *[]);
 static int command_make_transcript(int, char *[]);
+static int command_manual_import(int, char *[]);
+static int command_manual_list(int, char *[]);
+static int command_manual_report(int, char *[]);
+static int command_manual_replay(int, char *[]);
+static int command_manual_replay_all(int, char *[]);
+static int command_manual_summary(int, char *[]);
+static int command_manual_validate(int, char *[]);
+static int command_manual_workspace_check(const char *);
+static int command_manual_workspace_init(const char *);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
@@ -108,6 +121,8 @@ static void print_bench_error(const char *,
 	const struct kn_compat_bench_error_info *);
 static void print_bench_replay_error(const char *,
 	const struct kn_bench_replay_error_info *);
+static void print_manual_error(const char *,
+	const struct kn_manual_capture_error_info *);
 static void print_parse_error(const char *,
 	const struct kn_compat_transcript_error_info *);
 static void print_requirements_error(const char *,
@@ -174,6 +189,24 @@ main(int argc, char *argv[])
 		return command_pack_coverage(argv[2]);
 	if (strcmp(argv[1], "make-transcript-from-observation") == 0)
 		return command_make_transcript(argc, argv);
+	if (strcmp(argv[1], "manual-workspace-init") == 0 && argc == 3)
+		return command_manual_workspace_init(argv[2]);
+	if (strcmp(argv[1], "manual-workspace-check") == 0 && argc == 3)
+		return command_manual_workspace_check(argv[2]);
+	if (strcmp(argv[1], "manual-import") == 0)
+		return command_manual_import(argc, argv);
+	if (strcmp(argv[1], "manual-list") == 0)
+		return command_manual_list(argc, argv);
+	if (strcmp(argv[1], "manual-validate") == 0)
+		return command_manual_validate(argc, argv);
+	if (strcmp(argv[1], "manual-replay") == 0)
+		return command_manual_replay(argc, argv);
+	if (strcmp(argv[1], "manual-replay-all") == 0)
+		return command_manual_replay_all(argc, argv);
+	if (strcmp(argv[1], "manual-report") == 0)
+		return command_manual_report(argc, argv);
+	if (strcmp(argv[1], "manual-summary") == 0)
+		return command_manual_summary(argc, argv);
 	if (strcmp(argv[1], "observe-process") == 0)
 		return command_observe_process(argc, argv);
 	if (strcmp(argv[1], "observe-tcp") == 0)
@@ -610,6 +643,241 @@ command_make_transcript(int argc, char *argv[])
 		return 1;
 	}
 	printf("OK transcript-candidate=%s\n", output);
+	return 0;
+}
+
+static int
+command_manual_import(int argc, char *argv[])
+{
+	struct kn_manual_capture_import_request request;
+	struct kn_manual_capture_import_result result;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	const char *notes;
+	const char *source;
+	int i;
+
+	if (argc < 5)
+		return 1;
+	workspace = notes = source = NULL;
+	for (i = 3; i < argc; i++) {
+		if (strcmp(argv[i], "--workspace") == 0)
+			workspace = option_value(argc, argv, &i, "--workspace");
+		else if (strcmp(argv[i], "--notes") == 0)
+			notes = option_value(argc, argv, &i, "--notes");
+		else if (strcmp(argv[i], "--source") == 0)
+			source = option_value(argc, argv, &i, "--source");
+		else
+			return 1;
+	}
+	if (workspace == NULL)
+		return 1;
+	memset(&request, 0, sizeof(request));
+	request.source_path = argv[2];
+	request.workspace_root = workspace;
+	request.notes = notes;
+	request.source = KN_MANUAL_CAPTURE_SOURCE_MANUAL;
+	if (source != NULL &&
+	    kn_manual_capture_source_from_text(source, &request.source) !=
+	    KN_MANUAL_CAPTURE_OK)
+		return 1;
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_import(&request, &result, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-import", &error);
+		return 1;
+	}
+	printf("OK manual-import id=%u file=%s status=%s\n", result.id,
+	    result.file, kn_manual_capture_status_name(result.status));
+	return 0;
+}
+
+static int
+command_manual_list(int argc, char *argv[])
+{
+	struct kn_manual_capture_index index;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_MANUAL_CAPTURE_REPORT_MAX];
+
+	if (argc != 4 || strcmp(argv[2], "--workspace") != 0)
+		return 1;
+	workspace = argv[3];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_index_load(workspace, &index, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-list", &error);
+		return 1;
+	}
+	if (kn_manual_capture_index_format(&index, report, sizeof(report)) !=
+	    KN_MANUAL_CAPTURE_OK)
+		return 1;
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_manual_report(int argc, char *argv[])
+{
+	struct kn_manual_capture_replay_result replay;
+	struct kn_manual_capture_index index;
+	struct kn_manual_capture_entry *entry;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_MANUAL_CAPTURE_REPORT_MAX];
+	uint32_t id;
+
+	if (argc != 5 || strcmp(argv[3], "--workspace") != 0)
+		return 1;
+	id = (uint32_t)strtoul(argv[2], NULL, 10);
+	workspace = argv[4];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_replay_one(workspace, id, &replay, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-report", &error);
+		return 1;
+	}
+	if (kn_manual_capture_index_load(workspace, &index, &error) !=
+	    KN_MANUAL_CAPTURE_OK)
+		return 1;
+	entry = kn_manual_capture_index_find(&index, id);
+	if (entry == NULL)
+		return 1;
+	if (kn_manual_capture_entry_report_format(entry, &replay.diag, report,
+	    sizeof(report)) != KN_MANUAL_CAPTURE_OK)
+		return 1;
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_manual_replay(int argc, char *argv[])
+{
+	struct kn_manual_capture_replay_result result;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_BENCH_DIAG_REPORT_MAX];
+	uint32_t id;
+
+	if (argc != 5 || strcmp(argv[3], "--workspace") != 0)
+		return 1;
+	id = (uint32_t)strtoul(argv[2], NULL, 10);
+	workspace = argv[4];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_replay_one(workspace, id, &result, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-replay", &error);
+		return 1;
+	}
+	if (kn_bench_diag_result_format(&result.diag, report,
+	    sizeof(report)) != KN_BENCH_REPLAY_REPORT_OK)
+		return 1;
+	printf("OK manual-replay id=%u replay=%s\n%s", id,
+	    kn_manual_capture_replay_status_name(result.replay), report);
+	return result.diag.tx_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+command_manual_replay_all(int argc, char *argv[])
+{
+	struct kn_manual_capture_replay_all_result result;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_MANUAL_CAPTURE_REPORT_MAX];
+
+	if (argc != 4 || strcmp(argv[2], "--workspace") != 0)
+		return 1;
+	workspace = argv[3];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_replay_all(workspace, &result, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-replay-all", &error);
+		return 1;
+	}
+	if (kn_manual_capture_replay_all_format(&result, report,
+	    sizeof(report)) != KN_MANUAL_CAPTURE_OK)
+		return 1;
+	printf("%s", report);
+	return result.tx_writes == 0 ? 0 : 1;
+}
+
+static int
+command_manual_summary(int argc, char *argv[])
+{
+	struct kn_manual_capture_index index;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_MANUAL_CAPTURE_REPORT_MAX];
+
+	if (argc != 4 || strcmp(argv[2], "--workspace") != 0)
+		return 1;
+	workspace = argv[3];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_index_load(workspace, &index, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-summary", &error);
+		return 1;
+	}
+	if (kn_manual_capture_summary_format(&index, report,
+	    sizeof(report)) != KN_MANUAL_CAPTURE_OK)
+		return 1;
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_manual_validate(int argc, char *argv[])
+{
+	struct kn_manual_capture_index index;
+	struct kn_manual_capture_error_info error;
+	const char *workspace;
+	char report[KN_MANUAL_CAPTURE_REPORT_MAX];
+
+	if (argc != 4 || strcmp(argv[2], "--workspace") != 0)
+		return 1;
+	workspace = argv[3];
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_validate_all(workspace, &index, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error("manual-validate", &error);
+		return 1;
+	}
+	if (kn_manual_capture_index_format(&index, report, sizeof(report)) !=
+	    KN_MANUAL_CAPTURE_OK)
+		return 1;
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_manual_workspace_check(const char *path)
+{
+	struct kn_manual_capture_workspace workspace;
+	struct kn_manual_capture_error_info error;
+
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_workspace_check(path, &workspace, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error(path, &error);
+		return 1;
+	}
+	printf("OK manual-workspace=%s name=%s transmit_required=false\n",
+	    path, workspace.name);
+	return 0;
+}
+
+static int
+command_manual_workspace_init(const char *path)
+{
+	struct kn_manual_capture_error_info error;
+
+	memset(&error, 0, sizeof(error));
+	if (kn_manual_capture_workspace_init(path, &error) !=
+	    KN_MANUAL_CAPTURE_OK) {
+		print_manual_error(path, &error);
+		return 1;
+	}
+	printf("OK manual-workspace-init=%s\n", path);
 	return 0;
 }
 
@@ -1477,6 +1745,19 @@ print_bench_replay_error(const char *path,
 }
 
 static void
+print_manual_error(const char *path,
+	const struct kn_manual_capture_error_info *error)
+{
+	fprintf(stderr, "ERR manual-capture=%s error=%s line=%llu detail=%s\n",
+	    path == NULL ? "-" : path,
+	    error == NULL ? "unknown" : kn_manual_capture_error_name(
+	    error->error),
+	    error == NULL ? 0ULL : (unsigned long long)error->line,
+	    error == NULL || error->message[0] == '\0' ? "-" :
+	    error->message);
+}
+
+static void
 print_parse_error(const char *path,
 	const struct kn_compat_transcript_error_info *error)
 {
@@ -1583,6 +1864,15 @@ usage(void)
 	    "       kilonode-compat risk-report PATH\n"
 	    "       kilonode-compat make-transcript-from-observation PATH --output PATH\n"
 	    "       kilonode-compat compare-observations A B\n"
+	    "       kilonode-compat manual-workspace-init PATH\n"
+	    "       kilonode-compat manual-workspace-check PATH\n"
+	    "       kilonode-compat manual-import PATH --workspace PATH [--notes TEXT] [--source manual|synthetic|black-box]\n"
+	    "       kilonode-compat manual-list --workspace PATH\n"
+	    "       kilonode-compat manual-validate --workspace PATH\n"
+	    "       kilonode-compat manual-replay ID --workspace PATH\n"
+	    "       kilonode-compat manual-replay-all --workspace PATH\n"
+	    "       kilonode-compat manual-report ID --workspace PATH\n"
+	    "       kilonode-compat manual-summary --workspace PATH\n"
 	    "       kilonode-compat observe-process --binary PATH --config PATH --name NAME --mode MODE --input TEXT --output PATH [--timeout SECONDS]\n"
 	    "       kilonode-compat observe-tcp --host HOST --port PORT --name NAME --mode MODE --input TEXT --output PATH [--timeout SECONDS]\n");
 }

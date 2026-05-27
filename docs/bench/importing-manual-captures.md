@@ -14,6 +14,8 @@ Use a local destination outside committed fixtures by default:
 
 ```sh
 ./scripts/bench-rx-import-capture.sh /path/to/manual.capture /tmp/kilonode-manual-captures
+./scripts/bench-rx-workspace-init.sh /tmp/kilonode-manual-captures
+./scripts/bench-rx-workspace-import.sh /path/to/manual.capture /tmp/kilonode-manual-captures
 ```
 
 The import helper:
@@ -24,6 +26,14 @@ The import helper:
 - refuses `tests/fixtures/bench` unless `--allow-repo-fixture` is explicit
 - preserves the original file
 - does not open devices or start bench software
+
+The workspace import path also catalogs captures in `index/captures.index` and
+can replay them through the offline AX.25 diagnostics harness:
+
+```sh
+./scripts/bench-rx-workspace-replay.sh /tmp/kilonode-manual-captures
+./scripts/bench-rx-workspace-report.sh /tmp/kilonode-manual-captures
+```
 
 ## Review Before Committing
 

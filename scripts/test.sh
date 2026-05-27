@@ -14,6 +14,13 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat check-bench-expected tests/fixtures/bench/ax25-diag-replay.expected
 ./build/kilonode-compat replay-bench-diagnostics tests/fixtures/bench/manifest.bench
+manual_workspace="/tmp/kilonode-manual-captures-test-$$"
+./build/kilonode-compat manual-workspace-init "$manual_workspace"
+./build/kilonode-compat manual-workspace-check "$manual_workspace"
+./build/kilonode-compat manual-import tests/fixtures/manual-captures/import-source/kiss-manual-sabm.capture --workspace "$manual_workspace" --notes "test import"
+./build/kilonode-compat manual-validate --workspace "$manual_workspace"
+./build/kilonode-compat manual-replay-all --workspace "$manual_workspace"
+./build/kilonode-compat manual-summary --workspace "$manual_workspace"
 ./build/kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat replay-pack tests/fixtures/compat/linbpq-node/manifest.pack
