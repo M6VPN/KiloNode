@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "kilonode/ax25.h"
+#include "kilonode/ax25_control.h"
 #include "kilonode/buffer.h"
 #include "kilonode/compat_kiss_capture.h"
 #include "kilonode/kiss_stream.h"
@@ -198,14 +199,18 @@ format_payload(const uint8_t *payload, size_t payload_len, char *buf,
 static const char *
 kind_from_frame(const struct kn_ax25_frame *frame)
 {
+	struct kn_ax25_control_info info;
+
 	if (frame->control == KN_AX25_CONTROL_UI)
 		return "UI";
-	if ((frame->control & 0x01u) == 0)
+
+	kn_ax25_control_decode(frame->control, &info);
+	if (info.class == KN_AX25_CONTROL_CLASS_I)
 		return "I";
-	if ((frame->control & 0x03u) == 0x01u)
-		return "S";
-	if ((frame->control & 0x03u) == 0x03u)
-		return "U";
+	if (info.class == KN_AX25_CONTROL_CLASS_S)
+		return kn_ax25_s_subtype_name(info.s_subtype);
+	if (info.class == KN_AX25_CONTROL_CLASS_U)
+		return kn_ax25_u_subtype_name(info.u_subtype);
 
 	return "unknown";
 }

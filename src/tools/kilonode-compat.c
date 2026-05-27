@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "kilonode/compat_capture.h"
+#include "kilonode/compat_bench_pack.h"
 #include "kilonode/compat_capture_report.h"
 #include "kilonode/compat_axip_capture.h"
 #include "kilonode/compat_command_profile.h"
@@ -35,6 +36,7 @@ struct compat_dir_entry {
 };
 
 static int command_check_transcript(const char *);
+static int command_check_bench_pack(const char *);
 static int command_check_observation(const char *);
 static int command_check_capture(const char *);
 static int command_check_command_profiles(const char *);
@@ -45,6 +47,8 @@ static int command_command_profile_report(const char *);
 static int command_compare_observations(const char *, const char *);
 static int command_compare_pack_observations(const char *);
 static int command_capture_report(const char *);
+static int command_bench_coverage(const char *);
+static int command_bench_pack_report(const char *);
 static int command_capture_to_transcript(int, char *[]);
 static int command_decode_capture(const char *);
 static int command_generate_node_plan(int, char *[]);
@@ -52,6 +56,7 @@ static int command_make_transcript(int, char *[]);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
+static int command_replay_bench_pack(const char *);
 static int command_replay_pack(const char *);
 static int command_replay_capture(const char *);
 static int command_replay_capture_dir(const char *);
@@ -75,6 +80,7 @@ static const char *option_value(int, char *[], int *, const char *);
 static int parse_observation_file(const char *, struct kn_compat_observation *);
 static int parse_pack_file(const char *,
 	struct kn_compat_observation_pack *);
+static int parse_bench_file(const char *, struct kn_compat_bench_pack *);
 static int parse_capture_file(const char *, struct kn_compat_packet_capture *);
 static int parse_command_profile_file(const char *,
 	struct kn_compat_command_profiles *);
@@ -89,6 +95,8 @@ static void print_profile_error(const char *,
 	const struct kn_compat_profile_error_info *);
 static void print_pack_error(const char *,
 	const struct kn_compat_pack_error_info *);
+static void print_bench_error(const char *,
+	const struct kn_compat_bench_error_info *);
 static void print_parse_error(const char *,
 	const struct kn_compat_transcript_error_info *);
 static void print_requirements_error(const char *,
@@ -109,6 +117,8 @@ main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "check-transcript") == 0 && argc == 3)
 		return command_check_transcript(argv[2]);
+	if (strcmp(argv[1], "check-bench-pack") == 0 && argc == 3)
+		return command_check_bench_pack(argv[2]);
 	if (strcmp(argv[1], "check-observation") == 0 && argc == 3)
 		return command_check_observation(argv[2]);
 	if (strcmp(argv[1], "check-capture") == 0 && argc == 3)
@@ -129,6 +139,10 @@ main(int argc, char *argv[])
 		return command_generate_node_plan(argc, argv);
 	if (strcmp(argv[1], "capture-report") == 0 && argc == 3)
 		return command_capture_report(argv[2]);
+	if (strcmp(argv[1], "bench-pack-report") == 0 && argc == 3)
+		return command_bench_pack_report(argv[2]);
+	if (strcmp(argv[1], "bench-coverage") == 0 && argc == 3)
+		return command_bench_coverage(argv[2]);
 	if (strcmp(argv[1], "capture-to-transcript") == 0)
 		return command_capture_to_transcript(argc, argv);
 	if (strcmp(argv[1], "show-observation") == 0 && argc == 3)
@@ -155,6 +169,8 @@ main(int argc, char *argv[])
 		return command_replay_capture(argv[2]);
 	if (strcmp(argv[1], "replay-capture-dir") == 0 && argc == 3)
 		return command_replay_capture_dir(argv[2]);
+	if (strcmp(argv[1], "replay-bench-pack") == 0 && argc == 3)
+		return command_replay_bench_pack(argv[2]);
 	if (strcmp(argv[1], "replay-pack") == 0 && argc == 3)
 		return command_replay_pack(argv[2]);
 	if (strcmp(argv[1], "replay-dir") == 0 && argc == 3)
@@ -170,6 +186,67 @@ main(int argc, char *argv[])
 
 	usage();
 	return 1;
+}
+
+static int
+command_bench_coverage(const char *path)
+{
+	struct kn_compat_bench_pack pack;
+	char report[KN_COMPAT_BENCH_REPORT_MAX];
+
+	if (parse_bench_file(path, &pack) != 0)
+		return 1;
+	if (kn_compat_bench_pack_coverage_report(&pack, report,
+	    sizeof(report)) != KN_COMPAT_BENCH_OK) {
+		fprintf(stderr, "ERR bench-coverage\n");
+		return 1;
+	}
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_bench_pack_report(const char *path)
+{
+	struct kn_compat_bench_pack pack;
+	struct kn_compat_bench_error_info error;
+	char report[KN_COMPAT_BENCH_REPORT_MAX];
+
+	if (parse_bench_file(path, &pack) != 0)
+		return 1;
+	memset(&error, 0, sizeof(error));
+	if (kn_compat_bench_pack_validate_refs(&pack, &error) !=
+	    KN_COMPAT_BENCH_OK) {
+		print_bench_error(path, &error);
+		return 1;
+	}
+	if (kn_compat_bench_pack_report(&pack, report,
+	    sizeof(report)) != KN_COMPAT_BENCH_OK)
+		return 1;
+	printf("%s", report);
+	return 0;
+}
+
+static int
+command_check_bench_pack(const char *path)
+{
+	struct kn_compat_bench_pack pack;
+	struct kn_compat_bench_error_info error;
+
+	if (parse_bench_file(path, &pack) != 0)
+		return 1;
+	memset(&error, 0, sizeof(error));
+	if (kn_compat_bench_pack_validate_refs(&pack, &error) !=
+	    KN_COMPAT_BENCH_OK) {
+		print_bench_error(path, &error);
+		return 1;
+	}
+	printf("OK bench-pack=%s fixtures=%llu hardware_required=%s "
+	    "transmit_required=%s\n", pack.name,
+	    (unsigned long long)pack.fixture_count,
+	    pack.hardware_required != 0 ? "true" : "false",
+	    pack.transmit_required != 0 ? "true" : "false");
+	return 0;
 }
 
 static int
@@ -750,6 +827,23 @@ command_replay_dir(const char *path)
 }
 
 static int
+command_replay_bench_pack(const char *path)
+{
+	struct kn_compat_bench_pack pack;
+	char report[KN_COMPAT_BENCH_REPORT_MAX];
+
+	if (parse_bench_file(path, &pack) != 0)
+		return 1;
+	if (kn_compat_bench_pack_replay_report(&pack, report,
+	    sizeof(report)) != KN_COMPAT_BENCH_OK) {
+		fprintf(stderr, "ERR replay-bench-pack\n");
+		return 1;
+	}
+	printf("%s", report);
+	return 0;
+}
+
+static int
 command_replay_pack(const char *path)
 {
 	struct kn_compat_observation_pack pack;
@@ -1105,6 +1199,22 @@ parse_pack_file(const char *path, struct kn_compat_observation_pack *pack)
 }
 
 static int
+parse_bench_file(const char *path, struct kn_compat_bench_pack *pack)
+{
+	struct kn_compat_bench_error_info error;
+	enum kn_compat_bench_error rc;
+
+	memset(&error, 0, sizeof(error));
+	rc = kn_compat_bench_pack_parse_file(path, pack, &error);
+	if (rc != KN_COMPAT_BENCH_OK) {
+		print_bench_error(path, &error);
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
 parse_capture_file(const char *path, struct kn_compat_packet_capture *capture)
 {
 	struct kn_compat_packet_capture_error_info error;
@@ -1168,6 +1278,17 @@ parse_requirements_file(const char *path,
 	}
 
 	return 0;
+}
+
+static void
+print_bench_error(const char *path,
+	const struct kn_compat_bench_error_info *error)
+{
+	fprintf(stderr, "ERR bench-pack=%s error=%s line=%llu detail=%s\n",
+	    path == NULL ? "-" : path,
+	    kn_compat_bench_error_name(error->error),
+	    (unsigned long long)error->line,
+	    error->message[0] == '\0' ? "-" : error->message);
 }
 
 static void
@@ -1242,6 +1363,7 @@ usage(void)
 {
 	fprintf(stderr,
 	    "usage: kilonode-compat check-transcript PATH\n"
+	    "       kilonode-compat check-bench-pack PATH\n"
 	    "       kilonode-compat check-observation PATH\n"
 	    "       kilonode-compat check-capture PATH\n"
 	    "       kilonode-compat check-command-profiles PATH\n"
@@ -1254,6 +1376,9 @@ usage(void)
 	    "       kilonode-compat replay-capture PATH\n"
 	    "       kilonode-compat replay-capture-dir PATH\n"
 	    "       kilonode-compat capture-report PATH\n"
+	    "       kilonode-compat bench-pack-report PATH\n"
+	    "       kilonode-compat replay-bench-pack PATH\n"
+	    "       kilonode-compat bench-coverage PATH\n"
 	    "       kilonode-compat capture-to-transcript PATH --output PATH\n"
 	    "       kilonode-compat show-observation PATH\n"
 	    "       kilonode-compat show-pack PATH\n"

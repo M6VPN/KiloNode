@@ -87,6 +87,18 @@
 .Cm compare-pack-observations
 .Ar path
 .Nm
+.Cm check-bench-pack
+.Ar path
+.Nm
+.Cm bench-pack-report
+.Ar path
+.Nm
+.Cm replay-bench-pack
+.Ar path
+.Nm
+.Cm bench-coverage
+.Ar path
+.Nm
 .Cm check-requirements
 .Ar path
 .Nm
@@ -118,7 +130,8 @@
 validates and replays KiloNode-native compatibility transcripts.
 The current replay mode is synthetic RF UI command ingress. It can also validate
 and store black-box observation files, offline packet-boundary captures, and
-observation packs.
+observation packs. Receive-only bench capture packs are supported for synthetic
+KISS and AX.25 fixture replay.
 .Pp
 The tool does not run LinBPQ, inspect GPL source, open real transports, or
 dispatch queued transmit frames unless the operator explicitly requests a
@@ -157,6 +170,8 @@ Compare two observations at text level.
 Validate one packet capture file.
 .It Cm check-pack Ar path
 Validate an observation pack manifest and referenced files.
+.It Cm check-bench-pack Ar path
+Validate a receive-only bench capture manifest and referenced captures.
 .It Cm decode-capture Ar path
 Decode one packet capture and print a bounded packet summary.
 .It Cm replay-capture Ar path
@@ -179,6 +194,12 @@ Print node command coverage for an observation pack.
 Replay transcript fixtures referenced by an observation pack.
 .It Cm compare-pack-observations Ar path
 Compare observation fixtures in deterministic manifest order.
+.It Cm bench-pack-report Ar path
+Print a receive-only bench fixture manifest report.
+.It Cm replay-bench-pack Ar path
+Replay supported bench capture fixtures and skip planned FX.25 placeholders.
+.It Cm bench-coverage Ar path
+Print receive-only bench fixture coverage counts.
 .It Cm check-requirements Ar path
 Validate a node command requirements planning file.
 .It Cm requirements-report Ar path
@@ -202,6 +223,8 @@ observation pack.
 .Bl -tag -width Ds
 .It Pa tests/fixtures/compat
 Synthetic KiloNode-native baseline fixtures.
+.It Pa tests/fixtures/bench
+Synthetic receive-only KISS and AX.25 bench capture fixtures.
 .El
 .Sh EXAMPLES
 .Bd -literal
@@ -216,6 +239,9 @@ kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 kilonode-compat check-requirements tests/fixtures/compat/linbpq-node/requirements.plan
 kilonode-compat command-profile-report tests/fixtures/compat/linbpq-node/command-profiles.plan
 kilonode-compat risk-report tests/fixtures/compat/linbpq-node/requirements.plan
+kilonode-compat check-bench-pack tests/fixtures/bench/manifest.bench
+kilonode-compat replay-bench-pack tests/fixtures/bench/manifest.bench
+kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
@@ -229,6 +255,8 @@ Observation packs are metadata and fixture lists only. They do not execute
 compatibility targets or inspect source trees.
 Planning files are requirements, profile, and risk metadata only. They do not
 implement BPQ/LinBPQ command compatibility.
+Bench capture packs are receive-only fixtures. They do not open hardware,
+enqueue TX frames, dispatch frames, or claim FX.25 decode support.
 .Sh SEE ALSO
 .Xr kilonodectl 1 ,
 .Xr kilonoded 8

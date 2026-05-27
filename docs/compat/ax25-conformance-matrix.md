@@ -35,7 +35,12 @@
 | Live frame-plan retention      | implemented | Generated frame plans are retained in diagnostics only and are never queued. |
 | Receive-only bench docs       | implemented | USB sound card, Dire Wolf, KiloTNC, serial, TCP, PTY, and Unix KISS receive workflows are documented. |
 | Live RX diagnostics bench checklist | implemented | Bench checklist covers config check, TX gates, RX events, heard list, live counters, and connection diagnostics. |
+| Synthetic bench KISS UI fixture | implemented | Receive-only KISS UI fixtures cover CQ and node-directed PING payloads. |
+| Synthetic bench KISS SABM fixture | implemented | KISS SABM fixture validates setup-frame decode expectations. |
+| Synthetic bench KISS DISC/RR fixtures | implemented | KISS DISC and RR fixtures validate disconnect and supervisory decode expectations. |
+| Raw AX.25 bench fixtures      | implemented | AXIP-format packet-boundary fixtures carry raw AX.25 UI and SABM bytes. |
 | Real AX.25 source validation   | planned     | Manual bench validation with receive-only hardware is planned. CI remains synthetic. |
+| Manual bench captures          | planned     | Future imported manual captures require review before becoming committed fixtures. |
 | Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |
 | Inbound DISC table handling    | implemented | Unit tests update an existing record and retain a UA frame plan. No response is queued. |
 | Local-connect unit-test event  | implemented | Internal test helper drives the state core and produces a SABM frame plan. It is not user exposed. |

@@ -8,6 +8,7 @@
 #include "kilonode/compat_kiss_capture.h"
 
 static int decode_text(const char *, struct kn_compat_packet_decode *);
+static int test_bench_connected_kinds(void);
 static int test_expectations_pass(void);
 static int test_kiss_decodes(void);
 static int test_malformed_rejected(void);
@@ -39,6 +40,8 @@ main(void)
 		return 1;
 	if (test_payload_hex() != 0)
 		return 1;
+	if (test_bench_connected_kinds() != 0)
+		return 1;
 	if (test_malformed_rejected() != 0)
 		return 1;
 	if (test_mismatch_fails() != 0)
@@ -58,6 +61,41 @@ decode_text(const char *text, struct kn_compat_packet_decode *decode)
 
 	return kn_compat_kiss_capture_decode(&capture, decode) ==
 	    KN_COMPAT_KISS_CAPTURE_OK ? 0 : 1;
+}
+
+static int
+test_bench_connected_kinds(void)
+{
+	struct kn_compat_packet_capture capture;
+	struct kn_compat_packet_decode decode;
+
+	if (kn_compat_packet_capture_parse_file(
+	    "../tests/fixtures/bench/kiss-sabm-node.capture", &capture,
+	    NULL) != KN_COMPAT_PACKET_CAPTURE_OK)
+		return 1;
+	if (kn_compat_kiss_capture_decode(&capture, &decode) !=
+	    KN_COMPAT_KISS_CAPTURE_OK)
+		return 1;
+	if (strcmp(decode.kind, "SABM") != 0)
+		return 1;
+	if (kn_compat_packet_capture_parse_file(
+	    "../tests/fixtures/bench/kiss-disc-node.capture", &capture,
+	    NULL) != KN_COMPAT_PACKET_CAPTURE_OK)
+		return 1;
+	if (kn_compat_kiss_capture_decode(&capture, &decode) !=
+	    KN_COMPAT_KISS_CAPTURE_OK)
+		return 1;
+	if (strcmp(decode.kind, "DISC") != 0)
+		return 1;
+	if (kn_compat_packet_capture_parse_file(
+	    "../tests/fixtures/bench/kiss-rr-node.capture", &capture,
+	    NULL) != KN_COMPAT_PACKET_CAPTURE_OK)
+		return 1;
+	if (kn_compat_kiss_capture_decode(&capture, &decode) !=
+	    KN_COMPAT_KISS_CAPTURE_OK)
+		return 1;
+
+	return strcmp(decode.kind, "RR") == 0 ? 0 : 1;
 }
 
 static int

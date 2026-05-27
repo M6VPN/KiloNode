@@ -29,6 +29,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | TCP KISS receive bench | implemented | Localhost TCP KISS receive config and helper scripts |
 | PTY KISS receive bench | implemented | PTY receive config and bench docs |
 | Unix socket KISS receive bench | implemented | Local Unix socket receive config and bench docs |
+| Receive-only bench capture fixtures | implemented | Synthetic KISS and AX.25 fixtures validate workflow tooling without hardware |
+| Manual KiloTNC captures | planned | Future receive-only captures should be imported as reviewed bench observations |
+| Manual Dire Wolf captures | planned | Future USB sound card captures should use the manual import path |
 | KiloTNC | partial | Serial KISS can consume it, dedicated tests pending |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |

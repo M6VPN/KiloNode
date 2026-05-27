@@ -138,9 +138,13 @@ are not installed into system service directories automatically.
 Receive-only bench docs live in [docs/bench](docs/bench/README.md). They cover
 Dire Wolf with a USB sound card, KiloTNC, and serial, TCP, PTY, and Unix socket
 KISS inputs. Bench configs keep transmit disabled.
+Synthetic bench capture fixtures live in
+[tests/fixtures/bench](tests/fixtures/bench/README.md) and can be replayed
+without hardware.
 
 ```sh
 ./scripts/bench-rx-check-configs.sh
+./scripts/bench-rx-replay-fixtures.sh
 ```
 
 ## Compatibility

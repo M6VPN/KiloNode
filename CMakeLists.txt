@@ -23,6 +23,7 @@ function(kilonode_target_defaults target_name)
 endfunction()
 
 add_library(packetcore STATIC
+	src/compat/compat_bench_pack.c
 	src/compat/compat_capture.c
 	src/compat/compat_capture_report.c
 	src/compat/compat_axip_capture.c
@@ -357,6 +358,11 @@ add_executable(test_compat_capture_report tests/test_compat_capture_report.c)
 target_link_libraries(test_compat_capture_report PRIVATE packetcore)
 kilonode_target_defaults(test_compat_capture_report)
 add_test(NAME compat_capture_report COMMAND test_compat_capture_report)
+
+add_executable(test_compat_bench_pack tests/test_compat_bench_pack.c)
+target_link_libraries(test_compat_bench_pack PRIVATE packetcore)
+kilonode_target_defaults(test_compat_bench_pack)
+add_test(NAME compat_bench_pack COMMAND test_compat_bench_pack)
 
 add_executable(test_compat_replay tests/test_compat_replay.c)
 target_link_libraries(test_compat_replay PRIVATE packetcore)

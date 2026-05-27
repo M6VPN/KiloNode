@@ -13,6 +13,10 @@ Supported input paths:
 - PTY KISS
 - Unix socket KISS
 
+Synthetic capture fixtures for this workflow live in `tests/fixtures/bench`.
+See [capture-fixtures.md](capture-fixtures.md) and
+[replay-bench-captures.md](replay-bench-captures.md).
+
 Primary validation commands:
 
 ```sh

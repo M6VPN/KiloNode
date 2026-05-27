@@ -1,0 +1,17 @@
+# KiloNode packet capture v1
+# Synthetic receive-only bench fixture, not a LinBPQ capture.
+name bench-kiss-disc-node
+subject synthetic-bench
+method kiss
+date 2026-05-27
+observer M6VPN
+mode receive-only-bench
+direction rx
+port kiss0
+timestamp 1710000103
+frame-begin hex
+c0 00 9a 6c ac a0 9c 40 62 9c 60 86 82 98 98 61 43 c0
+frame-end
+expect-source N0CALL
+expect-destination M6VPN-1
+expect-kind DISC

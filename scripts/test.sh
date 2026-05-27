@@ -9,6 +9,9 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ./build/kilonode-compat replay-dir tests/fixtures/compat
 ./build/kilonode-compat replay-capture-dir tests/fixtures/compat
+./build/kilonode-compat check-bench-pack tests/fixtures/bench/manifest.bench
+./build/kilonode-compat replay-bench-pack tests/fixtures/bench/manifest.bench
+./build/kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
 ./build/kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat replay-pack tests/fixtures/compat/linbpq-node/manifest.pack

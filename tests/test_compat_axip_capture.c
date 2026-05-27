@@ -10,6 +10,7 @@
 
 static int test_axip_decodes(void);
 static int test_axudp_method(void);
+static int test_bench_sabm_decodes(void);
 static int test_malformed_ax25(void);
 static int test_mismatch(void);
 
@@ -34,12 +35,35 @@ main(void)
 		return 1;
 	if (test_axudp_method() != 0)
 		return 1;
+	if (test_bench_sabm_decodes() != 0)
+		return 1;
 	if (test_malformed_ax25() != 0)
 		return 1;
 	if (test_mismatch() != 0)
 		return 1;
 
 	return 0;
+}
+
+static int
+test_bench_sabm_decodes(void)
+{
+	struct kn_compat_packet_capture capture;
+	struct kn_compat_packet_decode decode;
+
+	if (kn_compat_packet_capture_parse_file(
+	    "../tests/fixtures/bench/ax25-sabm-node.capture", &capture,
+	    NULL) != KN_COMPAT_PACKET_CAPTURE_OK)
+		return 1;
+	if (kn_compat_axip_capture_decode(&capture, &decode) !=
+	    KN_COMPAT_AXIP_CAPTURE_OK)
+		return 1;
+	if (strcmp(decode.source, "N0CALL") != 0)
+		return 1;
+	if (strcmp(decode.destination, "M6VPN-1") != 0)
+		return 1;
+
+	return strcmp(decode.kind, "SABM") == 0 ? 0 : 1;
 }
 
 static int

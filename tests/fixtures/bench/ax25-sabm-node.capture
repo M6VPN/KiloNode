@@ -1,0 +1,19 @@
+# KiloNode packet capture v1
+# Synthetic receive-only bench fixture, not a LinBPQ capture.
+# Method axip means the frame block contains packet-boundary AX.25 bytes.
+name bench-ax25-sabm-node
+subject synthetic-bench
+method axip
+date 2026-05-27
+observer M6VPN
+mode receive-only-bench
+direction rx
+source-endpoint synthetic
+destination-endpoint kilonode
+timestamp 1710000106
+frame-begin hex
+9a 6c ac a0 9c 40 62 9c 60 86 82 98 98 61 2f
+frame-end
+expect-source N0CALL
+expect-destination M6VPN-1
+expect-kind SABM

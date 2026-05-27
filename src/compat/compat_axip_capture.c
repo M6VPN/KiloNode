@@ -7,12 +7,14 @@
 #include <string.h>
 
 #include "kilonode/ax25.h"
+#include "kilonode/ax25_control.h"
 #include "kilonode/compat_axip_capture.h"
 
 static void add_mismatch(struct kn_compat_packet_decode *, const char *);
 static void apply_expectations(const struct kn_compat_packet_capture *,
 	struct kn_compat_packet_decode *, const struct kn_ax25_frame *);
 static void format_payload(const uint8_t *, size_t, char *, size_t);
+static const char *kind_from_frame(const struct kn_ax25_frame *);
 
 const char *
 kn_compat_axip_capture_error_name(enum kn_compat_axip_capture_error error)
@@ -58,7 +60,7 @@ kn_compat_axip_capture_decode(const struct kn_compat_packet_capture *capture,
 	(void)kn_callsign_format(&ax25.destination.callsign,
 	    decode->destination, sizeof(decode->destination));
 	(void)snprintf(decode->kind, sizeof(decode->kind), "%s",
-	    ax25.control == KN_AX25_CONTROL_UI ? "UI" : "unknown");
+	    kind_from_frame(&ax25));
 	decode->has_pid = ax25.has_pid;
 	decode->pid = ax25.pid;
 	decode->payload_len = ax25.payload_len;
@@ -69,6 +71,25 @@ kn_compat_axip_capture_decode(const struct kn_compat_packet_capture *capture,
 	decode->passed = decode->mismatch_count == 0 ? 1 : 0;
 	return decode->passed != 0 ? KN_COMPAT_AXIP_CAPTURE_OK :
 	    KN_COMPAT_AXIP_CAPTURE_ERR_MISMATCH;
+}
+
+static const char *
+kind_from_frame(const struct kn_ax25_frame *frame)
+{
+	struct kn_ax25_control_info info;
+
+	if (frame->control == KN_AX25_CONTROL_UI)
+		return "UI";
+
+	kn_ax25_control_decode(frame->control, &info);
+	if (info.class == KN_AX25_CONTROL_CLASS_I)
+		return "I";
+	if (info.class == KN_AX25_CONTROL_CLASS_S)
+		return kn_ax25_s_subtype_name(info.s_subtype);
+	if (info.class == KN_AX25_CONTROL_CLASS_U)
+		return kn_ax25_u_subtype_name(info.u_subtype);
+
+	return "unknown";
 }
 
 static void

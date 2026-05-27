@@ -135,9 +135,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 live RX diagnostics feed | tested | Decoded AX.25 connected-mode frames can update diagnostics when explicitly enabled |
 | AX.25 live connection diagnostics from RX | partial | SABM/SABME creation and existing-record updates are diagnostic only |
 | Receive-only AX.25 bench validation docs | implemented | Bench docs, examples, and helper scripts cover RX-only validation paths |
+| Receive-only bench capture fixture pack | tested | Synthetic KISS and AX.25 bench captures replay without hardware |
 | Dire Wolf/KISS receive bench plan | implemented | USB sound card to Dire Wolf TCP KISS to KiloNode workflow documented |
 | KiloTNC receive bench plan | implemented | Serial and TCP KISS receive-only workflow documented |
 | Live LinBPQ/KISS receive observation | planned | Future manual black-box observation only |
+| BPQ/LinBPQ connected-mode capture comparison | planned | Future manual captures only, no compatibility implementation in this pass |
 | Live AX.25 connected sessions | planned | Not implemented |
 | RF CONNECT command | planned | Not implemented |
 | BPQ/LinBPQ connected-mode interop | planned | Not implemented |

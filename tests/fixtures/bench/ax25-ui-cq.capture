@@ -1,0 +1,22 @@
+# KiloNode packet capture v1
+# Synthetic receive-only bench fixture, not a LinBPQ capture.
+# Method axip means the frame block contains packet-boundary AX.25 bytes.
+name bench-ax25-ui-cq
+subject synthetic-bench
+method axip
+date 2026-05-27
+observer M6VPN
+mode receive-only-bench
+direction rx
+source-endpoint synthetic
+destination-endpoint kilonode
+timestamp 1710000105
+frame-begin hex
+86 a2 40 40 40 40 60 9c 60 86 82 98 98 61 03 f0 43 51 20 54 45 53 54
+frame-end
+expect-decode ax25-ui
+expect-source N0CALL
+expect-destination CQ
+expect-pid 0xf0
+expect-payload-text CQ TEST
+expect-kind UI

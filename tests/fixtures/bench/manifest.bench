@@ -1,0 +1,16 @@
+# KiloNode bench fixture manifest v1
+name receive-only-bench
+type bench-capture-fixtures
+source synthetic
+clean-room true
+source-code-used false
+hardware-required false
+transmit-required false
+fixture kiss-ui-cq.capture
+fixture kiss-ui-ping-node.capture
+fixture kiss-sabm-node.capture
+fixture kiss-disc-node.capture
+fixture kiss-rr-node.capture
+fixture ax25-ui-cq.capture
+fixture ax25-sabm-node.capture
+fixture fx25-future-placeholder.capture

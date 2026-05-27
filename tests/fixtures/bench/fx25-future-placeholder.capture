@@ -1,0 +1,17 @@
+# KiloNode packet capture v1
+# Synthetic placeholder only. FX.25 FEC/decode is not implemented.
+name bench-fx25-future-placeholder
+subject synthetic-bench
+method axip
+date 2026-05-27
+observer M6VPN
+mode fx25-planned-placeholder
+direction rx
+source-endpoint synthetic
+destination-endpoint kilonode
+timestamp 1710000107
+frame-begin hex
+00
+frame-end
+expect-decode malformed
+expect-kind FX25-PLANNED

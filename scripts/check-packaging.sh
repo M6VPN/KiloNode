@@ -103,6 +103,26 @@ require_file docs/bench/pty-kiss-receive-only.md
 require_file docs/bench/unix-socket-kiss-receive-only.md
 require_file docs/bench/ax25-live-diagnostics-checklist.md
 require_file docs/bench/fx25-future-bench-notes.md
+require_file docs/bench/capture-fixtures.md
+require_file docs/bench/importing-manual-captures.md
+require_file docs/bench/replay-bench-captures.md
+require_file docs/bench/fx25-capture-placeholders.md
+
+require_file scripts/bench-rx-replay-fixtures.sh
+require_file scripts/bench-rx-import-capture.sh
+require_file scripts/bench-rx-capture-report.sh
+require_file scripts/bench-rx-fixture-status.sh
+
+require_file tests/fixtures/bench/README.md
+require_file tests/fixtures/bench/manifest.bench
+require_file tests/fixtures/bench/kiss-ui-cq.capture
+require_file tests/fixtures/bench/kiss-ui-ping-node.capture
+require_file tests/fixtures/bench/kiss-sabm-node.capture
+require_file tests/fixtures/bench/kiss-disc-node.capture
+require_file tests/fixtures/bench/kiss-rr-node.capture
+require_file tests/fixtures/bench/ax25-ui-cq.capture
+require_file tests/fixtures/bench/ax25-sabm-node.capture
+require_file tests/fixtures/bench/fx25-future-placeholder.capture
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -116,7 +136,9 @@ blocked_word="s""udo"
 if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/uninstall-local.sh scripts/bench-rx-check-configs.sh \
 	scripts/bench-rx-direwolf-notes.sh scripts/bench-rx-kiss-tcp-smoke.sh \
-	scripts/bench-rx-monitor-tcp.sh scripts/bench-rx-ax25-status.sh; then
+	scripts/bench-rx-monitor-tcp.sh scripts/bench-rx-ax25-status.sh \
+	scripts/bench-rx-replay-fixtures.sh scripts/bench-rx-import-capture.sh \
+	scripts/bench-rx-capture-report.sh scripts/bench-rx-fixture-status.sh; then
 	echo "packaging files must not contain privileged helper commands"
 	status=1
 fi
