@@ -34,6 +34,9 @@ void kn_ax25_connection_event_clear(struct kn_ax25_connection_event_record *);
 enum kn_ax25_connection_event_error kn_ax25_connection_event_from_frame(
 	struct kn_ax25_connection_event_record *, uint64_t, const char *,
 	const struct kn_callsign *, const struct kn_ax25_frame *);
+enum kn_ax25_connection_event_error kn_ax25_connection_event_from_frame_pair(
+	struct kn_ax25_connection_event_record *, uint64_t, const char *,
+	const struct kn_callsign *, const struct kn_ax25_frame *);
 enum kn_ax25_connection_event_error
 kn_ax25_connection_event_local_connect(struct kn_ax25_connection_event_record *,
 	uint64_t, const struct kn_ax25_connection_key *);

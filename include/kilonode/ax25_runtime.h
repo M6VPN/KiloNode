@@ -28,6 +28,26 @@ struct kn_ax25_runtime_counters {
 	uint64_t protocol_errors;
 };
 
+struct kn_ax25_live_options {
+	uint8_t live_rx_feed;
+	uint8_t live_rx_create_connections;
+	uint8_t live_rx_retain_frame_plans;
+};
+
+struct kn_ax25_live_counters {
+	uint64_t frames_seen;
+	uint64_t frames_accepted;
+	uint64_t frames_ignored;
+	uint64_t frames_malformed;
+	uint64_t frames_not_relevant;
+	uint64_t ui_ignored;
+	uint64_t events_generated;
+	uint64_t events_rejected;
+	uint64_t frame_plans_generated;
+	uint64_t frame_plans_retained;
+	uint64_t tx_queue_writes_attempted;
+};
+
 struct kn_ax25_runtime {
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -36,6 +56,8 @@ struct kn_ax25_runtime {
 	struct kn_ax25_params params;
 	struct kn_ax25_connection_table table;
 	struct kn_ax25_runtime_counters counters;
+	struct kn_ax25_live_options live;
+	struct kn_ax25_live_counters live_counters;
 };
 
 void kn_ax25_runtime_free(struct kn_ax25_runtime *);
@@ -49,6 +71,8 @@ size_t kn_ax25_runtime_connection_count(const struct kn_ax25_runtime *);
 void kn_ax25_runtime_reset(struct kn_ax25_runtime *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_enabled(
 	struct kn_ax25_runtime *, uint8_t, uint8_t);
+enum kn_ax25_runtime_error kn_ax25_runtime_set_live_options(
+	struct kn_ax25_runtime *, const struct kn_ax25_live_options *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_params(
 	struct kn_ax25_runtime *, const struct kn_ax25_params *, size_t);
 

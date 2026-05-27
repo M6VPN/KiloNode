@@ -24,6 +24,8 @@ enum kn_ax25_control_plane_error kn_ax25_control_plane_format_connections(
 	const struct kn_ax25_runtime *, const char *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_counters(
 	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error kn_ax25_control_plane_format_live(
+	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_params(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_status(

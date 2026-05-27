@@ -12,6 +12,14 @@ static int test_access_block(void);
 static int test_access_duplicate_block(void);
 static int test_access_omitted_defaults(void);
 static int test_access_unknown_key(void);
+static int test_ax25_duplicate_block(void);
+static int test_ax25_invalid_bool(void);
+static int test_ax25_invalid_live_dependency(void);
+static int test_ax25_invalid_max_connections(void);
+static int test_ax25_invalid_modulo(void);
+static int test_ax25_omitted_defaults(void);
+static int test_ax25_unknown_key(void);
+static int test_ax25_valid_block(void);
 static int test_bbs_disabled_block(void);
 static int test_bbs_duplicate_block(void);
 static int test_bbs_enabled_block(void);
@@ -98,6 +106,22 @@ main(void)
 	if (test_access_duplicate_block() != 0)
 		return 1;
 	if (test_access_unknown_key() != 0)
+		return 1;
+	if (test_ax25_omitted_defaults() != 0)
+		return 1;
+	if (test_ax25_valid_block() != 0)
+		return 1;
+	if (test_ax25_duplicate_block() != 0)
+		return 1;
+	if (test_ax25_unknown_key() != 0)
+		return 1;
+	if (test_ax25_invalid_bool() != 0)
+		return 1;
+	if (test_ax25_invalid_live_dependency() != 0)
+		return 1;
+	if (test_ax25_invalid_max_connections() != 0)
+		return 1;
+	if (test_ax25_invalid_modulo() != 0)
 		return 1;
 	if (test_invalid_access_default_policy() != 0)
 		return 1;
@@ -311,6 +335,149 @@ expect_error(const char *text, enum kn_config_error expected)
 	struct kn_config config;
 
 	return kn_config_parse_text(text, &config) == expected ? 0 : 1;
+}
+
+static int
+test_ax25_duplicate_block(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled false\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_ax25_invalid_bool(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled maybe\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_live_dependency(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled true\n"
+		"live-rx-create-connections true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_max_connections(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"max-connections 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_modulo(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"modulo 16\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_omitted_defaults(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.ax25.enabled != 0 || config.ax25.connected_mode != 0)
+		return 1;
+	if (config.ax25.live_rx_feed != 0 ||
+	    config.ax25.live_rx_create_connections != 0)
+		return 1;
+
+	return config.ax25.diagnostics == 1 &&
+	    config.ax25.live_rx_retain_frame_plans == 1 ? 0 : 1;
+}
+
+static int
+test_ax25_unknown_key(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"bad value\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_UNKNOWN_KEY);
+}
+
+static int
+test_ax25_valid_block(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"enabled true\n"
+		"connected-mode false\n"
+		"diagnostics true\n"
+		"live-rx-feed true\n"
+		"live-rx-create-connections true\n"
+		"live-rx-retain-frame-plans true\n"
+		"max-connections 8\n"
+		"modulo 8\n"
+		"window-size 1\n"
+		"t1-ms 3000\n"
+		"t2-ms 1000\n"
+		"t3-ms 300000\n"
+		"n2-retries 10\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.ax25.enabled != 1 || config.ax25.live_rx_feed != 1)
+		return 1;
+	if (config.ax25.max_connections != 8)
+		return 1;
+
+	return config.ax25.params.t3_ms == 300000 ? 0 : 1;
 }
 
 static int

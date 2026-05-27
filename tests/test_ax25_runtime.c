@@ -7,6 +7,7 @@
 
 #include "kilonode/ax25_control.h"
 #include "kilonode/ax25_connection_event.h"
+#include "kilonode/ax25_rx_feed.h"
 #include "kilonode/ax25_runtime.h"
 #include "kilonode/callsign.h"
 
@@ -16,10 +17,14 @@ static int make_sabm_event(struct kn_ax25_connection_event_record *,
 static int test_counters_update(void);
 static int test_default_runtime_disabled(void);
 static int test_disabled_runtime_rejects_injection(void);
+static int test_enable_live_feed_validates_dependencies(void);
 static int test_init_with_max_connections(void);
 static int test_inject_sabm_creates_connection(void);
+static int test_live_feed_defaults_disabled(void);
+static int test_live_feed_updates_table_when_enabled(void);
 static int test_no_tx_queue_writes(void);
 static int test_params_stored(void);
+static int test_reset_clears_live_counters(void);
 static int test_reset_clears_table(void);
 
 int
@@ -33,11 +38,19 @@ main(void)
 		return 1;
 	if (test_disabled_runtime_rejects_injection() != 0)
 		return 1;
+	if (test_live_feed_defaults_disabled() != 0)
+		return 1;
+	if (test_enable_live_feed_validates_dependencies() != 0)
+		return 1;
+	if (test_live_feed_updates_table_when_enabled() != 0)
+		return 1;
 	if (test_inject_sabm_creates_connection() != 0)
 		return 1;
 	if (test_counters_update() != 0)
 		return 1;
 	if (test_reset_clears_table() != 0)
+		return 1;
+	if (test_reset_clears_live_counters() != 0)
 		return 1;
 	if (test_no_tx_queue_writes() != 0)
 		return 1;
@@ -131,6 +144,27 @@ test_disabled_runtime_rejects_injection(void)
 }
 
 static int
+test_enable_live_feed_validates_dependencies(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_live_options live;
+
+	kn_ax25_runtime_init(&runtime);
+	memset(&live, 0, sizeof(live));
+	live.live_rx_feed = 1;
+	if (kn_ax25_runtime_set_live_options(&runtime, &live) !=
+	    KN_AX25_RUNTIME_ERR_INVALID_VALUE)
+		return 1;
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	live.live_rx_create_connections = 1;
+	if (kn_ax25_runtime_set_live_options(&runtime, &live) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+
+	return runtime.live.live_rx_create_connections == 1 ? 0 : 1;
+}
+
+static int
 test_init_with_max_connections(void)
 {
 	struct kn_ax25_runtime runtime;
@@ -173,6 +207,50 @@ test_inject_sabm_creates_connection(void)
 }
 
 static int
+test_live_feed_defaults_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	if (runtime.live.live_rx_feed != 0)
+		return 1;
+	if (runtime.live.live_rx_create_connections != 0)
+		return 1;
+
+	return runtime.live.live_rx_retain_frame_plans == 1 ? 0 : 1;
+}
+
+static int
+test_live_feed_updates_table_when_enabled(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_rx_feed_options options;
+	struct kn_ax25_frame frame;
+	struct kn_callsign local;
+	struct kn_ax25_live_options live;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	memset(&live, 0, sizeof(live));
+	live.live_rx_feed = 1;
+	live.live_rx_create_connections = 1;
+	live.live_rx_retain_frame_plans = 1;
+	(void)kn_ax25_runtime_set_live_options(&runtime, &live);
+	kn_ax25_rx_feed_options_from_runtime(&runtime, &options);
+	kn_ax25_frame_reset(&frame);
+	(void)kn_callsign_parse("M6VPN-1", &frame.destination.callsign);
+	(void)kn_callsign_parse("N0CALL", &frame.source.callsign);
+	frame.control = 0x2f;
+	(void)kn_callsign_parse("M6VPN-1", &local);
+	if (kn_ax25_rx_feed_frame(&runtime, &options, "kiss0", &local,
+	    &frame, 1, NULL) != KN_AX25_RX_FEED_OK)
+		return 1;
+
+	return kn_ax25_runtime_connection_count(&runtime) == 1 &&
+	    runtime.live_counters.frames_accepted == 1 ? 0 : 1;
+}
+
+static int
 test_no_tx_queue_writes(void)
 {
 	struct kn_ax25_runtime runtime;
@@ -208,6 +286,19 @@ test_params_stored(void)
 
 	return runtime.params.t1_ms == 4000 &&
 	    runtime.connected_mode_enabled == 1 ? 0 : 1;
+}
+
+static int
+test_reset_clears_live_counters(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	runtime.live_counters.frames_seen = 2;
+	kn_ax25_runtime_reset(&runtime);
+
+	return runtime.live_counters.frames_seen == 0 &&
+	    runtime.live.live_rx_retain_frame_plans == 1 ? 0 : 1;
 }
 
 static int

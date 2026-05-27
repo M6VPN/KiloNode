@@ -7,6 +7,22 @@
 
 #include "kilonode/ax25_runtime.h"
 
+static void runtime_apply_table_params(struct kn_ax25_runtime *);
+
+static void
+runtime_apply_table_params(struct kn_ax25_runtime *runtime)
+{
+	struct kn_ax25_params params;
+
+	if (runtime == NULL)
+		return;
+
+	params = runtime->params;
+	if (runtime->live.live_rx_feed != 0)
+		params.allow_connected_mode = 1;
+	(void)kn_ax25_connection_table_set_params(&runtime->table, &params);
+}
+
 void
 kn_ax25_runtime_free(struct kn_ax25_runtime *runtime)
 {
@@ -37,13 +53,13 @@ kn_ax25_runtime_init(struct kn_ax25_runtime *runtime)
 
 	memset(runtime, 0, sizeof(*runtime));
 	runtime->diagnostics_enabled = 1;
+	runtime->live.live_rx_retain_frame_plans = 1;
 	runtime->max_connections = KN_AX25_CONNECTION_TABLE_DEFAULT_MAX;
 	kn_ax25_params_default(&runtime->params);
 	runtime->params.allow_connected_mode = 0;
 	kn_ax25_connection_table_init(&runtime->table);
 	runtime->table.max_connections = runtime->max_connections;
-	(void)kn_ax25_connection_table_set_params(&runtime->table,
-	    &runtime->params);
+	runtime_apply_table_params(runtime);
 }
 
 enum kn_ax25_runtime_error
@@ -57,7 +73,8 @@ kn_ax25_runtime_inject_event(struct kn_ax25_runtime *runtime,
 		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
 
 	kn_ax25_connection_table_result_clear(result);
-	if (runtime->enabled == 0 || runtime->connected_mode_enabled == 0) {
+	if (runtime->enabled == 0 || (runtime->connected_mode_enabled == 0 &&
+	    runtime->live.live_rx_feed == 0)) {
 		runtime->counters.events_rejected++;
 		return KN_AX25_RUNTIME_ERR_DISABLED;
 	}
@@ -99,6 +116,7 @@ void
 kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 {
 	struct kn_ax25_params params;
+	struct kn_ax25_live_options live;
 	size_t max_connections;
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -108,19 +126,22 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 		return;
 
 	params = runtime->params;
+	live = runtime->live;
 	max_connections = runtime->max_connections;
 	enabled = runtime->enabled;
 	connected_mode_enabled = runtime->connected_mode_enabled;
 	diagnostics_enabled = runtime->diagnostics_enabled;
 	memset(&runtime->counters, 0, sizeof(runtime->counters));
+	memset(&runtime->live_counters, 0, sizeof(runtime->live_counters));
 	kn_ax25_connection_table_reset(&runtime->table);
 	runtime->params = params;
+	runtime->live = live;
 	runtime->max_connections = max_connections;
 	runtime->enabled = enabled;
 	runtime->connected_mode_enabled = connected_mode_enabled;
 	runtime->diagnostics_enabled = diagnostics_enabled;
 	runtime->table.max_connections = max_connections;
-	(void)kn_ax25_connection_table_set_params(&runtime->table, &params);
+	runtime_apply_table_params(runtime);
 }
 
 enum kn_ax25_runtime_error
@@ -135,8 +156,28 @@ kn_ax25_runtime_set_enabled(struct kn_ax25_runtime *runtime, uint8_t enabled,
 	runtime->enabled = enabled;
 	runtime->connected_mode_enabled = connected_mode_enabled;
 	runtime->params.allow_connected_mode = connected_mode_enabled;
-	(void)kn_ax25_connection_table_set_params(&runtime->table,
-	    &runtime->params);
+	runtime_apply_table_params(runtime);
+	return KN_AX25_RUNTIME_OK;
+}
+
+enum kn_ax25_runtime_error
+kn_ax25_runtime_set_live_options(struct kn_ax25_runtime *runtime,
+	const struct kn_ax25_live_options *options)
+{
+	if (runtime == NULL || options == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	if (options->live_rx_feed > 1 ||
+	    options->live_rx_create_connections > 1 ||
+	    options->live_rx_retain_frame_plans > 1)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	if (options->live_rx_feed != 0 && runtime->enabled == 0)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	if (options->live_rx_create_connections != 0 &&
+	    options->live_rx_feed == 0)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
+	runtime->live = *options;
+	runtime_apply_table_params(runtime);
 	return KN_AX25_RUNTIME_OK;
 }
 
@@ -156,9 +197,7 @@ kn_ax25_runtime_set_params(struct kn_ax25_runtime *runtime,
 	runtime->connected_mode_enabled = params->allow_connected_mode;
 	runtime->max_connections = max_connections;
 	runtime->table.max_connections = max_connections;
-	if (kn_ax25_connection_table_set_params(&runtime->table,
-	    params) != KN_AX25_CONNECTION_TABLE_OK)
-		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	runtime_apply_table_params(runtime);
 
 	return KN_AX25_RUNTIME_OK;
 }

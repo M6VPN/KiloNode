@@ -28,6 +28,11 @@
 | Read-only connection diagnostics | implemented | Control protocol and `kilonodectl` expose status, params, lists, details, and counters. |
 | Control-plane connection listing | implemented | `AX25 CONNECTIONS` and port-filtered listing are bounded and read-only. |
 | Control-plane params/counters  | implemented | `AX25 PARAMS` and `AX25 COUNTERS` report runtime snapshots only. |
+| Live RX diagnostics feed       | implemented | Decoded inbound AX.25 connected-mode frames feed the diagnostic runtime only when explicitly enabled. |
+| Inbound SABM diagnostic table update | implemented | Live feed can create diagnostic records from SABM when creation is explicitly enabled. |
+| Inbound DISC/UA/DM/RR/RNR/REJ diagnostic update | implemented | Live feed updates existing diagnostic records and counters. |
+| Inbound I-frame diagnostic update | implemented | Live feed updates sequence diagnostics and stores payload length only. |
+| Live frame-plan retention      | implemented | Generated frame plans are retained in diagnostics only and are never queued. |
 | Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |
 | Inbound DISC table handling    | implemented | Unit tests update an existing record and retain a UA frame plan. No response is queued. |
 | Local-connect unit-test event  | implemented | Internal test helper drives the state core and produces a SABM frame plan. It is not user exposed. |
@@ -43,8 +48,10 @@
 | TEST/XID handling              | scaffold    | Control subtype names exist. No procedures are implemented. |
 | Live connected-mode sessions   | planned     | CONNECT, RF shell binding, BBS binding, and dispatch integration are not implemented. |
 | Control-plane connection diagnostics | implemented | Read-only control socket commands are exposed. No mutation commands exist. |
-| Live daemon RX integration     | planned     | Live decoded AX.25 connected frames are not fed into the runtime. |
+| Live daemon RX integration     | implemented | Feed is wired behind disabled-by-default config gates. |
 | Live CONNECT                   | planned     | No shell, BBS, or RF command exposes connect behaviour. |
+| Live response queueing         | planned     | Generated frame plans are not queued or dispatched. |
+| Payload delivery               | planned     | I-frame payload bytes are not delivered to shell or BBS code. |
 | Timer scheduler                | planned     | Runtime does not start or stop real timers. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |
 | Timers real scheduling         | planned     | Timeout events are unit-test inputs only. No scheduler is started. |

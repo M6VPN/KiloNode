@@ -9,11 +9,14 @@
 #include <stdint.h>
 
 #include "kilonode/access_policy.h"
+#include "kilonode/ax25_params.h"
 #include "kilonode/callsign.h"
 #include "kilonode/tx_policy.h"
 #include "kilonode/transport.h"
 
 #define KN_CONFIG_ALIAS_MAX     16
+#define KN_CONFIG_AX25_CONNECTIONS_MAX 32
+#define KN_CONFIG_AX25_CONNECTIONS_MIN 1
 #define KN_CONFIG_ERROR_MAX     160
 #define KN_CONFIG_HOST_MAX      128
 #define KN_CONFIG_HEARD_MAX     256
@@ -67,6 +70,31 @@ struct kn_config_access {
 	uint8_t has_bbs_max_body_bytes;
 	uint8_t has_control_max_command_bytes;
 	uint8_t has_control_max_response_lines;
+};
+
+struct kn_config_ax25 {
+	struct kn_ax25_params params;
+	size_t max_connections;
+	uint8_t enabled;
+	uint8_t connected_mode;
+	uint8_t diagnostics;
+	uint8_t live_rx_feed;
+	uint8_t live_rx_create_connections;
+	uint8_t live_rx_retain_frame_plans;
+	uint8_t has_block;
+	uint8_t has_enabled;
+	uint8_t has_connected_mode;
+	uint8_t has_diagnostics;
+	uint8_t has_live_rx_feed;
+	uint8_t has_live_rx_create_connections;
+	uint8_t has_live_rx_retain_frame_plans;
+	uint8_t has_max_connections;
+	uint8_t has_modulo;
+	uint8_t has_window_size;
+	uint8_t has_t1_ms;
+	uint8_t has_t2_ms;
+	uint8_t has_t3_ms;
+	uint8_t has_n2_retries;
 };
 
 enum kn_config_error {
@@ -240,6 +268,7 @@ struct kn_config_port {
 struct kn_config {
 	struct kn_config_node node;
 	struct kn_config_access access;
+	struct kn_config_ax25 ax25;
 	struct kn_config_control control;
 	struct kn_config_bbs bbs;
 	struct kn_config_heard heard;

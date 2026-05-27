@@ -42,6 +42,7 @@ static int test_ax25_connections_empty(void);
 static int test_ax25_connections_populated(void);
 static int test_ax25_connections_port(void);
 static int test_ax25_counters(void);
+static int test_ax25_live(void);
 static int test_ax25_malformed_command(void);
 static int test_ax25_no_write_commands(void);
 static int test_ax25_params(void);
@@ -177,6 +178,8 @@ main(void)
 	if (test_ax25_connection_missing() != 0)
 		return 1;
 	if (test_ax25_counters() != 0)
+		return 1;
+	if (test_ax25_live() != 0)
 		return 1;
 	if (test_ax25_malformed_command() != 0)
 		return 1;
@@ -460,6 +463,22 @@ test_ax25_counters(void)
 }
 
 static int
+test_ax25_live(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 LIVE", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 LIVE enabled=false feed=false") != NULL ?
+	    0 : 1;
+}
+
+static int
 test_ax25_malformed_command(void)
 {
 	struct kn_control_snapshot snapshot;
@@ -519,6 +538,7 @@ test_ax25_status(void)
 
 	return strcmp(out,
 	    "OK AX25 STATUS enabled=false connected_mode=false "
+	    "live_rx_feed=false live_rx_create_connections=false "
 	    "connections=0 max_connections=32 diagnostics=true\nEND\n") == 0 ?
 	    0 : 1;
 }

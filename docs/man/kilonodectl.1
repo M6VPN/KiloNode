@@ -46,6 +46,8 @@ Show AX.25 connection-table summaries.
 Show one AX.25 connection-table diagnostic record.
 .It Cm ax25 counters
 Show AX.25 runtime diagnostic counters.
+.It Cm ax25 live
+Show live RX diagnostic feed status and counters.
 .It Cm bbs status | stats | areas | users | messages | message Ar id
 Show read-only local BBS state.
 .It Cm rx status
@@ -96,6 +98,7 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 params
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 connections
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 counters
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 live
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx events
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx sessions

@@ -171,6 +171,10 @@ command_ax25(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "AX25 COUNTERS");
 	}
+	if (strcmp(sub, "live") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 LIVE");
+	}
 
 	return 1;
 }
@@ -663,6 +667,7 @@ usage(FILE *out, const char *argv0)
 	    argv0);
 	fprintf(out, "       %s --socket PATH ax25 connection ID\n", argv0);
 	fprintf(out, "       %s --socket PATH ax25 counters\n", argv0);
+	fprintf(out, "       %s --socket PATH ax25 live\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs status\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs stats\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs areas\n", argv0);

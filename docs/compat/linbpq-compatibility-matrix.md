@@ -132,6 +132,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 transmit path | partial | Builder and queue only, no dispatch |
 | AX.25 read-only diagnostics control plane | tested | Runtime status, params, connection list, detail, and counters only |
 | AX.25 runtime scaffold | tested | Daemon-owned scaffold exists with live processing disabled |
+| AX.25 live RX diagnostics feed | tested | Decoded AX.25 connected-mode frames can update diagnostics when explicitly enabled |
+| AX.25 live connection diagnostics from RX | partial | SABM/SABME creation and existing-record updates are diagnostic only |
 | Live AX.25 connected sessions | planned | Not implemented |
 | RF CONNECT command | planned | Not implemented |
 | BPQ/LinBPQ connected-mode interop | planned | Not implemented |

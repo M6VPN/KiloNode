@@ -17,6 +17,7 @@ static int test_counters_response(void);
 static int test_empty_connections_response(void);
 static int test_invalid_connection_id_rejected(void);
 static int test_invalid_port_filter_rejected(void);
+static int test_live_response(void);
 static int test_one_connection_response(void);
 static int test_output_truncation(void);
 static int test_params_response(void);
@@ -39,6 +40,8 @@ main(void)
 	if (test_connection_detail_response() != 0)
 		return 1;
 	if (test_counters_response() != 0)
+		return 1;
+	if (test_live_response() != 0)
 		return 1;
 	if (test_invalid_port_filter_rejected() != 0)
 		return 1;
@@ -105,7 +108,8 @@ test_counters_response(void)
 	if (strstr(out, "OK AX25 COUNTERS events=1") == NULL)
 		return 1;
 
-	return strstr(out, "created=1") != NULL ? 0 : 1;
+	return strstr(out, "created=1") != NULL &&
+	    strstr(out, "live_seen=0") != NULL ? 0 : 1;
 }
 
 static int
@@ -149,6 +153,21 @@ test_invalid_port_filter_rejected(void)
 		return 1;
 
 	return strcmp(out, "ERR invalid-port\n") == 0 ? 0 : 1;
+}
+
+static int
+test_live_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_ax25_runtime_init(&runtime);
+	if (kn_ax25_control_plane_format_live(&runtime, out, sizeof(out)) !=
+	    KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 LIVE enabled=false feed=false") != NULL ?
+	    0 : 1;
 }
 
 static int
@@ -228,6 +247,7 @@ test_status_disabled_response(void)
 
 	return strcmp(out,
 	    "OK AX25 STATUS enabled=false connected_mode=false "
+	    "live_rx_feed=false live_rx_create_connections=false "
 	    "connections=0 max_connections=32 diagnostics=true\nEND\n") == 0 ?
 	    0 : 1;
 }

@@ -76,7 +76,9 @@ add_library(packetcore STATIC
 	src/proto/ax25_connection_table.c
 	src/proto/ax25_frame_builder.c
 	src/proto/ax25_frame_plan.c
+	src/proto/ax25_live_diag.c
 	src/proto/ax25_params.c
+	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
@@ -176,6 +178,11 @@ target_link_libraries(test_ax25_control_plane PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_control_plane)
 add_test(NAME ax25_control_plane COMMAND test_ax25_control_plane)
 
+add_executable(test_ax25_live_diag tests/test_ax25_live_diag.c)
+target_link_libraries(test_ax25_live_diag PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_live_diag)
+add_test(NAME ax25_live_diag COMMAND test_ax25_live_diag)
+
 add_executable(test_ax25_connection tests/test_ax25_connection.c)
 target_link_libraries(test_ax25_connection PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_connection)
@@ -215,6 +222,11 @@ add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
 add_test(NAME ax25_params COMMAND test_ax25_params)
+
+add_executable(test_ax25_rx_feed tests/test_ax25_rx_feed.c)
+target_link_libraries(test_ax25_rx_feed PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_rx_feed)
+add_test(NAME ax25_rx_feed COMMAND test_ax25_rx_feed)
 
 add_executable(test_ax25_runtime tests/test_ax25_runtime.c)
 target_link_libraries(test_ax25_runtime PRIVATE packetcore)

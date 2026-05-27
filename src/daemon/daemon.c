@@ -20,6 +20,7 @@
 #include "kilonode/control.h"
 #include "kilonode/daemon.h"
 #include "kilonode/ax25.h"
+#include "kilonode/ax25_rx_feed.h"
 #include "kilonode/ax25_runtime.h"
 #include "kilonode/heard.h"
 #include "kilonode/kiss_stream.h"
@@ -60,6 +61,8 @@ struct daemon_port {
 
 static volatile sig_atomic_t daemon_stop;
 
+static enum kn_daemon_error ax25_runtime_configure(
+	struct kn_ax25_runtime *, const struct kn_config *);
 static void close_ports(struct daemon_port *, size_t);
 static enum kn_daemon_error open_config_port(struct daemon_port *,
 	const struct kn_config_port *);
@@ -77,7 +80,7 @@ static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_rx_session_table *, const struct kn_config *,
 	const struct daemon_port *, size_t, struct kn_tx_queue *,
 	struct kn_rf_command_queue *, struct kn_rf_abuse_state *,
-	const struct kn_rf_ignore_list *);
+	const struct kn_rf_ignore_list *, struct kn_ax25_runtime *);
 static void shell_snapshot_init(struct kn_node_shell_snapshot *,
 	const struct kn_config *, const struct kn_daemon_stats *,
 	const struct daemon_port *, size_t, const struct kn_heard_table *,
@@ -85,6 +88,44 @@ static void shell_snapshot_init(struct kn_node_shell_snapshot *,
 	struct kn_port_stats *, struct kn_node_shell_user *, size_t *,
 	struct kn_message_store *, uint8_t);
 static void signal_handler(int);
+
+static void
+ax25_live_options_from_config(const struct kn_config *config,
+	struct kn_ax25_live_options *options)
+{
+	memset(options, 0, sizeof(*options));
+	if (config == NULL)
+		return;
+	options->live_rx_feed = config->ax25.live_rx_feed;
+	options->live_rx_create_connections =
+	    config->ax25.live_rx_create_connections;
+	options->live_rx_retain_frame_plans =
+	    config->ax25.live_rx_retain_frame_plans;
+}
+
+static enum kn_daemon_error
+ax25_runtime_configure(struct kn_ax25_runtime *runtime,
+	const struct kn_config *config)
+{
+	struct kn_ax25_live_options live;
+
+	if (runtime == NULL || config == NULL)
+		return KN_DAEMON_ERR_INVALID_ARGUMENT;
+
+	if (kn_ax25_runtime_set_params(runtime, &config->ax25.params,
+	    config->ax25.max_connections) != KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	if (kn_ax25_runtime_set_enabled(runtime, config->ax25.enabled,
+	    config->ax25.connected_mode) != KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	runtime->diagnostics_enabled = config->ax25.diagnostics;
+	ax25_live_options_from_config(config, &live);
+	if (kn_ax25_runtime_set_live_options(runtime, &live) !=
+	    KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+
+	return KN_DAEMON_OK;
+}
 
 static void
 close_ports(struct daemon_port *ports, size_t port_count)
@@ -149,6 +190,10 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	kn_message_store_init(&bbs_store);
 	kn_node_shell_init(&shell);
 	kn_ax25_runtime_init(&ax25_runtime);
+	if (ax25_runtime_configure(&ax25_runtime, config) != KN_DAEMON_OK) {
+		kn_ax25_runtime_free(&ax25_runtime);
+		return KN_DAEMON_ERR_CONFIG;
+	}
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_handler;
 	(void)sigaction(SIGINT, &sa, NULL);
@@ -385,7 +430,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    config->heard.enabled, &rx_events,
 			    &rx_sessions, config, ports, port_count,
 			    &tx_queue, &rf_commands, &rf_abuse,
-			    &rf_ignore) != 0) {
+			    &rf_ignore, &ax25_runtime) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -624,11 +669,14 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 	size_t port_count, struct kn_tx_queue *tx_queue,
 	struct kn_rf_command_queue *rf_commands,
 	struct kn_rf_abuse_state *rf_abuse,
-	const struct kn_rf_ignore_list *rf_ignore)
+	const struct kn_rf_ignore_list *rf_ignore,
+	struct kn_ax25_runtime *ax25_runtime)
 {
 	struct kn_kiss_stream_frame frame;
 	char line[DAEMON_LINE_BUFSIZ];
 	struct kn_ax25_frame ax25;
+	struct kn_ax25_rx_feed_options feed_options;
+	struct kn_ax25_rx_feed_result feed_result;
 	struct kn_rx_event event;
 	struct kn_rf_command_event command;
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
@@ -656,6 +704,8 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 		kn_stats_add_kiss_frame(daemon_stats, &port->stats);
 		now = (uint64_t)time(NULL);
 		if (frame.command == 0) {
+			kn_ax25_rx_feed_options_from_runtime(ax25_runtime,
+			    &feed_options);
 			ax25_rc = kn_ax25_frame_decode(frame.payload,
 			    frame.payload_len, &ax25);
 			if (ax25_rc == KN_AX25_OK) {
@@ -682,6 +732,13 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 					if (rx_sessions != NULL)
 						(void)kn_rx_session_update(
 						    rx_sessions, &event);
+				}
+				if (config != NULL && ax25_runtime != NULL) {
+					(void)kn_ax25_rx_feed_frame(
+					    ax25_runtime, &feed_options,
+					    port->config->name,
+					    &config->node.callsign, &ax25,
+					    now, &feed_result);
 				}
 				if (config != NULL && rf_commands != NULL &&
 				    config->rf_command.enabled != 0) {
@@ -808,6 +865,10 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 			} else {
 				kn_stats_add_malformed_ax25(daemon_stats,
 				    &port->stats, "ax25");
+				if (ax25_runtime != NULL)
+					(void)kn_ax25_rx_feed_malformed(
+					    ax25_runtime, &feed_options,
+					    frame.payload_len, &feed_result);
 				if (rx_events != NULL &&
 				    rx_events->enabled != 0) {
 					if (kn_rx_event_from_malformed(&event,

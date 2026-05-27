@@ -25,6 +25,7 @@ enum parser_block {
 	BLOCK_NONE = 0,
 	BLOCK_NODE,
 	BLOCK_ACCESS,
+	BLOCK_AX25,
 	BLOCK_BBS,
 	BLOCK_CONTROL,
 	BLOCK_HEARD,
@@ -43,6 +44,8 @@ struct parser {
 
 static enum kn_config_error config_validate(struct kn_config *);
 static enum kn_config_error access_key_set(struct kn_config *, char **, size_t,
+	size_t);
+static enum kn_config_error ax25_key_set(struct kn_config *, char **, size_t,
 	size_t);
 static enum kn_config_error bbs_key_set(struct kn_config *, char **, size_t,
 	size_t);
@@ -93,6 +96,23 @@ config_validate(struct kn_config *config)
 	    KN_TX_POLICY_OK)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "invalid transmit policy");
+	if (config->ax25.live_rx_feed != 0 && config->ax25.enabled == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-rx-feed requires enabled ax25");
+	if (config->ax25.live_rx_create_connections != 0 &&
+	    config->ax25.live_rx_feed == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-rx-create-connections requires live-rx-feed");
+	config->ax25.params.allow_connected_mode =
+	    config->ax25.connected_mode;
+	if (config->ax25.max_connections < KN_CONFIG_AX25_CONNECTIONS_MIN ||
+	    config->ax25.max_connections > KN_CONFIG_AX25_CONNECTIONS_MAX)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid ax25 max-connections");
+	if (kn_ax25_params_validate(&config->ax25.params) !=
+	    KN_AX25_PARAMS_OK)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid ax25 params");
 	if (config->transmit.policy.dry_run == 0 &&
 	    config->transmit.policy.allow_shell_enqueue != 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
@@ -244,6 +264,11 @@ kn_config_init(struct kn_config *config)
 
 	memset(config, 0, sizeof(*config));
 	kn_access_policy_defaults(&config->access.policy);
+	kn_ax25_params_default(&config->ax25.params);
+	config->ax25.params.t3_ms = 300000;
+	config->ax25.max_connections = KN_CONFIG_AX25_CONNECTIONS_MAX;
+	config->ax25.diagnostics = 1;
+	config->ax25.live_rx_retain_frame_plans = 1;
 	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
@@ -536,6 +561,174 @@ access_key_set(struct kn_config *config, char **tokens, size_t token_count,
 
 	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
 	    "unknown access key");
+}
+
+static enum kn_config_error
+ax25_key_set(struct kn_config *config, char **tokens, size_t token_count,
+	size_t line_no)
+{
+	char *end;
+	unsigned long value;
+
+	if (token_count != 2)
+		return set_error(config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid ax25 key");
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&config->ax25.has_enabled, config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.enabled) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "connected-mode") == 0) {
+		if (key_seen(&config->ax25.has_connected_mode, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.connected_mode) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 connected-mode value");
+		config->ax25.params.allow_connected_mode =
+		    config->ax25.connected_mode;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "diagnostics") == 0) {
+		if (key_seen(&config->ax25.has_diagnostics, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.diagnostics) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 diagnostics value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-rx-feed") == 0) {
+		if (key_seen(&config->ax25.has_live_rx_feed, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.live_rx_feed) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 live-rx-feed value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-rx-create-connections") == 0) {
+		if (key_seen(&config->ax25.has_live_rx_create_connections,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.live_rx_create_connections) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-rx-create-connections value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-rx-retain-frame-plans") == 0) {
+		if (key_seen(&config->ax25.has_live_rx_retain_frame_plans,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.live_rx_retain_frame_plans) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-rx-retain-frame-plans value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "max-connections") == 0) {
+		if (key_seen(&config->ax25.has_max_connections, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_CONFIG_AX25_CONNECTIONS_MIN ||
+		    value > KN_CONFIG_AX25_CONNECTIONS_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 max-connections");
+		config->ax25.max_connections = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "modulo") == 0) {
+		if (key_seen(&config->ax25.has_modulo, config, line_no) != 0)
+			return config->error;
+		if (strcmp(tokens[1], "8") == 0) {
+			config->ax25.params.modulo_mode = KN_AX25_MODULO_8;
+			return KN_CONFIG_OK;
+		}
+		if (strcmp(tokens[1], "128") == 0) {
+			config->ax25.params.modulo_mode = KN_AX25_MODULO_128;
+			return KN_CONFIG_OK;
+		}
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, line_no,
+		    "invalid ax25 modulo");
+	}
+
+#define AX25_UINT_KEY(name, seen, field, max, message) do { \
+	if (strcmp(tokens[0], (name)) == 0) { \
+		if (key_seen(&(seen), config, line_no) != 0) \
+			return config->error; \
+		errno = 0; \
+		value = strtoul(tokens[1], &end, 10); \
+		if (errno != 0 || *end != '\0' || value == 0 || \
+		    value > (unsigned long)(max)) \
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, \
+			    line_no, (message)); \
+		(field) = (uint32_t)value; \
+		return KN_CONFIG_OK; \
+	} \
+} while (0)
+
+	AX25_UINT_KEY("t1-ms", config->ax25.has_t1_ms,
+	    config->ax25.params.t1_ms, UINT32_MAX, "invalid ax25 t1-ms");
+	AX25_UINT_KEY("t2-ms", config->ax25.has_t2_ms,
+	    config->ax25.params.t2_ms, UINT32_MAX, "invalid ax25 t2-ms");
+	AX25_UINT_KEY("t3-ms", config->ax25.has_t3_ms,
+	    config->ax25.params.t3_ms, UINT32_MAX, "invalid ax25 t3-ms");
+
+#undef AX25_UINT_KEY
+
+	if (strcmp(tokens[0], "n2-retries") == 0) {
+		if (key_seen(&config->ax25.has_n2_retries, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' || value == 0 ||
+		    value > UINT8_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 n2-retries");
+		config->ax25.params.n2_retry_count = (uint8_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "window-size") == 0) {
+		if (key_seen(&config->ax25.has_window_size, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' || value == 0 ||
+		    value > UINT8_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 window-size");
+		config->ax25.params.window_size = (uint8_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown ax25 key");
 }
 
 static enum kn_config_error
@@ -1173,6 +1366,9 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 		return access_key_set(parser->config, tokens, token_count,
 		    line_no);
 
+	if (parser->block == BLOCK_AX25)
+		return ax25_key_set(parser->config, tokens, token_count, line_no);
+
 	if (parser->block == BLOCK_BBS)
 		return bbs_key_set(parser->config, tokens, token_count, line_no);
 
@@ -1246,6 +1442,19 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    "duplicate access block");
 		parser->config->access.has_block = 1;
 		parser->block = BLOCK_ACCESS;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "ax25") == 0) {
+		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid ax25 block");
+		if (parser->config->ax25.has_block != 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_DUPLICATE_KEY, line_no,
+			    "duplicate ax25 block");
+		parser->config->ax25.has_block = 1;
+		parser->block = BLOCK_AX25;
 		return KN_CONFIG_OK;
 	}
 
