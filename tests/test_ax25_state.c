@@ -11,7 +11,7 @@
 static int action_has(const struct kn_ax25_state_result *,
 	enum kn_ax25_action_intent);
 static void connection_enabled(struct kn_ax25_connection *);
-static int step_event(struct kn_ax25_connection *,
+static enum kn_ax25_state_error step_event(struct kn_ax25_connection *,
 	enum kn_ax25_connection_event, uint8_t, uint8_t,
 	struct kn_ax25_state_result *);
 static int test_awaiting_connection_retry(void);
@@ -110,7 +110,7 @@ connection_enabled(struct kn_ax25_connection *connection)
 	kn_ax25_connection_init(connection, &params);
 }
 
-static int
+static enum kn_ax25_state_error
 step_event(struct kn_ax25_connection *connection,
 	enum kn_ax25_connection_event event, uint8_t ns, uint8_t nr,
 	struct kn_ax25_state_result *result)
