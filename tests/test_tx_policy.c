@@ -9,6 +9,7 @@
 static int test_allow_ui(void);
 static int test_config_valid_block(void);
 static int test_defaults(void);
+static int test_dispatch_policy(void);
 static int test_invalid_config(void);
 
 int
@@ -19,6 +20,8 @@ main(void)
 	if (test_allow_ui() != 0)
 		return 1;
 	if (test_config_valid_block() != 0)
+		return 1;
+	if (test_dispatch_policy() != 0)
 		return 1;
 	if (test_invalid_config() != 0)
 		return 1;
@@ -91,6 +94,30 @@ test_defaults(void)
 		return 1;
 
 	return policy.max_queued == KN_TX_POLICY_MAX_QUEUED_DEFAULT ? 0 : 1;
+}
+
+static int
+test_dispatch_policy(void)
+{
+	struct kn_tx_policy policy;
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_policy_allow_dispatch(&policy) !=
+	    KN_TX_POLICY_ERR_DISABLED)
+		return 1;
+	policy.enabled = 1;
+	if (kn_tx_policy_allow_dispatch(&policy) !=
+	    KN_TX_POLICY_ERR_DISPATCH_DISABLED)
+		return 1;
+	policy.dispatch_enabled = 1;
+	policy.dispatch_test_only = 0;
+	if (kn_tx_policy_allow_dispatch(&policy) !=
+	    KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED)
+		return 1;
+	policy.dispatch_test_only = 1;
+
+	return kn_tx_policy_allow_dispatch(&policy) == KN_TX_POLICY_OK ?
+	    0 : 1;
 }
 
 static int

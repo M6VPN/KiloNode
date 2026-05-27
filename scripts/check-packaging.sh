@@ -63,6 +63,7 @@ check_config packaging/examples/kilonode.conf
 check_config packaging/examples/kilonode-minimal.conf
 check_config packaging/examples/kilonode-bbs-local.conf
 check_config packaging/examples/kilonode-monitor-only.conf
+check_config packaging/examples/kilonode-tx-test-only.conf
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1

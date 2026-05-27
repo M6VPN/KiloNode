@@ -20,6 +20,9 @@ transmit {
 	allow-ui false
 	allow-control-enqueue false
 	allow-shell-enqueue false
+	dispatch-enabled false
+	dispatch-test-only true
+	dispatch-max-per-cycle 4
 }
 ```
 
@@ -46,6 +49,8 @@ Transmit policy is deliberately conservative:
 - `allow-ui false` rejects UI frame enqueue through policy helpers
 - `allow-control-enqueue false` rejects control-socket dry-run enqueue
 - `allow-shell-enqueue false` keeps local shell enqueue disabled
+- `dispatch-enabled false` disables dispatch by default
+- `dispatch-test-only true` is required for the M1.22 harness
 
 Tests can construct frames directly where needed, but runtime user surfaces do
 not enqueue transmit frames in this pass.
@@ -64,7 +69,7 @@ implemented.
 
 ## Deferred Work
 
-- actual dispatch to TNC transports
+- real dispatch to TNC transports
 - shell TX commands
 - RF BBS replies
 - AX.25 connected-mode state machine

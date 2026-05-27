@@ -162,7 +162,8 @@ kn_tx_queue_pop_next_for_port(struct kn_tx_queue *queue, const char *port)
 
 	for (i = 0; i < queue->count; i++) {
 		if (strcmp(queue->frames[i].port_name, port) == 0 &&
-		    queue->frames[i].status == KN_TX_FRAME_QUEUED)
+		    (queue->frames[i].status == KN_TX_FRAME_QUEUED ||
+		    queue->frames[i].status == KN_TX_FRAME_DRY_RUN))
 			return &queue->frames[i];
 	}
 

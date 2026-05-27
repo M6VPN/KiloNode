@@ -117,6 +117,8 @@ kn_stats_port_type_name(enum kn_config_port_type type)
 		return "unix-connect";
 	case KN_CONFIG_PORT_UNIX_LISTEN:
 		return "unix-listen";
+	case KN_CONFIG_PORT_MEMORY_TEST:
+		return "memory-test";
 	case KN_CONFIG_PORT_NONE:
 		return "none";
 	}

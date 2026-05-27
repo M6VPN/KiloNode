@@ -17,8 +17,10 @@ kn_tx_policy_allow_dispatch(const struct kn_tx_policy *policy)
 		return rc;
 	if (policy->enabled == 0)
 		return KN_TX_POLICY_ERR_DISABLED;
-	if (policy->dry_run != 0)
+	if (policy->dispatch_enabled == 0)
 		return KN_TX_POLICY_ERR_DISPATCH_DISABLED;
+	if (policy->dispatch_test_only == 0)
+		return KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED;
 
 	return KN_TX_POLICY_OK;
 }
@@ -99,6 +101,9 @@ kn_tx_policy_defaults(struct kn_tx_policy *policy)
 	policy->max_payload_bytes = KN_TX_POLICY_PAYLOAD_DEFAULT;
 	policy->payload_preview_bytes = KN_TX_POLICY_PREVIEW_DEFAULT;
 	policy->dry_run = 1;
+	policy->dispatch_test_only = 1;
+	policy->dispatch_max_per_cycle =
+	    KN_TX_POLICY_DISPATCH_MAX_DEFAULT;
 }
 
 enum kn_tx_policy_error
@@ -114,6 +119,15 @@ kn_tx_policy_validate(const struct kn_tx_policy *policy)
 	if (policy->payload_preview_bytes < KN_TX_POLICY_PREVIEW_MIN ||
 	    policy->payload_preview_bytes > KN_TX_POLICY_PREVIEW_MAX)
 		return KN_TX_POLICY_ERR_INVALID_ARGUMENT;
+	if (policy->dispatch_max_per_cycle <
+	    KN_TX_POLICY_DISPATCH_MAX_MIN ||
+	    policy->dispatch_max_per_cycle > KN_TX_POLICY_DISPATCH_MAX_MAX)
+		return KN_TX_POLICY_ERR_INVALID_ARGUMENT;
+	if (policy->dispatch_enabled != 0 && policy->enabled == 0)
+		return KN_TX_POLICY_ERR_DISABLED;
+	if (policy->dispatch_enabled != 0 &&
+	    policy->dispatch_test_only == 0)
+		return KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED;
 
 	return KN_TX_POLICY_OK;
 }

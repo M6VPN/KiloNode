@@ -29,8 +29,10 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_dispatch.h"
 #include "kilonode/tx_queue.h"
 #include "kilonode/transport.h"
+#include "kilonode/transport_memory.h"
 #include "kilonode/transport_pty.h"
 #include "kilonode/transport_serial.h"
 #include "kilonode/transport_stdio.h"
@@ -46,6 +48,7 @@ struct daemon_port {
 	struct kn_kiss_stream_parser parser;
 	struct kn_buffer frame_buf;
 	struct kn_port_stats stats;
+	struct kn_transport_memory memory;
 	uint8_t active;
 };
 
@@ -59,7 +62,7 @@ static int control_handle(struct kn_control_socket *,
 	const struct kn_heard_table *, uint8_t, struct kn_message_store *,
 	uint8_t, const struct kn_access_policy *, const struct kn_rx_queue *,
 	const struct kn_rx_session_table *, uint8_t,
-	struct kn_tx_queue *);
+	struct kn_tx_queue *, struct kn_tx_dispatcher *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
 	struct kn_rx_session_table *);
@@ -78,6 +81,7 @@ close_ports(struct daemon_port *ports, size_t port_count)
 
 	for (i = 0; i < port_count; i++) {
 		kn_transport_close(&ports[i].transport);
+		kn_transport_memory_free(&ports[i].memory);
 		kn_kiss_stream_free(&ports[i].parser);
 		kn_buffer_free(&ports[i].frame_buf);
 		ports[i].active = 0;
@@ -97,6 +101,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_rx_queue rx_events;
 	struct kn_rx_session_table rx_sessions;
 	struct kn_tx_queue tx_queue;
+	struct kn_tx_dispatcher tx_dispatch;
 	struct kn_message_store bbs_store;
 	struct kn_node_shell_state shell;
 	struct sigaction sa;
@@ -142,6 +147,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	if (kn_tx_queue_init(&tx_queue, &config->transmit.policy) !=
 	    KN_TX_QUEUE_OK)
 		return KN_DAEMON_ERR_CONFIG;
+	kn_tx_dispatch_clear(&tx_dispatch);
 	for (i = 0; i < config->port_count; i++) {
 		if (config->ports[i].enabled != 0)
 			daemon_stats.enabled_ports++;
@@ -169,6 +175,16 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			return KN_DAEMON_ERR_TRANSPORT;
 		}
 		ports[port_count].stats.open = 1;
+		if (config->ports[i].type == KN_CONFIG_PORT_MEMORY_TEST) {
+			if (kn_tx_dispatch_add_memory_target(&tx_dispatch,
+			    config->ports[i].name, &ports[port_count].memory,
+			    1, 1) != KN_TX_DISPATCH_OK) {
+				close_ports(ports, port_count + 1);
+				kn_control_socket_close(&control);
+				kn_message_store_close(&bbs_store);
+				return KN_DAEMON_ERR_RUNTIME;
+			}
+		}
 		daemon_stats.open_ports++;
 		port_count++;
 	}
@@ -328,7 +344,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    port_count, &heard, config->heard.enabled,
 			    &bbs_store, bbs_enabled,
 			    &config->access.policy, &rx_events, &rx_sessions,
-			    config->receive.events_enabled, &tx_queue) != 0) {
+			    config->receive.events_enabled, &tx_queue,
+			    &tx_dispatch) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -424,6 +441,15 @@ open_config_port(struct daemon_port *port, const struct kn_config_port *config)
 		rc = kn_transport_unix_listen_open(&port->transport,
 		    config->path);
 		break;
+	case KN_CONFIG_PORT_MEMORY_TEST:
+		rc = kn_transport_memory_init(&port->memory,
+		    KN_TRANSPORT_MEMORY_CAPACITY_DEFAULT) ==
+		    KN_TRANSPORT_MEMORY_OK &&
+		    kn_transport_memory_open(&port->memory) ==
+		    KN_TRANSPORT_MEMORY_OK ? KN_TRANSPORT_OK :
+		    KN_TRANSPORT_ERR_OPEN;
+		kn_transport_reset(&port->transport);
+		break;
 	case KN_CONFIG_PORT_NONE:
 		rc = KN_TRANSPORT_ERR_INVALID_CONFIG;
 		break;
@@ -449,7 +475,7 @@ control_handle(struct kn_control_socket *control,
 	uint8_t bbs_enabled, const struct kn_access_policy *policy,
 	const struct kn_rx_queue *rx_events,
 	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled,
-	struct kn_tx_queue *tx_queue)
+	struct kn_tx_queue *tx_queue, struct kn_tx_dispatcher *tx_dispatch)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -496,6 +522,7 @@ control_handle(struct kn_control_socket *control,
 	snapshot.rx_events = rx_enabled != 0 ? rx_events : NULL;
 	snapshot.rx_sessions = rx_enabled != 0 ? rx_sessions : NULL;
 	snapshot.tx_queue = tx_queue;
+	snapshot.tx_dispatch = tx_dispatch;
 	if (policy != NULL) {
 		snapshot.control_max_command_bytes =
 		    policy->control_max_command_bytes;

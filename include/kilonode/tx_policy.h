@@ -17,6 +17,9 @@
 #define KN_TX_POLICY_PREVIEW_DEFAULT    80
 #define KN_TX_POLICY_PREVIEW_MAX        256
 #define KN_TX_POLICY_PREVIEW_MIN        1
+#define KN_TX_POLICY_DISPATCH_MAX_DEFAULT 4
+#define KN_TX_POLICY_DISPATCH_MAX_MAX     64
+#define KN_TX_POLICY_DISPATCH_MAX_MIN     1
 
 enum kn_tx_policy_error {
 	KN_TX_POLICY_OK = 0,
@@ -25,6 +28,7 @@ enum kn_tx_policy_error {
 	KN_TX_POLICY_ERR_UI_NOT_ALLOWED,
 	KN_TX_POLICY_ERR_TOO_LARGE,
 	KN_TX_POLICY_ERR_DISPATCH_DISABLED,
+	KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED,
 	KN_TX_POLICY_ERR_CONTROL_DISABLED,
 	KN_TX_POLICY_ERR_SHELL_DISABLED
 };
@@ -38,6 +42,9 @@ struct kn_tx_policy {
 	uint8_t allow_ui;
 	uint8_t allow_control_enqueue;
 	uint8_t allow_shell_enqueue;
+	uint8_t dispatch_enabled;
+	uint8_t dispatch_test_only;
+	size_t dispatch_max_per_cycle;
 };
 
 enum kn_tx_policy_error kn_tx_policy_allow_dispatch(

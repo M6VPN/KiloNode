@@ -54,6 +54,10 @@ Show queued outbound frames.
 Show one queued outbound frame.
 .It Cm tx dryrun-ui Fl -port Ar name Fl -from Ar callsign Fl -to Ar callsign Op Fl -via Ar path Fl -text Ar text
 Queue a local dry-run UI frame when daemon transmit policy explicitly allows it.
+.It Cm tx dispatch-status
+Show test-only TX dispatch harness status.
+.It Cm tx dispatch-run Op Fl -port Ar name
+Run the test-only TX dispatcher when daemon policy and memory targets allow it.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -68,9 +72,12 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx status
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx queue
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx dryrun-ui --port kiss0 --from M6VPN-1 --to CQ --text "hello"
+.Dl kilonodectl --socket /tmp/kilonode/control.sock tx dispatch-status
+.Dl kilonodectl --socket /tmp/kilonode/control.sock tx dispatch-run --port mem0
 .Sh SECURITY NOTES
 The control protocol is local-only in this pass. Use filesystem permissions to
-limit access to the socket.
+limit access to the socket. TX dispatch is test-only and memory/mock-only in
+this pass.
 .Sh SEE ALSO
 .Xr kilonoded 8
 .Sh AUTHORS

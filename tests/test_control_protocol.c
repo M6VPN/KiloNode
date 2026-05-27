@@ -14,6 +14,8 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/transport_memory.h"
+#include "kilonode/tx_dispatch.h"
 #include "kilonode/tx_frame.h"
 #include "kilonode/tx_policy.h"
 #include "kilonode/tx_queue.h"
@@ -65,6 +67,12 @@ static int test_tx_dryrun_oversized(void);
 static int test_tx_dryrun_queue_full(void);
 static int test_tx_dryrun_valid(void);
 static int test_tx_dryrun_via_valid(void);
+static int test_tx_dispatch_run_default_rejected(void);
+static int test_tx_dispatch_run_enabled(void);
+static int test_tx_dispatch_run_port(void);
+static int test_tx_dispatch_run_port_invalid(void);
+static int test_tx_dispatch_status_default(void);
+static int test_tx_dispatch_status_enabled(void);
 static int test_tx_malformed_command(void);
 static int test_tx_queue_empty(void);
 static int test_tx_queue_one(void);
@@ -168,6 +176,18 @@ main(void)
 		return 1;
 	if (test_tx_dryrun_queue_full() != 0)
 		return 1;
+	if (test_tx_dispatch_status_default() != 0)
+		return 1;
+	if (test_tx_dispatch_run_default_rejected() != 0)
+		return 1;
+	if (test_tx_dispatch_status_enabled() != 0)
+		return 1;
+	if (test_tx_dispatch_run_enabled() != 0)
+		return 1;
+	if (test_tx_dispatch_run_port() != 0)
+		return 1;
+	if (test_tx_dispatch_run_port_invalid() != 0)
+		return 1;
 	if (test_tx_queue_empty() != 0)
 		return 1;
 	if (test_tx_queue_one() != 0)
@@ -204,6 +224,7 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->rx_events = NULL;
 	snapshot->rx_sessions = NULL;
 	snapshot->tx_queue = NULL;
+	snapshot->tx_dispatch = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -1013,6 +1034,15 @@ tx_policy_control_allowed(struct kn_tx_policy *policy)
 	policy->allow_control_enqueue = 1;
 }
 
+static void
+tx_policy_dispatch_allowed(struct kn_tx_policy *policy)
+{
+	tx_policy_control_allowed(policy);
+	policy->dispatch_enabled = 1;
+	policy->dispatch_test_only = 1;
+	policy->dispatch_max_per_cycle = 4;
+}
+
 static int
 test_tx_dryrun_invalid_callsign(void)
 {
@@ -1157,6 +1187,171 @@ test_tx_dryrun_valid(void)
 		return 1;
 
 	return strstr(out, "TX FRAME id=1 port=kiss0") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_run_default_rejected(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX DISPATCH RUN", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR tx-dispatch-disabled\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_run_enabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_transport_memory memory;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_dispatch_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_OK)
+		return 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	if (kn_transport_memory_init(&memory, 256) !=
+	    KN_TRANSPORT_MEMORY_OK)
+		return 1;
+	(void)kn_transport_memory_open(&memory);
+	(void)kn_tx_dispatch_add_memory_target(&dispatcher, "kiss0",
+	    &memory, 1, 1);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX DISPATCH RUN", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK TX DISPATCH sent=1 failed=0") == NULL)
+		return 1;
+
+	return memory.len > 0 ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_run_port(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_port_stats port;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	struct kn_transport_memory memory;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_dispatch_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_port_init(&snapshot, &daemon, &port, &queue, 1);
+	if (kn_control_protocol_handle("TX DRYRUN UI PORT kiss0 FROM "
+	    "M6VPN-1 TO CQ TEXT hello", &snapshot, out, sizeof(out)) !=
+	    KN_CONTROL_OK)
+		return 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	if (kn_transport_memory_init(&memory, 256) !=
+	    KN_TRANSPORT_MEMORY_OK)
+		return 1;
+	(void)kn_transport_memory_open(&memory);
+	(void)kn_tx_dispatch_add_memory_target(&dispatcher, "kiss0",
+	    &memory, 1, 1);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX DISPATCH RUN PORT kiss0",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "sent=1") != NULL ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_run_port_invalid(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_dispatch_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX DISPATCH RUN PORT bad name",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-port\n") == 0 ? 0 : 1;
+}
+
+static int
+test_tx_dispatch_status_default(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_tx_policy_defaults(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+
+	if (kn_control_protocol_handle("TX DISPATCH STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK TX DISPATCH STATUS enabled=false") != NULL ?
+	    0 : 1;
+}
+
+static int
+test_tx_dispatch_status_enabled(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_tx_policy policy;
+	struct kn_tx_queue queue;
+	struct kn_tx_dispatcher dispatcher;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	tx_policy_dispatch_allowed(&policy);
+	if (kn_tx_queue_init(&queue, &policy) != KN_TX_QUEUE_OK)
+		return 1;
+	kn_tx_dispatch_clear(&dispatcher);
+	tx_snapshot_init(&snapshot, &daemon, &queue);
+	snapshot.tx_dispatch = &dispatcher;
+
+	if (kn_control_protocol_handle("TX DISPATCH STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "enabled=true test_only=true") != NULL ? 0 : 1;
 }
 
 static int

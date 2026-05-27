@@ -51,11 +51,13 @@ add_library(packetcore STATIC
 	src/rf/rx_event.c
 	src/rf/rx_queue.c
 	src/rf/rx_session.c
+	src/rf/tx_dispatch.c
 	src/rf/tx_dry_run.c
 	src/rf/tx_frame.c
 	src/rf/tx_policy.c
 	src/rf/tx_queue.c
 	src/transport/transport.c
+	src/transport/transport_memory.c
 	src/transport/transport_pty.c
 	src/transport/transport_serial.c
 	src/transport/transport_stdio.c
@@ -178,6 +180,11 @@ target_link_libraries(test_tx_dry_run PRIVATE packetcore)
 kilonode_target_defaults(test_tx_dry_run)
 add_test(NAME tx_dry_run COMMAND test_tx_dry_run)
 
+add_executable(test_tx_dispatch tests/test_tx_dispatch.c)
+target_link_libraries(test_tx_dispatch PRIVATE packetcore)
+kilonode_target_defaults(test_tx_dispatch)
+add_test(NAME tx_dispatch COMMAND test_tx_dispatch)
+
 add_executable(test_tx_queue tests/test_tx_queue.c)
 target_link_libraries(test_tx_queue PRIVATE packetcore)
 kilonode_target_defaults(test_tx_queue)
@@ -287,6 +294,11 @@ add_executable(test_transport tests/test_transport.c)
 target_link_libraries(test_transport PRIVATE packetcore)
 kilonode_target_defaults(test_transport)
 add_test(NAME transport COMMAND test_transport)
+
+add_executable(test_transport_memory tests/test_transport_memory.c)
+target_link_libraries(test_transport_memory PRIVATE packetcore)
+kilonode_target_defaults(test_transport_memory)
+add_test(NAME transport_memory COMMAND test_transport_memory)
 
 add_executable(test_transport_serial tests/test_transport_serial.c)
 target_link_libraries(test_transport_serial PRIVATE packetcore)

@@ -90,6 +90,14 @@ config_validate(struct kn_config *config)
 	    config->transmit.policy.allow_shell_enqueue != 0))
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "transmit enqueue requires dry-run");
+	if (config->transmit.policy.dispatch_enabled != 0 &&
+	    config->transmit.policy.enabled == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "transmit dispatch requires enabled transmit");
+	if (config->transmit.policy.dispatch_enabled != 0 &&
+	    config->transmit.policy.dispatch_test_only == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "transmit dispatch is test-only in this pass");
 
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
@@ -120,6 +128,7 @@ config_validate(struct kn_config *config)
 		switch (port->type) {
 		case KN_CONFIG_PORT_STDIO:
 		case KN_CONFIG_PORT_PTY:
+		case KN_CONFIG_PORT_MEMORY_TEST:
 			break;
 		case KN_CONFIG_PORT_TCP_CONNECT:
 		case KN_CONFIG_PORT_TCP_LISTEN:
@@ -378,6 +387,8 @@ kn_config_port_transport_kind(const struct kn_config_port *port)
 		return KN_TRANSPORT_KIND_UNIX_CLIENT;
 	case KN_CONFIG_PORT_UNIX_LISTEN:
 		return KN_TRANSPORT_KIND_UNIX_SERVER;
+	case KN_CONFIG_PORT_MEMORY_TEST:
+		return KN_TRANSPORT_KIND_MEMORY_TEST;
 	case KN_CONFIG_PORT_NONE:
 		return KN_TRANSPORT_KIND_NONE;
 	}
@@ -717,6 +728,32 @@ transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
 		return KN_CONFIG_OK;
 	}
 
+	if (strcmp(tokens[0], "dispatch-enabled") == 0) {
+		if (key_seen(&config->transmit.has_dispatch_enabled,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.dispatch_enabled) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit dispatch-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "dispatch-test-only") == 0) {
+		if (key_seen(&config->transmit.has_dispatch_test_only,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->transmit.policy.dispatch_test_only) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid transmit dispatch-test-only value");
+		return KN_CONFIG_OK;
+	}
+
 	if (strcmp(tokens[0], "max-queued") == 0) {
 		if (key_seen(&config->transmit.has_max_queued, config,
 		    line_no) != 0)
@@ -758,6 +795,22 @@ transmit_key_set(struct kn_config *config, char **tokens, size_t token_count,
 			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
 			    line_no, "invalid transmit payload-preview-bytes");
 		config->transmit.policy.payload_preview_bytes = (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "dispatch-max-per-cycle") == 0) {
+		if (key_seen(&config->transmit.has_dispatch_max_per_cycle,
+		    config, line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' ||
+		    value < KN_TX_POLICY_DISPATCH_MAX_MIN ||
+		    value > KN_TX_POLICY_DISPATCH_MAX_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid transmit dispatch-max-per-cycle");
+		config->transmit.policy.dispatch_max_per_cycle =
+		    (size_t)value;
 		return KN_CONFIG_OK;
 	}
 
@@ -1223,6 +1276,8 @@ port_type_parse(const char *input)
 		return KN_CONFIG_PORT_UNIX_CONNECT;
 	if (strcmp(input, "unix-listen") == 0)
 		return KN_CONFIG_PORT_UNIX_LISTEN;
+	if (strcmp(input, "memory-test") == 0)
+		return KN_CONFIG_PORT_MEMORY_TEST;
 
 	return KN_CONFIG_PORT_NONE;
 }

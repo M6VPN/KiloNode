@@ -13,6 +13,7 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_dispatch.h"
 #include "kilonode/tx_queue.h"
 
 #define KN_CONTROL_COMMAND_MAX 512
@@ -42,6 +43,7 @@ struct kn_control_snapshot {
 	const struct kn_rx_queue *rx_events;
 	const struct kn_rx_session_table *rx_sessions;
 	struct kn_tx_queue *tx_queue;
+	struct kn_tx_dispatcher *tx_dispatch;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

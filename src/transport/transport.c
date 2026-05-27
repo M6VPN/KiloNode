@@ -115,6 +115,8 @@ kn_transport_kind_name(enum kn_transport_kind kind)
 		return "unix-client";
 	case KN_TRANSPORT_KIND_UNIX_SERVER:
 		return "unix-server";
+	case KN_TRANSPORT_KIND_MEMORY_TEST:
+		return "memory-test";
 	}
 
 	return "unknown";
@@ -131,6 +133,7 @@ kn_transport_kind_valid(enum kn_transport_kind kind)
 	case KN_TRANSPORT_KIND_PTY:
 	case KN_TRANSPORT_KIND_UNIX_CLIENT:
 	case KN_TRANSPORT_KIND_UNIX_SERVER:
+	case KN_TRANSPORT_KIND_MEMORY_TEST:
 		return 1;
 	case KN_TRANSPORT_KIND_NONE:
 		return 0;

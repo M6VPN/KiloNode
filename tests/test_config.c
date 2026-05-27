@@ -62,7 +62,11 @@ static int test_transmit_allow_ui_false_control_config(void);
 static int test_transmit_dry_run_false_control_rejected(void);
 static int test_transmit_invalid_allow_control(void);
 static int test_transmit_invalid_allow_shell(void);
+static int test_transmit_invalid_dispatch_max(void);
 static int test_transmit_omitted_defaults(void);
+static int test_transmit_test_dispatch_config(void);
+static int test_transmit_dispatch_without_enabled_rejected(void);
+static int test_transmit_dispatch_not_test_only_rejected(void);
 static int test_transmit_valid_control_dry_run(void);
 
 int
@@ -127,6 +131,14 @@ main(void)
 	if (test_transmit_invalid_allow_shell() != 0)
 		return 1;
 	if (test_transmit_allow_ui_false_control_config() != 0)
+		return 1;
+	if (test_transmit_test_dispatch_config() != 0)
+		return 1;
+	if (test_transmit_dispatch_without_enabled_rejected() != 0)
+		return 1;
+	if (test_transmit_dispatch_not_test_only_rejected() != 0)
+		return 1;
+	if (test_transmit_invalid_dispatch_max() != 0)
 		return 1;
 	if (test_duplicate_port_name() != 0)
 		return 1;
@@ -1098,6 +1110,20 @@ test_transmit_invalid_allow_shell(void)
 }
 
 static int
+test_transmit_invalid_dispatch_max(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"dispatch-max-per-cycle 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_transmit_omitted_defaults(void)
 {
 	struct kn_config config;
@@ -1114,8 +1140,75 @@ test_transmit_omitted_defaults(void)
 		return 1;
 	if (config.transmit.policy.allow_control_enqueue != 0)
 		return 1;
+	if (config.transmit.policy.dispatch_enabled != 0)
+		return 1;
+	if (config.transmit.policy.dispatch_test_only == 0)
+		return 1;
 
-	return config.transmit.policy.allow_shell_enqueue == 0 ? 0 : 1;
+	return config.transmit.policy.allow_shell_enqueue == 0 &&
+	    config.transmit.policy.dispatch_max_per_cycle == 4 ? 0 : 1;
+}
+
+static int
+test_transmit_test_dispatch_config(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dry-run true\n"
+		"allow-ui true\n"
+		"allow-control-enqueue true\n"
+		"dispatch-enabled true\n"
+		"dispatch-test-only true\n"
+		"dispatch-max-per-cycle 2\n"
+		"}\n"
+		"port mem0 {\n"
+		"type memory-test\n"
+		"enabled true\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.ports[0].type != KN_CONFIG_PORT_MEMORY_TEST)
+		return 1;
+
+	return config.transmit.policy.dispatch_enabled == 1 &&
+	    config.transmit.policy.dispatch_max_per_cycle == 2 ? 0 : 1;
+}
+
+static int
+test_transmit_dispatch_without_enabled_rejected(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled false\n"
+		"dispatch-enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_transmit_dispatch_not_test_only_rejected(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"transmit {\n"
+		"enabled true\n"
+		"dispatch-enabled true\n"
+		"dispatch-test-only false\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
 }
 
 static int

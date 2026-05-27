@@ -76,7 +76,8 @@ enum kn_config_port_type {
 	KN_CONFIG_PORT_SERIAL,
 	KN_CONFIG_PORT_PTY,
 	KN_CONFIG_PORT_UNIX_CONNECT,
-	KN_CONFIG_PORT_UNIX_LISTEN
+	KN_CONFIG_PORT_UNIX_LISTEN,
+	KN_CONFIG_PORT_MEMORY_TEST
 };
 
 struct kn_config_node {
@@ -137,6 +138,9 @@ struct kn_config_transmit {
 	uint8_t has_allow_ui;
 	uint8_t has_allow_control_enqueue;
 	uint8_t has_allow_shell_enqueue;
+	uint8_t has_dispatch_enabled;
+	uint8_t has_dispatch_test_only;
+	uint8_t has_dispatch_max_per_cycle;
 };
 
 struct kn_config_shell {

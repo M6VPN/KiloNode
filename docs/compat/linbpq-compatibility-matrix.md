@@ -57,7 +57,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Transmit queue skeleton | tested | In-memory queue with read-only control queries |
 | Dry-run UI enqueue path | tested | Local control-gated dry-run queue insertion only |
 | Control TX dry-run diagnostics | tested | `kilonodectl tx dryrun-ui`, `tx queue`, and `tx frame` |
+| TX dispatch test harness | tested | Test-only memory dispatch, no RF writes |
+| Memory/mock transport | tested | In-process bounded byte sink for dispatch tests |
 | AX.25 connected-mode receive state | planned | Not implemented |
+| Real KISS transport TX dispatch | planned | Not implemented |
 | Actual RF transmit dispatch | planned | Not implemented |
 | AX.25 transmit path | partial | Builder and queue only, no dispatch |
 | RF node shell transmit | planned | Not implemented |

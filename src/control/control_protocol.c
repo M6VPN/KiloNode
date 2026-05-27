@@ -18,6 +18,7 @@
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
+#include "kilonode/tx_dispatch.h"
 #include "kilonode/tx_frame.h"
 #include "kilonode/tx_dry_run.h"
 #include "kilonode/tx_queue.h"
@@ -44,6 +45,8 @@ static enum kn_control_error format_status(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_tx(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
+static enum kn_control_error format_tx_dispatch(
+	const struct kn_control_snapshot *, const char *, char *, size_t);
 static enum kn_control_error format_tx_dryrun_ui(
 	const struct kn_control_snapshot *, const char *, char *, size_t);
 static enum kn_control_error read_word(const char **, char *, size_t);
@@ -538,12 +541,16 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 	if (strncmp(command, "DRYRUN UI ", 10) == 0)
 		return format_tx_dryrun_ui(snapshot, command + 10, buf,
 		    bufsiz);
+	if (strncmp(command, "DISPATCH ", 9) == 0)
+		return format_tx_dispatch(snapshot, command + 9, buf, bufsiz);
 
 	if (strcmp(command, "STATUS") == 0) {
 		if (snprintf(buf, bufsiz,
 		    "OK TX STATUS enabled=%s dry_run=%s allow_ui=%s "
 		    "allow_control_enqueue=%s allow_shell_enqueue=%s "
-		    "queued=%llu max_queued=%llu max_payload=%llu\nEND\n",
+		    "dispatch_enabled=%s dispatch_test_only=%s "
+		    "dispatch_max_per_cycle=%llu queued=%llu "
+		    "max_queued=%llu max_payload=%llu",
 		    snapshot->tx_queue->policy.enabled != 0 ? "true" :
 		    "false",
 		    snapshot->tx_queue->policy.dry_run != 0 ? "true" :
@@ -554,6 +561,12 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		    "true" : "false",
 		    snapshot->tx_queue->policy.allow_shell_enqueue != 0 ?
 		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_enabled != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_test_only != 0 ?
+		    "true" : "false",
+		    (unsigned long long)
+		    snapshot->tx_queue->policy.dispatch_max_per_cycle,
 		    (unsigned long long)kn_tx_queue_count(
 		    snapshot->tx_queue),
 		    (unsigned long long)snapshot->tx_queue->max_frames,
@@ -561,6 +574,34 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 		    snapshot->tx_queue->policy.max_payload_bytes) >=
 		    (int)bufsiz)
 			return KN_CONTROL_ERR_IO;
+		if (snapshot->tx_dispatch != NULL) {
+			size_t offset;
+
+			offset = strlen(buf);
+			if (append_format(buf, bufsiz, &offset,
+			    " dispatch_attempts=%llu dispatch_sent=%llu "
+			    "dispatch_failed=%llu dispatch_blocked=%llu "
+			    "tx_bytes=%llu\nEND\n",
+			    (unsigned long long)
+			    snapshot->tx_dispatch->stats.attempts,
+			    (unsigned long long)
+			    snapshot->tx_dispatch->stats.sent,
+			    (unsigned long long)
+			    snapshot->tx_dispatch->stats.failed,
+			    (unsigned long long)
+			    snapshot->tx_dispatch->stats.blocked,
+			    (unsigned long long)
+			    snapshot->tx_dispatch->stats.bytes_written) !=
+			    KN_CONTROL_OK)
+				return KN_CONTROL_ERR_IO;
+		} else {
+			size_t offset;
+
+			offset = strlen(buf);
+			if (append_format(buf, bufsiz, &offset, "\nEND\n") !=
+			    KN_CONTROL_OK)
+				return KN_CONTROL_ERR_IO;
+		}
 		return KN_CONTROL_OK;
 	}
 
@@ -600,6 +641,97 @@ format_tx(const struct kn_control_snapshot *snapshot, const char *command,
 			return KN_CONTROL_ERR_IO;
 		if (snprintf(buf, bufsiz, "OK TX FRAME id=%llu\n%s\nEND\n",
 		    (unsigned long long)frame->id, line) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	(void)snprintf(buf, bufsiz, "ERR invalid-tx-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+format_tx_dispatch(const struct kn_control_snapshot *snapshot,
+	const char *command, char *buf, size_t bufsiz)
+{
+	struct kn_tx_dispatch_result result;
+	const char *port_name;
+	enum kn_tx_dispatch_error tx_rc;
+
+	if (strcmp(command, "STATUS") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK TX DISPATCH STATUS enabled=%s test_only=%s "
+		    "max_per_cycle=%llu attempts=%llu sent=%llu failed=%llu "
+		    "blocked=%llu bytes=%llu\nEND\n",
+		    snapshot->tx_queue->policy.dispatch_enabled != 0 ?
+		    "true" : "false",
+		    snapshot->tx_queue->policy.dispatch_test_only != 0 ?
+		    "true" : "false",
+		    (unsigned long long)
+		    snapshot->tx_queue->policy.dispatch_max_per_cycle,
+		    snapshot->tx_dispatch != NULL ? (unsigned long long)
+		    snapshot->tx_dispatch->stats.attempts : 0ULL,
+		    snapshot->tx_dispatch != NULL ? (unsigned long long)
+		    snapshot->tx_dispatch->stats.sent : 0ULL,
+		    snapshot->tx_dispatch != NULL ? (unsigned long long)
+		    snapshot->tx_dispatch->stats.failed : 0ULL,
+		    snapshot->tx_dispatch != NULL ? (unsigned long long)
+		    snapshot->tx_dispatch->stats.blocked : 0ULL,
+		    snapshot->tx_dispatch != NULL ? (unsigned long long)
+		    snapshot->tx_dispatch->stats.bytes_written : 0ULL) >=
+		    (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "RUN") == 0 ||
+	    strncmp(command, "RUN PORT ", 9) == 0) {
+		enum kn_tx_policy_error policy_rc;
+
+		port_name = NULL;
+		if (strncmp(command, "RUN PORT ", 9) == 0) {
+			port_name = command + 9;
+			if (port_name[0] == '\0' ||
+			    strlen(port_name) >= KN_CONFIG_PORT_NAME_MAX ||
+			    strchr(port_name, ' ') != NULL) {
+				(void)snprintf(buf, bufsiz,
+				    "ERR invalid-port\n");
+				return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+			}
+		}
+		policy_rc = kn_tx_policy_allow_dispatch(
+		    &snapshot->tx_queue->policy);
+		if (policy_rc == KN_TX_POLICY_ERR_DISABLED ||
+		    policy_rc == KN_TX_POLICY_ERR_DISPATCH_DISABLED) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR tx-dispatch-disabled\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (policy_rc ==
+		    KN_TX_POLICY_ERR_DISPATCH_TEST_ONLY_REQUIRED) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR tx-dispatch-test-only-required\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (snapshot->tx_dispatch == NULL) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR tx-dispatch-no-safe-target\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		tx_rc = kn_tx_dispatch_run(snapshot->tx_queue,
+		    snapshot->tx_dispatch, port_name, &result);
+		if (tx_rc != KN_TX_DISPATCH_OK) {
+			if (snprintf(buf, bufsiz, "ERR %s\n",
+			    kn_tx_dispatch_error_name(tx_rc)) >= (int)bufsiz)
+				return KN_CONTROL_ERR_IO;
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (snprintf(buf, bufsiz,
+		    "OK TX DISPATCH sent=%llu failed=%llu remaining=%llu "
+		    "bytes=%llu\nEND\n",
+		    (unsigned long long)result.sent,
+		    (unsigned long long)result.failed,
+		    (unsigned long long)result.remaining,
+		    (unsigned long long)result.bytes_written) >= (int)bufsiz)
 			return KN_CONTROL_ERR_IO;
 		return KN_CONTROL_OK;
 	}
