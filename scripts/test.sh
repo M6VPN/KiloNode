@@ -12,5 +12,10 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
 ./build/kilonode-compat replay-pack tests/fixtures/compat/linbpq-node/manifest.pack
+./build/kilonode-compat check-requirements tests/fixtures/compat/linbpq-node/requirements.plan
+./build/kilonode-compat requirements-coverage tests/fixtures/compat/linbpq-node/requirements.plan tests/fixtures/compat/linbpq-node/manifest.pack
+./build/kilonode-compat check-command-profiles tests/fixtures/compat/linbpq-node/command-profiles.plan
+./build/kilonode-compat risk-report tests/fixtures/compat/linbpq-node/requirements.plan
+./scripts/compat-check-node-plan.sh
 ./build/kilonode-compat check-observation tests/fixtures/compat/blackbox-node-help.observation
 ./build/kilonode-compat check-observation tests/fixtures/compat/blackbox-node-info.observation

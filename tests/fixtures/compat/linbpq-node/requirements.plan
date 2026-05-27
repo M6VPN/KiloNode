@@ -1,0 +1,102 @@
+# KiloNode compatibility requirements v1
+name linbpq-node-requirements
+subject linbpq
+source-pack manifest.pack
+clean-room true
+source-code-used false
+
+requirement HELP {
+	status needs-observation
+	priority high
+	observed synthetic
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement INFO {
+	status needs-observation
+	priority high
+	observed synthetic
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement PORTS {
+	status needs-observation
+	priority high
+	observed synthetic
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement USERS {
+	status needs-observation
+	priority medium
+	observed synthetic
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement HEARD {
+	status implemented-native
+	priority high
+	observed planned
+	mode node-command
+	notes Native command exists; compatibility remains unimplemented.
+}
+
+requirement STATS {
+	status implemented-native
+	priority medium
+	observed planned
+	mode node-command
+	notes Native command exists; compatibility remains unimplemented.
+}
+
+requirement BYE {
+	status planned
+	priority medium
+	observed planned
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement UNKNOWN {
+	status needs-observation
+	priority high
+	observed synthetic
+	mode node-command
+	notes Needs manual black-box observations before implementation.
+}
+
+requirement BBS {
+	status blocked
+	priority high
+	observed planned
+	mode node-command
+	notes RF BBS access is deferred.
+}
+
+requirement CONNECT {
+	status blocked
+	priority critical
+	observed planned
+	mode node-command
+	notes Connected-mode AX.25 is deferred.
+}
+
+requirement NODES {
+	status blocked
+	priority high
+	observed planned
+	mode node-command
+	notes NET/ROM is deferred.
+}
+
+requirement ROUTES {
+	status blocked
+	priority high
+	observed planned
+	mode node-command
+	notes NET/ROM is deferred.
+}

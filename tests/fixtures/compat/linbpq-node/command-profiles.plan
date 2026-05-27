@@ -1,0 +1,95 @@
+# KiloNode command profiles v1
+name linbpq-node-command-profiles
+subject linbpq
+clean-room true
+source-code-used false
+
+command HELP {
+	category informational
+	transport telnet
+	args none
+	reply one-or-more-lines
+	stateful false
+	requires-connected-mode false
+	compat-status needs-observation
+}
+
+command INFO {
+	category informational
+	transport telnet
+	args none
+	reply one-or-more-lines
+	stateful false
+	requires-connected-mode false
+	compat-status needs-observation
+}
+
+command PORTS {
+	category informational
+	transport telnet
+	args none
+	reply one-or-more-lines
+	stateful false
+	requires-connected-mode false
+	compat-status needs-observation
+}
+
+command USERS {
+	category informational
+	transport telnet
+	args none
+	reply one-or-more-lines
+	stateful false
+	requires-connected-mode false
+	compat-status needs-observation
+}
+
+command UNKNOWN {
+	category unknown-handling
+	transport telnet
+	args free-text
+	reply one-line
+	stateful false
+	requires-connected-mode false
+	compat-status needs-observation
+}
+
+command BBS {
+	category bbs
+	transport connected-ax25
+	args optional
+	reply session-transition
+	stateful true
+	requires-connected-mode true
+	compat-status blocked
+}
+
+command CONNECT {
+	category session
+	transport connected-ax25
+	args required
+	reply session-transition
+	stateful true
+	requires-connected-mode true
+	compat-status blocked
+}
+
+command NODES {
+	category routing
+	transport netrom
+	args none
+	reply one-or-more-lines
+	stateful true
+	requires-connected-mode true
+	compat-status blocked
+}
+
+command ROUTES {
+	category routing
+	transport netrom
+	args none
+	reply one-or-more-lines
+	stateful true
+	requires-connected-mode true
+	compat-status blocked
+}

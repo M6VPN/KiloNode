@@ -125,3 +125,18 @@ can add black-box observations by:
 5. updating coverage reports
 
 Observation packs do not execute the target binary and do not inspect source.
+
+## Planning Workflow
+
+M1.30 adds requirements, command profiles, and risk reports derived from the
+observation pack:
+
+```text
+./build/kilonode-compat requirements-coverage tests/fixtures/compat/linbpq-node/requirements.plan tests/fixtures/compat/linbpq-node/manifest.pack
+./build/kilonode-compat command-profile-report tests/fixtures/compat/linbpq-node/command-profiles.plan
+./build/kilonode-compat risk-report tests/fixtures/compat/linbpq-node/requirements.plan
+```
+
+The planning files do not implement compatibility. They record which commands
+need observations, which prerequisites block implementation, and which
+clean-room risks must stay visible during future work.

@@ -84,6 +84,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Node observation pack manifest | tested | Native manifest parser with clean-room checks |
 | Synthetic node observation fixtures | tested | Placeholder observations for tooling coverage |
 | Node command coverage report | tested | Deterministic coverage summary |
+| Node command requirements layer | tested | Planning file parser and coverage cross-check |
+| Command profile planner | tested | External behaviour categories only, no parser logic |
+| Compatibility risk register | tested | Default clean-room and prerequisite risk report |
+| Generated node plan from observations | tested | Writes conservative requirements and profiles |
 | Manual LinBPQ node observations | planned | Future explicit black-box captures |
 | Live KISS capture | planned | Not implemented |
 | Live AXIP capture | planned | Not implemented |

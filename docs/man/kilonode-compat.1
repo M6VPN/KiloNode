@@ -86,6 +86,33 @@
 .Nm
 .Cm compare-pack-observations
 .Ar path
+.Nm
+.Cm check-requirements
+.Ar path
+.Nm
+.Cm requirements-report
+.Ar path
+.Nm
+.Cm requirements-coverage
+.Ar requirements
+.Ar pack
+.Nm
+.Cm check-command-profiles
+.Ar path
+.Nm
+.Cm command-profile-report
+.Ar path
+.Nm
+.Cm check-risk-register
+.Ar path
+.Nm
+.Cm risk-report
+.Ar path
+.Nm
+.Cm generate-node-plan
+.Ar pack
+.Fl -requirements Ar path
+.Fl -profiles Ar path
 .Sh DESCRIPTION
 .Nm
 validates and replays KiloNode-native compatibility transcripts.
@@ -152,6 +179,24 @@ Print node command coverage for an observation pack.
 Replay transcript fixtures referenced by an observation pack.
 .It Cm compare-pack-observations Ar path
 Compare observation fixtures in deterministic manifest order.
+.It Cm check-requirements Ar path
+Validate a node command requirements planning file.
+.It Cm requirements-report Ar path
+Print requirement status and priority summaries.
+.It Cm requirements-coverage Ar requirements Ar pack
+Compare requirements against observation pack coverage.
+.It Cm check-command-profiles Ar path
+Validate a command profile planning file.
+.It Cm command-profile-report Ar path
+Print command profile category and blocked summaries.
+.It Cm check-risk-register Ar path
+Validate that a planning context path is readable and report the default risk
+register availability.
+.It Cm risk-report Ar path
+Print the default compatibility planning risk register.
+.It Cm generate-node-plan Ar pack Fl -requirements Ar path Fl -profiles Ar path
+Generate conservative requirements and command profile planning files from an
+observation pack.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -168,6 +213,9 @@ kilonode-compat replay-capture tests/fixtures/compat/kiss-ui-ping.capture
 kilonode-compat capture-to-transcript tests/fixtures/compat/kiss-ui-ping.capture --output /tmp/kilonode-capture.transcript
 kilonode-compat check-pack tests/fixtures/compat/linbpq-node/manifest.pack
 kilonode-compat pack-coverage tests/fixtures/compat/linbpq-node/manifest.pack
+kilonode-compat check-requirements tests/fixtures/compat/linbpq-node/requirements.plan
+kilonode-compat command-profile-report tests/fixtures/compat/linbpq-node/command-profiles.plan
+kilonode-compat risk-report tests/fixtures/compat/linbpq-node/requirements.plan
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
@@ -179,6 +227,8 @@ Packet captures are offline text fixtures in this pass. No live capture, pcap
 input, real TNC hardware, or TX dispatch is used.
 Observation packs are metadata and fixture lists only. They do not execute
 compatibility targets or inspect source trees.
+Planning files are requirements, profile, and risk metadata only. They do not
+implement BPQ/LinBPQ command compatibility.
 .Sh SEE ALSO
 .Xr kilonodectl 1 ,
 .Xr kilonoded 8
