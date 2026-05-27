@@ -1,7 +1,8 @@
 # LinBPQ Black-Box Plan
 
-This document records a future clean-room plan. M1.26 does not run LinBPQ and
-does not inspect GPL source.
+This document records the clean-room black-box plan. M1.27 adds optional
+observation tooling, but LinBPQ is still never run automatically and GPL source
+is not inspected.
 
 Known local paths for a later manual black-box pass:
 
@@ -38,6 +39,39 @@ packet capture reference.
 
 Packet captures should be reduced to externally visible fields needed for
 compatibility tests. Implementation code must remain KiloNode-native.
+
+## Explicit Process Observation Example
+
+This command shape is for a future manual lab only:
+
+```text
+./build/kilonode-compat observe-process \
+	--binary ~/Sync/Code/M6VPN/M6VPN-7/3rd/linbpq/linbpq \
+	--config ~/Sync/Code/M6VPN/M6VPN-7/3rd/linbpq/bpq32.cfg.example \
+	--name linbpq-startup-001 \
+	--mode process-output \
+	--input "" \
+	--output /tmp/linbpq-startup.observation \
+	--timeout 10
+```
+
+The user must choose to run it. Tests and scripts do not run this command.
+
+## Explicit TCP Observation Example
+
+```text
+./build/kilonode-compat observe-tcp \
+	--host 127.0.0.1 \
+	--port 8010 \
+	--name linbpq-node-help-001 \
+	--mode node-shell \
+	--input HELP \
+	--output /tmp/linbpq-node-help.observation \
+	--timeout 10
+```
+
+TCP observation captures external session output only. It does not assume
+command compatibility or infer implementation details.
 
 ## Node and BBS Transcripts
 

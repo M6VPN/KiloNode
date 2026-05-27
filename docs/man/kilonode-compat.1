@@ -17,13 +17,47 @@
 .Nm
 .Cm report-transcript
 .Ar path
+.Nm
+.Cm check-observation
+.Ar path
+.Nm
+.Cm show-observation
+.Ar path
+.Nm
+.Cm observe-process
+.Fl -binary Ar path
+.Fl -config Ar path
+.Fl -name Ar name
+.Fl -mode Ar mode
+.Fl -input Ar text
+.Fl -output Ar path
+.Op Fl -timeout Ar seconds
+.Nm
+.Cm observe-tcp
+.Fl -host Ar host
+.Fl -port Ar port
+.Fl -name Ar name
+.Fl -mode Ar mode
+.Fl -input Ar text
+.Fl -output Ar path
+.Op Fl -timeout Ar seconds
+.Nm
+.Cm make-transcript-from-observation
+.Ar path
+.Fl -output Ar path
+.Nm
+.Cm compare-observations
+.Ar left
+.Ar right
 .Sh DESCRIPTION
 .Nm
 validates and replays KiloNode-native compatibility transcripts.
-The current replay mode is synthetic RF UI command ingress.
+The current replay mode is synthetic RF UI command ingress. It can also validate
+and store black-box observation files.
 .Pp
 The tool does not run LinBPQ, inspect GPL source, open real transports, or
-dispatch queued transmit frames.
+dispatch queued transmit frames unless the operator explicitly requests a
+bounded observation command.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Fl -help
@@ -41,6 +75,19 @@ Replay all
 files in sorted order.
 .It Cm report-transcript Ar path
 Print the parsed transcript fields without replay.
+.It Cm check-observation Ar path
+Validate one black-box observation file.
+.It Cm show-observation Ar path
+Print sanitized observation metadata and a bounded output preview.
+.It Cm observe-process
+Run an explicitly supplied binary with bounded stdout and stderr capture.
+.It Cm observe-tcp
+Connect to an explicitly supplied TCP endpoint, send one bounded line, and
+capture a bounded response.
+.It Cm make-transcript-from-observation Ar path Fl -output Ar path
+Write a transcript candidate marked as black-box observation data.
+.It Cm compare-observations Ar left Ar right
+Compare two observations at text level.
 .El
 .Sh FILES
 .Bl -tag -width Ds
@@ -51,11 +98,15 @@ Synthetic KiloNode-native baseline fixtures.
 .Bd -literal
 kilonode-compat check-transcript tests/fixtures/compat/rf-ping.transcript
 kilonode-compat replay-dir tests/fixtures/compat
+kilonode-compat check-observation tests/fixtures/compat/blackbox-node-help.observation
+kilonode-compat show-observation tests/fixtures/compat/blackbox-node-help.observation
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
 Synthetic replay never dispatches TX frames.
 Future LinBPQ observations must be black-box behaviour only.
+LinBPQ is not run automatically; process observation requires an explicit
+binary path from the operator.
 .Sh SEE ALSO
 .Xr kilonodectl 1 ,
 .Xr kilonoded 8

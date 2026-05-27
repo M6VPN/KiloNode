@@ -72,7 +72,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KiloNode synthetic RF command fixtures | tested | Synthetic KiloNode-native baseline transcripts |
 | Compatibility transcript parser | tested | Native line-based transcript parser |
 | Compatibility replay harness | tested | Synthetic RF UI replay without real transports |
-| Black-box LinBPQ execution harness | planned | Future manual lab pass only |
+| Black-box observation parser | tested | Native observation file parser |
+| Process observation harness | tested | Explicit binary path only, no shell |
+| TCP observation harness | tested | Explicit endpoint, bounded line capture |
+| Transcript generation from observations | tested | Generates marked candidate data |
+| Automated LinBPQ compatibility observations | planned | Manual explicit action only |
+| Black-box LinBPQ execution harness | partial | Optional explicit CLI, not used by tests |
 | BPQ/LinBPQ RF command observations | planned | Future black-box transcripts |
 | BPQ/LinBPQ command compatibility implementation | planned | Not implemented |
 | RF BBS compatibility observations | planned | Future black-box transcripts |

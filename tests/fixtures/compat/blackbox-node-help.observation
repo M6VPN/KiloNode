@@ -1,0 +1,14 @@
+# KiloNode black-box observation v1
+# Synthetic observation fixture, not captured from LinBPQ.
+name blackbox-node-help
+subject synthetic
+method telnet
+date 2026-05-27
+observer M6VPN
+mode node-shell
+connect 127.0.0.1:8010
+input HELP
+observed-begin
+Synthetic node help output.
+observed-end
+notes fixture only, no external binary was run

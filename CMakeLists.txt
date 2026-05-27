@@ -23,8 +23,12 @@ function(kilonode_target_defaults target_name)
 endfunction()
 
 add_library(packetcore STATIC
+	src/compat/compat_capture.c
+	src/compat/compat_observe.c
+	src/compat/compat_process.c
 	src/compat/compat_report.c
 	src/compat/compat_replay.c
+	src/compat/compat_session.c
 	src/compat/compat_transcript.c
 	src/control/control_protocol.c
 	src/control/control_socket.c
@@ -152,6 +156,29 @@ add_executable(test_compat_transcript tests/test_compat_transcript.c)
 target_link_libraries(test_compat_transcript PRIVATE packetcore)
 kilonode_target_defaults(test_compat_transcript)
 add_test(NAME compat_transcript COMMAND test_compat_transcript)
+
+add_executable(compat_process_helper tests/compat_process_helper.c)
+kilonode_target_defaults(compat_process_helper)
+
+add_executable(test_compat_observe tests/test_compat_observe.c)
+target_link_libraries(test_compat_observe PRIVATE packetcore)
+kilonode_target_defaults(test_compat_observe)
+add_test(NAME compat_observe COMMAND test_compat_observe)
+
+add_executable(test_compat_process tests/test_compat_process.c)
+target_link_libraries(test_compat_process PRIVATE packetcore)
+kilonode_target_defaults(test_compat_process)
+add_test(NAME compat_process COMMAND test_compat_process)
+
+add_executable(test_compat_session tests/test_compat_session.c)
+target_link_libraries(test_compat_session PRIVATE packetcore)
+kilonode_target_defaults(test_compat_session)
+add_test(NAME compat_session COMMAND test_compat_session)
+
+add_executable(test_compat_capture tests/test_compat_capture.c)
+target_link_libraries(test_compat_capture PRIVATE packetcore)
+kilonode_target_defaults(test_compat_capture)
+add_test(NAME compat_capture COMMAND test_compat_capture)
 
 add_executable(test_compat_replay tests/test_compat_replay.c)
 target_link_libraries(test_compat_replay PRIVATE packetcore)
