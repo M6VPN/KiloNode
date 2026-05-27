@@ -10,12 +10,16 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 connected-mode state-machine core | tested | Isolated unit-tested state core only, not wired to runtime |
 | AX.25 modulo 8 sequence accounting | tested | Basic receive and acknowledgement helpers |
 | AX.25 action intents | tested | Bounded intents only, no frame bytes or TX queue writes |
+| AX.25 response frame builder | tested | Raw AX.25 SABM/SABME/UA/DM/DISC/RR/RNR/REJ builder only |
+| AX.25 action-to-frame mapper | tested | Action intents map to frame plans only, no queue or dispatch |
+| AX.25 live response queueing | planned | Not implemented |
 | AX.25 connected-mode state machine | partial | First core exists, live sessions are planned |
 | Live AX.25 connected sessions | planned | Not implemented |
 | RF CONNECT command | planned | Not implemented |
 | FX.25 reference indexing | implemented | Local FX.25 reference is indexed for future work |
 | FX.25 layer scaffold | tested | Disabled params and decode placeholder only |
 | FX.25 FEC encode/decode | planned | Not implemented |
+| FX.25 wrapping | planned | Not implemented |
 | FX.25 KISS integration | planned | Not implemented |
 | BPQ/LinBPQ connected-mode interop | planned | Future black-box tests only |
 | BPQ/LinBPQ FX.25 interop if applicable | planned | Future black-box tests only |

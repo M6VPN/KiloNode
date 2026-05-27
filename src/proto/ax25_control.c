@@ -10,6 +10,10 @@
 
 static enum kn_ax25_s_subtype decode_s_subtype(uint8_t);
 static enum kn_ax25_u_subtype decode_u_subtype(uint8_t);
+static enum kn_ax25_control_error encode_s_base(
+	enum kn_ax25_s_subtype, uint8_t *);
+static enum kn_ax25_control_error encode_u_base(
+	enum kn_ax25_u_subtype, uint8_t *);
 
 static enum kn_ax25_s_subtype
 decode_s_subtype(uint8_t control)
@@ -55,6 +59,73 @@ decode_u_subtype(uint8_t control)
 	return KN_AX25_U_SUBTYPE_UNKNOWN;
 }
 
+static enum kn_ax25_control_error
+encode_s_base(enum kn_ax25_s_subtype subtype, uint8_t *control)
+{
+	if (control == NULL)
+		return KN_AX25_CONTROL_ERR_INVALID_ARGUMENT;
+
+	switch (subtype) {
+	case KN_AX25_S_SUBTYPE_RR:
+		*control = 0x01U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_S_SUBTYPE_RNR:
+		*control = 0x05U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_S_SUBTYPE_REJ:
+		*control = 0x09U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_S_SUBTYPE_SREJ:
+		*control = 0x0dU;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_S_SUBTYPE_UNKNOWN:
+		break;
+	}
+
+	return KN_AX25_CONTROL_ERR_INVALID_VALUE;
+}
+
+static enum kn_ax25_control_error
+encode_u_base(enum kn_ax25_u_subtype subtype, uint8_t *control)
+{
+	if (control == NULL)
+		return KN_AX25_CONTROL_ERR_INVALID_ARGUMENT;
+
+	switch (subtype) {
+	case KN_AX25_U_SUBTYPE_SABM:
+		*control = 0x2fU;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_SABME:
+		*control = 0x6fU;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_DISC:
+		*control = 0x43U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_DM:
+		*control = 0x0fU;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_UA:
+		*control = 0x63U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_FRMR:
+		*control = 0x87U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_UI:
+		*control = KN_AX25_CONTROL_UI;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_XID:
+		*control = 0xafU;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_TEST:
+		*control = 0xe3U;
+		return KN_AX25_CONTROL_OK;
+	case KN_AX25_U_SUBTYPE_UNKNOWN:
+		break;
+	}
+
+	return KN_AX25_CONTROL_ERR_INVALID_VALUE;
+}
+
 void
 kn_ax25_control_decode(uint8_t control, struct kn_ax25_control_info *info)
 {
@@ -94,6 +165,53 @@ kn_ax25_control_decode(uint8_t control, struct kn_ax25_control_info *info)
 		info->u_subtype = decode_u_subtype(control);
 		info->poll_final = (uint8_t)((control & 0x10U) != 0);
 	}
+}
+
+enum kn_ax25_control_error
+kn_ax25_control_encode_s(enum kn_ax25_s_subtype subtype, uint8_t nr,
+	uint8_t poll_final, uint8_t *control)
+{
+	enum kn_ax25_control_error rc;
+	uint8_t value;
+
+	if (control == NULL)
+		return KN_AX25_CONTROL_ERR_INVALID_ARGUMENT;
+	if (nr > 7 || poll_final > 1)
+		return KN_AX25_CONTROL_ERR_INVALID_VALUE;
+
+	rc = encode_s_base(subtype, &value);
+	if (rc != KN_AX25_CONTROL_OK)
+		return rc;
+
+	value = (uint8_t)(value | (uint8_t)(nr << 5));
+	if (poll_final != 0)
+		value = (uint8_t)(value | 0x10U);
+
+	*control = value;
+	return KN_AX25_CONTROL_OK;
+}
+
+enum kn_ax25_control_error
+kn_ax25_control_encode_u(enum kn_ax25_u_subtype subtype, uint8_t poll_final,
+	uint8_t *control)
+{
+	enum kn_ax25_control_error rc;
+	uint8_t value;
+
+	if (control == NULL)
+		return KN_AX25_CONTROL_ERR_INVALID_ARGUMENT;
+	if (poll_final > 1)
+		return KN_AX25_CONTROL_ERR_INVALID_VALUE;
+
+	rc = encode_u_base(subtype, &value);
+	if (rc != KN_AX25_CONTROL_OK)
+		return rc;
+
+	if (poll_final != 0)
+		value = (uint8_t)(value | 0x10U);
+
+	*control = value;
+	return KN_AX25_CONTROL_OK;
 }
 
 const char *

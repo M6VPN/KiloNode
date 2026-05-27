@@ -10,8 +10,10 @@
 
 static int test_i_classification(void);
 static int test_invalid_output_safe(void);
+static int test_s_encode_decode(void);
 static int test_s_classification(void);
 static int test_string_formatting(void);
+static int test_u_encode_decode(void);
 static int test_u_classification(void);
 static int test_ui_classification(void);
 static int test_unknown_u_subtype(void);
@@ -25,7 +27,11 @@ main(void)
 		return 1;
 	if (test_s_classification() != 0)
 		return 1;
+	if (test_s_encode_decode() != 0)
+		return 1;
 	if (test_u_classification() != 0)
+		return 1;
+	if (test_u_encode_decode() != 0)
 		return 1;
 	if (test_unknown_u_subtype() != 0)
 		return 1;
@@ -61,6 +67,27 @@ static int
 test_invalid_output_safe(void)
 {
 	kn_ax25_control_decode(KN_AX25_CONTROL_UI, NULL);
+	return 0;
+}
+
+static int
+test_s_encode_decode(void)
+{
+	struct kn_ax25_control_info info;
+	uint8_t control;
+
+	if (kn_ax25_control_encode_s(KN_AX25_S_SUBTYPE_RR, 4, 1,
+	    &control) != KN_AX25_CONTROL_OK)
+		return 1;
+	kn_ax25_control_decode(control, &info);
+	if (info.class != KN_AX25_CONTROL_CLASS_S ||
+	    info.s_subtype != KN_AX25_S_SUBTYPE_RR ||
+	    info.nr != 4 || info.poll_final != 1)
+		return 1;
+	if (kn_ax25_control_encode_s(KN_AX25_S_SUBTYPE_REJ, 8, 0,
+	    &control) != KN_AX25_CONTROL_ERR_INVALID_VALUE)
+		return 1;
+
 	return 0;
 }
 
@@ -102,6 +129,27 @@ test_string_formatting(void)
 	    "TEST") != 0)
 		return 1;
 	if (strcmp(kn_ax25_control_class_name(99), "unknown") != 0)
+		return 1;
+
+	return 0;
+}
+
+static int
+test_u_encode_decode(void)
+{
+	struct kn_ax25_control_info info;
+	uint8_t control;
+
+	if (kn_ax25_control_encode_u(KN_AX25_U_SUBTYPE_UA, 1,
+	    &control) != KN_AX25_CONTROL_OK)
+		return 1;
+	kn_ax25_control_decode(control, &info);
+	if (info.class != KN_AX25_CONTROL_CLASS_U ||
+	    info.u_subtype != KN_AX25_U_SUBTYPE_UA ||
+	    info.poll_final != 1)
+		return 1;
+	if (kn_ax25_control_encode_u(KN_AX25_U_SUBTYPE_UNKNOWN, 0,
+	    &control) != KN_AX25_CONTROL_ERR_INVALID_VALUE)
 		return 1;
 
 	return 0;

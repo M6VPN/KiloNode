@@ -13,6 +13,17 @@
 | UA handling                    | partial     | Isolated state core completes setup/release waits. |
 | DISC/DM handling               | partial     | Isolated state core tears down links and returns bounded action intents. |
 | RR/RNR/REJ handling            | partial     | Isolated sequence accounting updates ack, busy, and retransmit-needed flags. |
+| SABM frame build               | implemented | Raw AX.25 body builder emits SABM control frames without HDLC, FCS, KISS, or FX.25 wrapping. |
+| SABME frame build              | implemented | Raw AX.25 body builder emits SABME control frames. |
+| UA frame build                 | implemented | Raw AX.25 body builder emits UA response frames. |
+| DM frame build                 | implemented | Raw AX.25 body builder emits DM response frames. |
+| DISC frame build               | implemented | Raw AX.25 body builder emits DISC frames. |
+| RR frame build                 | implemented | Raw AX.25 body builder emits RR frames with modulo 8 N(R). |
+| RNR frame build                | implemented | Raw AX.25 body builder emits RNR frames with modulo 8 N(R). |
+| REJ frame build                | implemented | Raw AX.25 body builder emits REJ frames with modulo 8 N(R). |
+| Action-to-frame mapping        | implemented | Send action intents map to frame plans only. No TX queue writes or dispatch occur. |
+| I-frame data build             | planned     | Connected information transfer frame generation is deferred. |
+| Live TX queue integration      | planned     | Response frame queueing is not wired to runtime paths. |
 | Connected-mode state machine   | partial     | First isolated unit-tested core exists. It is not wired to runtime RX/TX. |
 | Timers                         | scaffold    | T1 and T3 are action intents only. No scheduler is started. |
 | Retries                        | partial     | N2 retry count is used by isolated timeout transitions. |

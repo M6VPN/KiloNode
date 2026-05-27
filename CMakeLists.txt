@@ -66,8 +66,11 @@ add_library(packetcore STATIC
 	src/node/node_shell.c
 	src/proto/ax25.c
 	src/proto/ax25_action.c
+	src/proto/ax25_action_mapper.c
 	src/proto/ax25_control.c
 	src/proto/ax25_connection.c
+	src/proto/ax25_frame_builder.c
+	src/proto/ax25_frame_plan.c
 	src/proto/ax25_params.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
@@ -152,6 +155,11 @@ target_link_libraries(test_ax25_action PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_action)
 add_test(NAME ax25_action COMMAND test_ax25_action)
 
+add_executable(test_ax25_action_mapper tests/test_ax25_action_mapper.c)
+target_link_libraries(test_ax25_action_mapper PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_action_mapper)
+add_test(NAME ax25_action_mapper COMMAND test_ax25_action_mapper)
+
 add_executable(test_ax25_control tests/test_ax25_control.c)
 target_link_libraries(test_ax25_control PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_control)
@@ -161,6 +169,16 @@ add_executable(test_ax25_connection tests/test_ax25_connection.c)
 target_link_libraries(test_ax25_connection PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_connection)
 add_test(NAME ax25_connection COMMAND test_ax25_connection)
+
+add_executable(test_ax25_frame_builder tests/test_ax25_frame_builder.c)
+target_link_libraries(test_ax25_frame_builder PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_frame_builder)
+add_test(NAME ax25_frame_builder COMMAND test_ax25_frame_builder)
+
+add_executable(test_ax25_frame_plan tests/test_ax25_frame_plan.c)
+target_link_libraries(test_ax25_frame_plan PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_frame_plan)
+add_test(NAME ax25_frame_plan COMMAND test_ax25_frame_plan)
 
 add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)

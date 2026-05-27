@@ -11,6 +11,8 @@
 | AX.25 payload extraction | planned | No embedded AX.25 payload is claimed. |
 | Fallback to AX.25       | scaffold | Parameter defaults allow future fallback. RX path is unchanged. |
 | KISS integration        | planned  | No KISS RX/TX integration in M1.32. |
+| Output boundary documented | scaffold | AX.25 action mapping emits raw AX.25 bytes before any future FX.25 wrapping. |
+| FX.25 wrapping          | planned  | No FX.25 TX wrapper is present. |
 | Test vectors            | planned  | Synthetic and reference-derived vectors are needed. |
 | Interop captures        | planned  | Future black-box captures only. |
 | Connected-mode boundary | scaffold | FX.25 remains separate. Future decode must produce AX.25 bytes before AX.25 connection state handling. |
