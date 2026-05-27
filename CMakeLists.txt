@@ -65,6 +65,11 @@ add_library(packetcore STATIC
 	src/node/node_command_profile.c
 	src/node/node_shell.c
 	src/proto/ax25.c
+	src/proto/ax25_control.c
+	src/proto/ax25_connection.c
+	src/proto/ax25_params.c
+	src/proto/fx25.c
+	src/proto/fx25_params.c
 	src/proto/kiss.c
 	src/proto/kiss_stream.c
 	src/rf/rf_command.c
@@ -139,10 +144,35 @@ target_link_libraries(test_ax25 PRIVATE packetcore)
 kilonode_target_defaults(test_ax25)
 add_test(NAME ax25 COMMAND test_ax25)
 
+add_executable(test_ax25_control tests/test_ax25_control.c)
+target_link_libraries(test_ax25_control PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_control)
+add_test(NAME ax25_control COMMAND test_ax25_control)
+
+add_executable(test_ax25_connection tests/test_ax25_connection.c)
+target_link_libraries(test_ax25_connection PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_connection)
+add_test(NAME ax25_connection COMMAND test_ax25_connection)
+
+add_executable(test_ax25_params tests/test_ax25_params.c)
+target_link_libraries(test_ax25_params PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_params)
+add_test(NAME ax25_params COMMAND test_ax25_params)
+
 add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)
 kilonode_target_defaults(test_callsign)
 add_test(NAME callsign COMMAND test_callsign)
+
+add_executable(test_fx25 tests/test_fx25.c)
+target_link_libraries(test_fx25 PRIVATE packetcore)
+kilonode_target_defaults(test_fx25)
+add_test(NAME fx25 COMMAND test_fx25)
+
+add_executable(test_fx25_params tests/test_fx25_params.c)
+target_link_libraries(test_fx25_params PRIVATE packetcore)
+kilonode_target_defaults(test_fx25_params)
+add_test(NAME fx25_params COMMAND test_fx25_params)
 
 add_executable(test_config tests/test_config.c)
 target_link_libraries(test_config PRIVATE packetcore)

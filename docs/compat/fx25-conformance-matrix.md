@@ -1,0 +1,15 @@
+# FX.25 Conformance Matrix
+
+| Area                    | Status   | Notes |
+|-------------------------|----------|-------|
+| Reference indexed       | scaffold | `FX-25_01_06.pdf` is indexed as an informative draft. |
+| Layer model             | scaffold | Modes, statuses, payload relation, and FEC profile placeholders exist. |
+| Detect-only scaffold    | scaffold | Parameters can validate detect-only mode. Detection is not implemented. |
+| Tag/correlation detect  | planned  | Requires test vectors and packet-boundary captures. |
+| FEC decode              | planned  | No Reed-Solomon correction is present. |
+| FEC encode              | planned  | No encoder is present. |
+| AX.25 payload extraction | planned | No embedded AX.25 payload is claimed. |
+| Fallback to AX.25       | scaffold | Parameter defaults allow future fallback. RX path is unchanged. |
+| KISS integration        | planned  | No KISS RX/TX integration in M1.32. |
+| Test vectors            | planned  | Synthetic and reference-derived vectors are needed. |
+| Interop captures        | planned  | Future black-box captures only. |

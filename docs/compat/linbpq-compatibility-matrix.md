@@ -5,6 +5,15 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
 | AX.25 UI frame encode/decode | tested | Address lists, PID, digipeaters, and binary payloads |
+| AX.25 control classification scaffold | tested | UI, I, S, and U class helpers compile and test |
+| AX.25 connected-mode scaffold | tested | Disabled structs, params, event names, and formatting only |
+| AX.25 connected-mode state machine | planned | Not implemented |
+| FX.25 reference indexing | implemented | Local FX.25 reference is indexed for future work |
+| FX.25 layer scaffold | tested | Disabled params and decode placeholder only |
+| FX.25 FEC encode/decode | planned | Not implemented |
+| FX.25 KISS integration | planned | Not implemented |
+| BPQ/LinBPQ connected-mode interop | planned | Future black-box tests only |
+| BPQ/LinBPQ FX.25 interop if applicable | planned | Future black-box tests only |
 | Native KiloNode config | tested | Clean-room parser for node and KISS port blocks |
 | BPQ-style config import | planned | Future compatibility tool, not native syntax |
 | Foreground daemon | implemented | `kilonoded --foreground` with signal shutdown |
