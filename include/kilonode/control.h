@@ -10,7 +10,9 @@
 
 #include "kilonode/heard.h"
 #include "kilonode/message_store.h"
+#include "kilonode/rf_abuse.h"
 #include "kilonode/rf_command_queue.h"
+#include "kilonode/rf_ignore.h"
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
 #include "kilonode/stats.h"
@@ -47,6 +49,8 @@ struct kn_control_snapshot {
 	struct kn_tx_dispatcher *tx_dispatch;
 	const struct kn_config_rf_command *rf_config;
 	const struct kn_rf_command_queue *rf_commands;
+	const struct kn_rf_abuse_state *rf_abuse;
+	const struct kn_rf_ignore_list *rf_ignore;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

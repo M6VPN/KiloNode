@@ -39,6 +39,14 @@
 #define KN_CONFIG_RF_COMMAND_DESTS_MAX  8
 #define KN_CONFIG_RF_COMMAND_EVENTS_MAX 128
 #define KN_CONFIG_RF_COMMAND_EVENTS_MIN 1
+#define KN_CONFIG_RF_IGNORE_AFTER_MAX   1000
+#define KN_CONFIG_RF_IGNORE_AFTER_MIN   1
+#define KN_CONFIG_RF_IGNORE_SECONDS_MAX 86400
+#define KN_CONFIG_RF_IGNORE_SECONDS_MIN 1
+#define KN_CONFIG_RF_RATE_COMMANDS_MAX  1000
+#define KN_CONFIG_RF_RATE_COMMANDS_MIN  1
+#define KN_CONFIG_RF_RATE_WINDOW_MAX    86400
+#define KN_CONFIG_RF_RATE_WINDOW_MIN    1
 #define KN_CONFIG_RF_REPLY_BYTES_MAX    200
 #define KN_CONFIG_RF_REPLY_BYTES_MIN    1
 #define KN_CONFIG_SHELL_BANNER_MAX      128
@@ -160,9 +168,18 @@ struct kn_config_rf_command {
 	size_t max_events;
 	size_t max_command_bytes;
 	size_t max_reply_bytes;
+	size_t rate_limit_commands;
+	uint64_t rate_limit_window_seconds;
+	size_t reply_rate_limit_commands;
+	uint64_t reply_rate_limit_window_seconds;
+	size_t auto_ignore_after_rejects;
+	uint64_t auto_ignore_seconds;
+	char ignore_list_path[KN_CONFIG_PATH_MAX];
 	uint8_t enabled;
 	uint8_t reply_enabled;
 	uint8_t require_node_destination;
+	uint8_t rate_limit_enabled;
+	uint8_t auto_ignore_enabled;
 	uint8_t has_block;
 	uint8_t has_enabled;
 	uint8_t has_reply_enabled;
@@ -171,6 +188,15 @@ struct kn_config_rf_command {
 	uint8_t has_max_reply_bytes;
 	uint8_t has_accept_destinations;
 	uint8_t has_require_node_destination;
+	uint8_t has_rate_limit_enabled;
+	uint8_t has_rate_limit_commands;
+	uint8_t has_rate_limit_window_seconds;
+	uint8_t has_reply_rate_limit_commands;
+	uint8_t has_reply_rate_limit_window_seconds;
+	uint8_t has_auto_ignore_enabled;
+	uint8_t has_auto_ignore_after_rejects;
+	uint8_t has_auto_ignore_seconds;
+	uint8_t has_ignore_list_path;
 };
 
 struct kn_config_shell {

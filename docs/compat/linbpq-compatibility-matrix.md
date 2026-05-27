@@ -65,6 +65,10 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | RF UI command ingress | tested | UI-frame-only KiloNode-native command parser |
 | KiloNode-native RF HELP/INFO/PORTS/HEARD/STATS/PING | tested | Minimal receive-side command set |
 | Gated RF UI replies | partial | Replies queue only when RF and TX gates allow it, no auto dispatch |
+| RF source rate limiting | tested | Per-source runtime command windows |
+| RF reply suppression | tested | Reply window suppresses TX queue insertion |
+| RF ignore list | tested | Native manual ignore file and diagnostics |
+| RF auto-ignore | tested | Runtime temporary ignore after repeated rejects |
 | AX.25 connected-mode receive state | planned | Not implemented |
 | Real KISS transport TX dispatch | partial | Implemented behind disabled-by-default gates |
 | Actual RF transmit dispatch | partial | Control-triggered lab path only, no scheduler |
@@ -107,6 +111,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQ/LinBPQ remote sysop status commands | planned | Not implemented |
 | BPQ/LinBPQ sysop authentication compatibility | planned | Not implemented |
 | BPQ/LinBPQ user/password compatibility | planned | Not implemented |
+| BPQ/LinBPQ access-control compatibility | planned | Not implemented |
 | RF BBS access control | planned | Not implemented |
 | BBS forwarding | planned | Not implemented |
 | BBS forwarding queue | planned | Not implemented |

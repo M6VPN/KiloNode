@@ -298,6 +298,28 @@ command_rf(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "RF STATUS");
 	}
+	if (strcmp(sub, "abuse-status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "RF ABUSE STATUS");
+	}
+	if (strcmp(sub, "abuse-sources") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "RF ABUSE SOURCES");
+	}
+	if (strcmp(sub, "abuse-source") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "RF ABUSE SOURCE %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "ignore-list") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "RF IGNORE LIST");
+	}
 	if (strcmp(sub, "command") == 0) {
 		if (*index + 2 >= argc)
 			return 1;
@@ -591,6 +613,10 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH rf commands\n", argv0);
 	fprintf(out, "       %s --socket PATH rf commands --from CALLSIGN\n", argv0);
 	fprintf(out, "       %s --socket PATH rf command ID\n", argv0);
+	fprintf(out, "       %s --socket PATH rf abuse-status\n", argv0);
+	fprintf(out, "       %s --socket PATH rf abuse-sources\n", argv0);
+	fprintf(out, "       %s --socket PATH rf abuse-source CALLSIGN\n", argv0);
+	fprintf(out, "       %s --socket PATH rf ignore-list\n", argv0);
 	fprintf(out, "       %s --socket PATH tx status\n", argv0);
 	fprintf(out, "       %s --socket PATH tx queue\n", argv0);
 	fprintf(out, "       %s --socket PATH tx queue --port NAME\n", argv0);

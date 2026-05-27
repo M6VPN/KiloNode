@@ -14,8 +14,10 @@
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
+#include "kilonode/rf_abuse.h"
 #include "kilonode/rf_command.h"
 #include "kilonode/rf_command_queue.h"
+#include "kilonode/rf_ignore.h"
 #include "kilonode/rx_event.h"
 #include "kilonode/rx_queue.h"
 #include "kilonode/rx_session.h"
@@ -43,6 +45,10 @@ static enum kn_control_error format_rx(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
 static enum kn_control_error format_rf(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
+static enum kn_control_error format_rf_abuse(
+	const struct kn_control_snapshot *, const char *, char *, size_t);
+static enum kn_control_error format_rf_ignore(
+	const struct kn_control_snapshot *, const char *, char *, size_t);
 static enum kn_control_error format_stats(const struct kn_control_snapshot *,
 	char *, size_t);
 static enum kn_control_error format_status(const struct kn_control_snapshot *,
@@ -529,6 +535,170 @@ format_rf_command_list(const struct kn_rf_command_event **events, size_t count,
 }
 
 static enum kn_control_error
+format_rf_abuse(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	const struct kn_rf_abuse_source *source;
+	struct kn_callsign callsign;
+	char call[KN_CALLSIGN_MAX + 4];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	if (snapshot->rf_config == NULL || snapshot->rf_abuse == NULL) {
+		if (strcmp(command, "SOURCES") == 0) {
+			if (snprintf(buf, bufsiz,
+			    "OK RF ABUSE SOURCES count=0\nEND\n") >=
+			    (int)bufsiz)
+				return KN_CONTROL_ERR_IO;
+			return KN_CONTROL_OK;
+		}
+		if (strncmp(command, "SOURCE ", 7) == 0) {
+			(void)snprintf(buf, bufsiz, "ERR source-not-found\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (strcmp(command, "STATUS") != 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-rf-command\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (snprintf(buf, bufsiz,
+		    "OK RF ABUSE STATUS enabled=false sources=0 max_sources=0 "
+		    "rate_limit=0 window=0 reply_limit=0 reply_window=0 "
+		    "auto_ignore=false\nEND\n") >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "STATUS") == 0) {
+		if (snprintf(buf, bufsiz,
+		    "OK RF ABUSE STATUS enabled=%s sources=%llu "
+		    "max_sources=%llu rate_limit=%llu window=%llu "
+		    "reply_limit=%llu reply_window=%llu auto_ignore=%s\n"
+		    "END\n",
+		    snapshot->rf_config->rate_limit_enabled != 0 ? "true" :
+		    "false",
+		    (unsigned long long)kn_rf_abuse_count(snapshot->rf_abuse),
+		    (unsigned long long)snapshot->rf_abuse->max_sources,
+		    (unsigned long long)
+		    snapshot->rf_config->rate_limit_commands,
+		    (unsigned long long)
+		    snapshot->rf_config->rate_limit_window_seconds,
+		    (unsigned long long)
+		    snapshot->rf_config->reply_rate_limit_commands,
+		    (unsigned long long)
+		    snapshot->rf_config->reply_rate_limit_window_seconds,
+		    snapshot->rf_config->auto_ignore_enabled != 0 ?
+		    "true" : "false") >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	if (strcmp(command, "SOURCES") == 0) {
+		offset = 0;
+		rc = append_format(buf, bufsiz, &offset,
+		    "OK RF ABUSE SOURCES count=%llu\n",
+		    (unsigned long long)kn_rf_abuse_count(snapshot->rf_abuse));
+		if (rc != KN_CONTROL_OK)
+			return rc;
+		for (i = 0; i < kn_rf_abuse_count(snapshot->rf_abuse); i++) {
+			source = &kn_rf_abuse_sources(snapshot->rf_abuse)[i];
+			if (kn_callsign_format(&source->callsign, call,
+			    sizeof(call)) != 0)
+				return KN_CONTROL_ERR_IO;
+			rc = append_format(buf, bufsiz, &offset,
+			    "RF SOURCE call=%s accepted=%llu rejected=%llu "
+			    "replies=%llu ignored=%s last=%llu reason=%s\n",
+			    call, (unsigned long long)source->accepted_count,
+			    (unsigned long long)source->rejected_count,
+			    (unsigned long long)source->replies,
+			    source->ignored != 0 ? "true" : "false",
+			    (unsigned long long)source->last_seen,
+			    source->last_reason[0] == '\0' ? "-" :
+			    source->last_reason);
+			if (rc != KN_CONTROL_OK)
+				return rc;
+		}
+		return append_format(buf, bufsiz, &offset, "END\n");
+	}
+
+	if (strncmp(command, "SOURCE ", 7) == 0) {
+		if (kn_callsign_parse(command + 7, &callsign) != 0) {
+			(void)snprintf(buf, bufsiz, "ERR invalid-callsign\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		source = kn_rf_abuse_find(snapshot->rf_abuse, &callsign);
+		if (source == NULL) {
+			(void)snprintf(buf, bufsiz, "ERR source-not-found\n");
+			return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+		}
+		if (kn_callsign_format(&source->callsign, call,
+		    sizeof(call)) != 0)
+			return KN_CONTROL_ERR_IO;
+		if (snprintf(buf, bufsiz,
+		    "OK RF ABUSE SOURCE call=%s\n"
+		    "RF SOURCE call=%s accepted=%llu rejected=%llu "
+		    "replies=%llu ignored=%s first=%llu last=%llu "
+		    "reason=%s\nEND\n",
+		    call, call, (unsigned long long)source->accepted_count,
+		    (unsigned long long)source->rejected_count,
+		    (unsigned long long)source->replies,
+		    source->ignored != 0 ? "true" : "false",
+		    (unsigned long long)source->first_seen,
+		    (unsigned long long)source->last_seen,
+		    source->last_reason[0] == '\0' ? "-" :
+		    source->last_reason) >= (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	(void)snprintf(buf, bufsiz, "ERR invalid-rf-command\n");
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
+format_rf_ignore(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	const struct kn_rf_ignore_entry *entries;
+	char call[KN_CALLSIGN_MAX + 4];
+	size_t i;
+	size_t offset;
+	enum kn_control_error rc;
+
+	if (strcmp(command, "LIST") != 0) {
+		(void)snprintf(buf, bufsiz, "ERR invalid-rf-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+
+	if (snapshot->rf_ignore == NULL) {
+		if (snprintf(buf, bufsiz, "OK RF IGNORE count=0\nEND\n") >=
+		    (int)bufsiz)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_OK;
+	}
+
+	offset = 0;
+	rc = append_format(buf, bufsiz, &offset, "OK RF IGNORE count=%llu\n",
+	    (unsigned long long)kn_rf_ignore_count(snapshot->rf_ignore));
+	if (rc != KN_CONTROL_OK)
+		return rc;
+	entries = kn_rf_ignore_entries(snapshot->rf_ignore);
+	for (i = 0; i < kn_rf_ignore_count(snapshot->rf_ignore); i++) {
+		if (kn_callsign_format(&entries[i].callsign, call,
+		    sizeof(call)) != 0)
+			return KN_CONTROL_ERR_IO;
+		rc = append_format(buf, bufsiz, &offset,
+		    "RF IGNORE call=%s reason=\"%s\"\n", call,
+		    entries[i].reason[0] == '\0' ? "manual" :
+		    entries[i].reason);
+		if (rc != KN_CONTROL_OK)
+			return rc;
+	}
+
+	return append_format(buf, bufsiz, &offset, "END\n");
+}
+
+static enum kn_control_error
 format_rf(const struct kn_control_snapshot *snapshot, const char *command,
 	char *buf, size_t bufsiz)
 {
@@ -539,6 +709,12 @@ format_rf(const struct kn_control_snapshot *snapshot, const char *command,
 	unsigned long id;
 	unsigned long limit;
 	size_t count;
+
+	if (strncmp(command, "ABUSE ", 6) == 0)
+		return format_rf_abuse(snapshot, command + 6, buf, bufsiz);
+
+	if (strncmp(command, "IGNORE ", 7) == 0)
+		return format_rf_ignore(snapshot, command + 7, buf, bufsiz);
 
 	if (snapshot->rf_config == NULL || snapshot->rf_commands == NULL) {
 		if (snprintf(buf, bufsiz,

@@ -50,6 +50,8 @@ add_library(packetcore STATIC
 	src/proto/kiss_stream.c
 	src/rf/rf_command.c
 	src/rf/rf_command_queue.c
+	src/rf/rf_abuse.c
+	src/rf/rf_ignore.c
 	src/rf/rf_reply.c
 	src/rf/rx_event.c
 	src/rf/rx_queue.c
@@ -163,6 +165,16 @@ add_executable(test_rf_command_queue tests/test_rf_command_queue.c)
 target_link_libraries(test_rf_command_queue PRIVATE packetcore)
 kilonode_target_defaults(test_rf_command_queue)
 add_test(NAME rf_command_queue COMMAND test_rf_command_queue)
+
+add_executable(test_rf_abuse tests/test_rf_abuse.c)
+target_link_libraries(test_rf_abuse PRIVATE packetcore)
+kilonode_target_defaults(test_rf_abuse)
+add_test(NAME rf_abuse COMMAND test_rf_abuse)
+
+add_executable(test_rf_ignore tests/test_rf_ignore.c)
+target_link_libraries(test_rf_ignore PRIVATE packetcore)
+kilonode_target_defaults(test_rf_ignore)
+add_test(NAME rf_ignore COMMAND test_rf_ignore)
 
 add_executable(test_rf_reply tests/test_rf_reply.c)
 target_link_libraries(test_rf_reply PRIVATE packetcore)

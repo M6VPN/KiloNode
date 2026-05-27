@@ -310,7 +310,7 @@ kn_rf_command_status_string(enum kn_rf_command_status status)
 	case KN_RF_COMMAND_STATUS_EMPTY:
 		return "empty";
 	case KN_RF_COMMAND_STATUS_UNKNOWN:
-		return "unknown";
+		return "unknown-command";
 	case KN_RF_COMMAND_STATUS_ARGUMENTS:
 		return "arguments";
 	case KN_RF_COMMAND_STATUS_CONTROL:
@@ -323,6 +323,14 @@ kn_rf_command_status_string(enum kn_rf_command_status status)
 		return "invalid-source";
 	case KN_RF_COMMAND_STATUS_INVALID_PORT:
 		return "invalid-port";
+	case KN_RF_COMMAND_STATUS_RATE_LIMITED:
+		return "rate-limited";
+	case KN_RF_COMMAND_STATUS_REPLY_SUPPRESSED:
+		return "reply-suppressed";
+	case KN_RF_COMMAND_STATUS_TX_GATE_BLOCKED:
+		return "tx-gate-blocked";
+	case KN_RF_COMMAND_STATUS_MALFORMED:
+		return "malformed";
 	}
 
 	return "unknown";

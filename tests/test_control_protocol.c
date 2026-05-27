@@ -50,9 +50,17 @@ static int test_ports_zero_ports(void);
 static int test_response_line_cap(void);
 static int test_rf_command_existing(void);
 static int test_rf_command_missing(void);
+static int test_rf_abuse_source_existing(void);
+static int test_rf_abuse_source_invalid(void);
+static int test_rf_abuse_source_missing(void);
+static int test_rf_abuse_sources_empty(void);
+static int test_rf_abuse_sources_populated(void);
+static int test_rf_abuse_status(void);
 static int test_rf_commands_empty(void);
 static int test_rf_commands_filters(void);
 static int test_rf_commands_one(void);
+static int test_rf_ignore_list_empty(void);
+static int test_rf_ignore_list_populated(void);
 static int test_rf_malformed_command(void);
 static int test_rf_status_default(void);
 static int test_rx_event_existing(void);
@@ -183,6 +191,22 @@ main(void)
 		return 1;
 	if (test_rf_command_missing() != 0)
 		return 1;
+	if (test_rf_abuse_status() != 0)
+		return 1;
+	if (test_rf_abuse_sources_empty() != 0)
+		return 1;
+	if (test_rf_abuse_sources_populated() != 0)
+		return 1;
+	if (test_rf_abuse_source_existing() != 0)
+		return 1;
+	if (test_rf_abuse_source_missing() != 0)
+		return 1;
+	if (test_rf_abuse_source_invalid() != 0)
+		return 1;
+	if (test_rf_ignore_list_empty() != 0)
+		return 1;
+	if (test_rf_ignore_list_populated() != 0)
+		return 1;
 	if (test_rf_malformed_command() != 0)
 		return 1;
 	if (test_tx_status() != 0)
@@ -262,6 +286,8 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->tx_dispatch = NULL;
 	snapshot->rf_config = NULL;
 	snapshot->rf_commands = NULL;
+	snapshot->rf_abuse = NULL;
+	snapshot->rf_ignore = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -767,6 +793,17 @@ rf_snapshot_init(struct kn_control_snapshot *snapshot,
 }
 
 static void
+rf_abuse_snapshot_init(struct kn_control_snapshot *snapshot,
+	struct kn_daemon_stats *daemon, struct kn_config_rf_command *config,
+	struct kn_rf_command_queue *queue, struct kn_rf_abuse_state *abuse,
+	struct kn_rf_ignore_list *ignore)
+{
+	rf_snapshot_init(snapshot, daemon, config, queue);
+	snapshot->rf_abuse = abuse;
+	snapshot->rf_ignore = ignore;
+}
+
+static void
 rf_add_event(struct kn_rf_command_queue *queue)
 {
 	struct kn_rf_command_event event;
@@ -1064,6 +1101,165 @@ test_rf_command_missing(void)
 }
 
 static int
+test_rf_abuse_source_existing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	struct kn_callsign call;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	(void)kn_callsign_parse("N0CALL", &call);
+	(void)kn_rf_abuse_record_accepted(&abuse, &call, 10);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE SOURCE N0CALL", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RF SOURCE call=N0CALL accepted=1") != NULL ? 0 : 1;
+}
+
+static int
+test_rf_abuse_source_invalid(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE SOURCE BAD@", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-callsign\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_abuse_source_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE SOURCE N0CALL", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR source-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_abuse_sources_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE SOURCES", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK RF ABUSE SOURCES count=0\nEND\n") == 0 ?
+	    0 : 1;
+}
+
+static int
+test_rf_abuse_sources_populated(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	struct kn_callsign call;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	(void)kn_callsign_parse("N0CALL", &call);
+	(void)kn_rf_abuse_record_rejected(&abuse, &config.rf_command, &call,
+	    10, "rate-limited");
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE SOURCES", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RF SOURCE call=N0CALL accepted=0 rejected=1") !=
+	    NULL ? 0 : 1;
+}
+
+static int
+test_rf_abuse_status(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF ABUSE STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK RF ABUSE STATUS enabled=true") != NULL ? 0 : 1;
+}
+
+static int
 test_rf_commands_empty(void)
 {
 	struct kn_control_snapshot snapshot;
@@ -1128,6 +1324,60 @@ test_rf_commands_one(void)
 		return 1;
 
 	return strstr(out, "RF COMMAND id=1") != NULL ? 0 : 1;
+}
+
+static int
+test_rf_ignore_list_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF IGNORE LIST", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK RF IGNORE count=0\nEND\n") == 0 ? 0 : 1;
+}
+
+static int
+test_rf_ignore_list_populated(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_config config;
+	struct kn_rf_command_queue queue;
+	struct kn_rf_abuse_state abuse;
+	struct kn_rf_ignore_list ignore;
+	struct kn_callsign call;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_config_init(&config);
+	(void)kn_rf_command_queue_init(&queue, 4);
+	kn_rf_abuse_init(&abuse, 4);
+	kn_rf_ignore_init(&ignore);
+	(void)kn_callsign_parse("N0CALL", &call);
+	(void)kn_rf_ignore_add(&ignore, &call, "manual");
+	rf_abuse_snapshot_init(&snapshot, &daemon, &config.rf_command, &queue,
+	    &abuse, &ignore);
+
+	if (kn_control_protocol_handle("RF IGNORE LIST", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "RF IGNORE call=N0CALL reason=\"manual\"") !=
+	    NULL ? 0 : 1;
 }
 
 static int

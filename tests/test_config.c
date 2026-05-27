@@ -55,7 +55,9 @@ static int test_receive_unknown_key(void);
 static int test_rf_command_block(void);
 static int test_rf_command_duplicate_block(void);
 static int test_rf_command_invalid_destination(void);
+static int test_rf_command_invalid_ignore_path(void);
 static int test_rf_command_invalid_max(void);
+static int test_rf_command_invalid_rate_limit(void);
 static int test_rf_command_omitted_defaults(void);
 static int test_rf_command_unknown_key(void);
 static int test_shell_block(void);
@@ -138,6 +140,10 @@ main(void)
 	if (test_rf_command_invalid_max() != 0)
 		return 1;
 	if (test_rf_command_invalid_destination() != 0)
+		return 1;
+	if (test_rf_command_invalid_rate_limit() != 0)
+		return 1;
+	if (test_rf_command_invalid_ignore_path() != 0)
 		return 1;
 	if (test_transmit_omitted_defaults() != 0)
 		return 1;
@@ -605,6 +611,15 @@ test_rf_command_block(void)
 		"max-reply-bytes 120\n"
 		"accept-destinations node,cq\n"
 		"require-node-destination true\n"
+		"rate-limit-enabled true\n"
+		"rate-limit-commands 6\n"
+		"rate-limit-window-seconds 60\n"
+		"reply-rate-limit-commands 3\n"
+		"reply-rate-limit-window-seconds 60\n"
+		"auto-ignore-enabled false\n"
+		"auto-ignore-after-rejects 10\n"
+		"auto-ignore-seconds 900\n"
+		"ignore-list-path ./var/rf-ignore.txt\n"
 		"}\n";
 
 	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
@@ -615,6 +630,13 @@ test_rf_command_block(void)
 	if (config.rf_command.max_events != 32 ||
 	    config.rf_command.max_command_bytes != 64 ||
 	    config.rf_command.max_reply_bytes != 120)
+		return 1;
+	if (config.rf_command.rate_limit_commands != 6 ||
+	    config.rf_command.reply_rate_limit_commands != 3 ||
+	    config.rf_command.auto_ignore_after_rejects != 10)
+		return 1;
+	if (strcmp(config.rf_command.ignore_list_path,
+	    "./var/rf-ignore.txt") != 0)
 		return 1;
 	if (config.rf_command.accept_destination_count != 2)
 		return 1;
@@ -655,6 +677,20 @@ test_rf_command_invalid_destination(void)
 }
 
 static int
+test_rf_command_invalid_ignore_path(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"ignore-list-path ../bad\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_rf_command_invalid_max(void)
 {
 	const char text[] =
@@ -663,6 +699,20 @@ test_rf_command_invalid_max(void)
 		"}\n"
 		"rf-command {\n"
 		"max-events 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_rf_command_invalid_rate_limit(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"rf-command {\n"
+		"rate-limit-commands 0\n"
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
@@ -683,6 +733,17 @@ test_rf_command_omitted_defaults(void)
 	    config.rf_command.reply_enabled != 0)
 		return 1;
 	if (config.rf_command.require_node_destination != 1)
+		return 1;
+	if (config.rf_command.rate_limit_enabled != 1 ||
+	    config.rf_command.rate_limit_commands != 6 ||
+	    config.rf_command.rate_limit_window_seconds != 60)
+		return 1;
+	if (config.rf_command.reply_rate_limit_commands != 3 ||
+	    config.rf_command.reply_rate_limit_window_seconds != 60)
+		return 1;
+	if (config.rf_command.auto_ignore_enabled != 0 ||
+	    config.rf_command.auto_ignore_after_rejects != 10 ||
+	    config.rf_command.auto_ignore_seconds != 900)
 		return 1;
 
 	return config.rf_command.accept_destination_count == 2 ? 0 : 1;

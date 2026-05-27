@@ -25,8 +25,10 @@
 #include "kilonode/message_store.h"
 #include "kilonode/monitor.h"
 #include "kilonode/node_shell.h"
+#include "kilonode/rf_abuse.h"
 #include "kilonode/rf_command.h"
 #include "kilonode/rf_command_queue.h"
+#include "kilonode/rf_ignore.h"
 #include "kilonode/rf_reply.h"
 #include "kilonode/rx_event.h"
 #include "kilonode/rx_queue.h"
@@ -67,12 +69,14 @@ static int control_handle(struct kn_control_socket *,
 	const struct kn_rx_session_table *, uint8_t,
 	struct kn_tx_queue *, struct kn_tx_dispatcher *,
 	const struct kn_config_rf_command *,
-	const struct kn_rf_command_queue *);
+	const struct kn_rf_command_queue *, const struct kn_rf_abuse_state *,
+	const struct kn_rf_ignore_list *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
 	struct kn_rx_session_table *, const struct kn_config *,
 	const struct daemon_port *, size_t, struct kn_tx_queue *,
-	struct kn_rf_command_queue *);
+	struct kn_rf_command_queue *, struct kn_rf_abuse_state *,
+	const struct kn_rf_ignore_list *);
 static void shell_snapshot_init(struct kn_node_shell_snapshot *,
 	const struct kn_config *, const struct kn_daemon_stats *,
 	const struct daemon_port *, size_t, const struct kn_heard_table *,
@@ -108,6 +112,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_rx_queue rx_events;
 	struct kn_rx_session_table rx_sessions;
 	struct kn_rf_command_queue rf_commands;
+	struct kn_rf_abuse_state rf_abuse;
+	struct kn_rf_ignore_list rf_ignore;
 	struct kn_tx_queue tx_queue;
 	struct kn_tx_dispatcher tx_dispatch;
 	struct kn_message_store bbs_store;
@@ -154,6 +160,12 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	kn_rx_session_init(&rx_sessions, config->receive.max_sessions);
 	if (kn_rf_command_queue_init(&rf_commands,
 	    config->rf_command.max_events) != KN_RF_COMMAND_QUEUE_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	kn_rf_abuse_init(&rf_abuse, KN_RF_ABUSE_MAX_SOURCES);
+	kn_rf_ignore_init(&rf_ignore);
+	if (config->rf_command.has_ignore_list_path != 0 &&
+	    kn_rf_ignore_load_file(&rf_ignore,
+	    config->rf_command.ignore_list_path) != KN_RF_IGNORE_OK)
 		return KN_DAEMON_ERR_CONFIG;
 	if (kn_tx_queue_init(&tx_queue, &config->transmit.policy) !=
 	    KN_TX_QUEUE_OK)
@@ -369,7 +381,8 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			if (pop_frames(&ports[i], &daemon_stats, &heard,
 			    config->heard.enabled, &rx_events,
 			    &rx_sessions, config, ports, port_count,
-			    &tx_queue, &rf_commands) != 0) {
+			    &tx_queue, &rf_commands, &rf_abuse,
+			    &rf_ignore) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -387,7 +400,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    &config->access.policy, &rx_events, &rx_sessions,
 			    config->receive.events_enabled, &tx_queue,
 			    &tx_dispatch, &config->rf_command,
-			    &rf_commands) != 0) {
+			    &rf_commands, &rf_abuse, &rf_ignore) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
@@ -519,7 +532,9 @@ control_handle(struct kn_control_socket *control,
 	const struct kn_rx_session_table *rx_sessions, uint8_t rx_enabled,
 	struct kn_tx_queue *tx_queue, struct kn_tx_dispatcher *tx_dispatch,
 	const struct kn_config_rf_command *rf_config,
-	const struct kn_rf_command_queue *rf_commands)
+	const struct kn_rf_command_queue *rf_commands,
+	const struct kn_rf_abuse_state *rf_abuse,
+	const struct kn_rf_ignore_list *rf_ignore)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -569,6 +584,8 @@ control_handle(struct kn_control_socket *control,
 	snapshot.tx_dispatch = tx_dispatch;
 	snapshot.rf_config = rf_config;
 	snapshot.rf_commands = rf_commands;
+	snapshot.rf_abuse = rf_abuse;
+	snapshot.rf_ignore = rf_ignore;
 	if (policy != NULL) {
 		snapshot.control_max_command_bytes =
 		    policy->control_max_command_bytes;
@@ -597,7 +614,9 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 	struct kn_rx_queue *rx_events, struct kn_rx_session_table *rx_sessions,
 	const struct kn_config *config, const struct daemon_port *ports,
 	size_t port_count, struct kn_tx_queue *tx_queue,
-	struct kn_rf_command_queue *rf_commands)
+	struct kn_rf_command_queue *rf_commands,
+	struct kn_rf_abuse_state *rf_abuse,
+	const struct kn_rf_ignore_list *rf_ignore)
 {
 	struct kn_kiss_stream_frame frame;
 	char line[DAEMON_LINE_BUFSIZ];
@@ -612,6 +631,8 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 	uint64_t tx_frame_id;
 	uint64_t rx_event_id;
 	char reason[KN_RF_REPLY_REASON_MAX];
+	enum kn_rf_abuse_error abuse_rc;
+	uint8_t command_pushed;
 	enum kn_kiss_stream_error stream_rc;
 	enum kn_monitor_error monitor_rc;
 	enum kn_ax25_error ax25_rc;
@@ -666,7 +687,53 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 					    port_count, &event, ax25.payload,
 					    ax25.payload_len);
 					if (rf_rc == KN_RF_COMMAND_OK) {
-						if (config->rf_command.reply_enabled !=
+						command_pushed = 0;
+						reason[0] = '\0';
+						abuse_rc =
+						    kn_rf_abuse_check_command(
+						    rf_abuse,
+						    &config->rf_command,
+						    rf_ignore,
+						    &command.source, now,
+						    reason, sizeof(reason));
+						if (abuse_rc ==
+						    KN_RF_ABUSE_ERR_IGNORED ||
+						    abuse_rc ==
+						    KN_RF_ABUSE_ERR_RATE_LIMITED) {
+							command.status = abuse_rc ==
+							    KN_RF_ABUSE_ERR_IGNORED ?
+							    KN_RF_COMMAND_STATUS_IGNORED :
+							    KN_RF_COMMAND_STATUS_RATE_LIMITED;
+							(void)snprintf(command.error,
+							    sizeof(command.error),
+							    "%s", reason);
+							(void)kn_rf_abuse_record_rejected(
+							    rf_abuse,
+							    &config->rf_command,
+							    &command.source, now,
+							    command.error);
+							(void)kn_rf_command_queue_push(
+							    rf_commands,
+							    &command);
+							command_pushed = 1;
+						}
+						if (command_pushed == 0 &&
+						    command.status ==
+						    KN_RF_COMMAND_STATUS_OK)
+							(void)
+							    kn_rf_abuse_record_accepted(
+							    rf_abuse,
+							    &command.source, now);
+						else if (command_pushed == 0)
+							(void)
+							    kn_rf_abuse_record_rejected(
+							    rf_abuse,
+							    &config->rf_command,
+							    &command.source, now,
+							    kn_rf_command_status_string(
+							    command.status));
+						if (command_pushed == 0 &&
+						    config->rf_command.reply_enabled !=
 						    0) {
 							heard_entries =
 							    kn_heard_entries(heard);
@@ -674,7 +741,28 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 							    kn_heard_count(heard);
 							tx_frame_id = 0;
 							reason[0] = '\0';
-							if (kn_rf_reply_try_queue(
+							abuse_rc =
+							    kn_rf_abuse_check_reply(
+							    rf_abuse,
+							    &config->rf_command,
+							    &command.source,
+							    now, reason,
+							    sizeof(reason));
+							if (abuse_rc ==
+							    KN_RF_ABUSE_ERR_REPLY_RATE_LIMITED) {
+								command.status =
+								    KN_RF_COMMAND_STATUS_REPLY_SUPPRESSED;
+								(void)snprintf(
+								    command.error,
+								    sizeof(command.error),
+								    "%s", reason);
+								(void)kn_rf_command_queue_push(
+								    rf_commands,
+								    &command);
+								command_pushed = 1;
+							}
+							if (command_pushed == 0 &&
+							    kn_rf_reply_try_queue(
 							    tx_queue, config,
 							    daemon_stats,
 							    port_stats,
@@ -689,16 +777,24 @@ pop_frames(struct daemon_port *port, struct kn_daemon_stats *daemon_stats,
 								command.reply_queued = 1;
 								command.tx_frame_id =
 								    tx_frame_id;
+								(void)kn_rf_abuse_record_reply(
+								    rf_abuse,
+								    &command.source,
+								    now);
 							} else if (reason[0] !=
 							    '\0') {
+								command.status =
+								    KN_RF_COMMAND_STATUS_TX_GATE_BLOCKED;
 								(void)snprintf(
 								    command.error,
 								    sizeof(command.error),
 								    "%s", reason);
 							}
 						}
-						(void)kn_rf_command_queue_push(
-						    rf_commands, &command);
+						if (command_pushed == 0)
+							(void)kn_rf_command_queue_push(
+							    rf_commands,
+							    &command);
 					}
 				}
 			} else {

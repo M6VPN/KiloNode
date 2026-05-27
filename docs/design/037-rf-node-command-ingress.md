@@ -52,4 +52,3 @@ Deferred work:
 - NET/ROM routing
 - Forwarding
 - RF authentication and sysop commands
-- Per-source RF rate limits

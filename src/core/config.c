@@ -13,6 +13,7 @@
 #include "kilonode/config.h"
 #include "kilonode/control.h"
 #include "kilonode/kiss_stream.h"
+#include "kilonode/rf_ignore.h"
 #include "kilonode/rx_event.h"
 #include "kilonode/transport_serial.h"
 #include "kilonode/transport_tcp.h"
@@ -255,6 +256,13 @@ kn_config_init(struct kn_config *config)
 	config->rf_command.max_command_bytes = KN_CONFIG_RF_COMMAND_BYTES_MAX;
 	config->rf_command.max_reply_bytes = KN_CONFIG_RF_REPLY_BYTES_MAX;
 	config->rf_command.require_node_destination = 1;
+	config->rf_command.rate_limit_enabled = 1;
+	config->rf_command.rate_limit_commands = 6;
+	config->rf_command.rate_limit_window_seconds = 60;
+	config->rf_command.reply_rate_limit_commands = 3;
+	config->rf_command.reply_rate_limit_window_seconds = 60;
+	config->rf_command.auto_ignore_after_rejects = 10;
+	config->rf_command.auto_ignore_seconds = 900;
 	(void)snprintf(config->rf_command.accept_destinations[0],
 	    sizeof(config->rf_command.accept_destinations[0]), "NODE");
 	(void)snprintf(config->rf_command.accept_destinations[1],
@@ -732,6 +740,30 @@ rf_command_key_set(struct kn_config *config, char **tokens, size_t token_count,
 		return KN_CONFIG_OK;
 	}
 
+	if (strcmp(tokens[0], "rate-limit-enabled") == 0) {
+		if (key_seen(&config->rf_command.has_rate_limit_enabled,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->rf_command.rate_limit_enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid rf-command rate-limit-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "auto-ignore-enabled") == 0) {
+		if (key_seen(&config->rf_command.has_auto_ignore_enabled,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->rf_command.auto_ignore_enabled) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid rf-command auto-ignore-enabled value");
+		return KN_CONFIG_OK;
+	}
+
 	if (strcmp(tokens[0], "accept-destinations") == 0) {
 		if (key_seen(&config->rf_command.has_accept_destinations,
 		    config, line_no) != 0)
@@ -782,6 +814,73 @@ rf_command_key_set(struct kn_config *config, char **tokens, size_t token_count,
 			    line_no, "invalid rf-command max-reply-bytes");
 		config->rf_command.max_reply_bytes = (size_t)value;
 		return KN_CONFIG_OK;
+	}
+
+#define RF_COMMAND_SIZE_KEY(name, seen, field, min, max, message) do { \
+	if (strcmp(tokens[0], (name)) == 0) { \
+		if (key_seen(&(seen), config, line_no) != 0) \
+			return config->error; \
+		errno = 0; \
+		value = strtoul(tokens[1], &end, 10); \
+		if (errno != 0 || *end != '\0' || \
+		    value < (unsigned long)(min) || \
+		    value > (unsigned long)(max)) \
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, \
+			    line_no, (message)); \
+		(field) = (size_t)value; \
+		return KN_CONFIG_OK; \
+	} \
+} while (0)
+
+	RF_COMMAND_SIZE_KEY("rate-limit-commands",
+	    config->rf_command.has_rate_limit_commands,
+	    config->rf_command.rate_limit_commands,
+	    KN_CONFIG_RF_RATE_COMMANDS_MIN,
+	    KN_CONFIG_RF_RATE_COMMANDS_MAX,
+	    "invalid rf-command rate-limit-commands");
+	RF_COMMAND_SIZE_KEY("rate-limit-window-seconds",
+	    config->rf_command.has_rate_limit_window_seconds,
+	    config->rf_command.rate_limit_window_seconds,
+	    KN_CONFIG_RF_RATE_WINDOW_MIN,
+	    KN_CONFIG_RF_RATE_WINDOW_MAX,
+	    "invalid rf-command rate-limit-window-seconds");
+	RF_COMMAND_SIZE_KEY("reply-rate-limit-commands",
+	    config->rf_command.has_reply_rate_limit_commands,
+	    config->rf_command.reply_rate_limit_commands,
+	    KN_CONFIG_RF_RATE_COMMANDS_MIN,
+	    KN_CONFIG_RF_RATE_COMMANDS_MAX,
+	    "invalid rf-command reply-rate-limit-commands");
+	RF_COMMAND_SIZE_KEY("reply-rate-limit-window-seconds",
+	    config->rf_command.has_reply_rate_limit_window_seconds,
+	    config->rf_command.reply_rate_limit_window_seconds,
+	    KN_CONFIG_RF_RATE_WINDOW_MIN,
+	    KN_CONFIG_RF_RATE_WINDOW_MAX,
+	    "invalid rf-command reply-rate-limit-window-seconds");
+	RF_COMMAND_SIZE_KEY("auto-ignore-after-rejects",
+	    config->rf_command.has_auto_ignore_after_rejects,
+	    config->rf_command.auto_ignore_after_rejects,
+	    KN_CONFIG_RF_IGNORE_AFTER_MIN,
+	    KN_CONFIG_RF_IGNORE_AFTER_MAX,
+	    "invalid rf-command auto-ignore-after-rejects");
+	RF_COMMAND_SIZE_KEY("auto-ignore-seconds",
+	    config->rf_command.has_auto_ignore_seconds,
+	    config->rf_command.auto_ignore_seconds,
+	    KN_CONFIG_RF_IGNORE_SECONDS_MIN,
+	    KN_CONFIG_RF_IGNORE_SECONDS_MAX,
+	    "invalid rf-command auto-ignore-seconds");
+
+#undef RF_COMMAND_SIZE_KEY
+
+	if (strcmp(tokens[0], "ignore-list-path") == 0) {
+		if (key_seen(&config->rf_command.has_ignore_list_path,
+		    config, line_no) != 0)
+			return config->error;
+		if (kn_rf_ignore_path_valid(tokens[1]) == 0)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid rf-command ignore-list-path");
+		return copy_field(config->rf_command.ignore_list_path,
+		    sizeof(config->rf_command.ignore_list_path), tokens[1],
+		    config, line_no);
 	}
 
 	return set_error(config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
