@@ -36,6 +36,16 @@ Show configured ports.
 Show daemon counters.
 .It Cm heard Op Fl -port Ar name
 Show heard AX.25 stations.
+.It Cm ax25 status
+Show read-only AX.25 runtime diagnostics.
+.It Cm ax25 params
+Show the AX.25 connected-mode parameter snapshot.
+.It Cm ax25 connections Op Fl -port Ar name
+Show AX.25 connection-table summaries.
+.It Cm ax25 connection Ar id
+Show one AX.25 connection-table diagnostic record.
+.It Cm ax25 counters
+Show AX.25 runtime diagnostic counters.
 .It Cm bbs status | stats | areas | users | messages | message Ar id
 Show read-only local BBS state.
 .It Cm rx status
@@ -82,6 +92,10 @@ Example local control socket path.
 .El
 .Sh EXAMPLES
 .Dl kilonodectl --socket /tmp/kilonode/control.sock status
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 status
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 params
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 connections
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 counters
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx events
 .Dl kilonodectl --socket /tmp/kilonode/control.sock rx sessions

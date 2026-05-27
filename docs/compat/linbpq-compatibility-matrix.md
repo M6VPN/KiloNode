@@ -130,6 +130,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Real KISS transport TX dispatch | partial | Implemented behind disabled-by-default gates |
 | Actual RF transmit dispatch | partial | Control-triggered lab path only, no scheduler |
 | AX.25 transmit path | partial | Builder and queue only, no dispatch |
+| AX.25 read-only diagnostics control plane | tested | Runtime status, params, connection list, detail, and counters only |
+| AX.25 runtime scaffold | tested | Daemon-owned scaffold exists with live processing disabled |
+| Live AX.25 connected sessions | planned | Not implemented |
+| RF CONNECT command | planned | Not implemented |
+| BPQ/LinBPQ connected-mode interop | planned | Not implemented |
+| FX.25 FEC | planned | Not implemented |
 | RF node shell transmit | planned | Not implemented |
 | RF BBS replies | planned | Not implemented |
 | AX.25 connected-mode transmit | planned | Not implemented |

@@ -8,6 +8,9 @@
 #include <unistd.h>
 
 #include "kilonode/ax25.h"
+#include "kilonode/ax25_control.h"
+#include "kilonode/ax25_connection_event.h"
+#include "kilonode/ax25_runtime.h"
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
 #include "kilonode/heard.h"
@@ -33,6 +36,16 @@ static int test_bbs_stats_disabled(void);
 static int test_bbs_status_disabled(void);
 static int test_bbs_unknown_command(void);
 static int test_bbs_users_disabled(void);
+static int test_ax25_connection_detail(void);
+static int test_ax25_connection_missing(void);
+static int test_ax25_connections_empty(void);
+static int test_ax25_connections_populated(void);
+static int test_ax25_connections_port(void);
+static int test_ax25_counters(void);
+static int test_ax25_malformed_command(void);
+static int test_ax25_no_write_commands(void);
+static int test_ax25_params(void);
+static int test_ax25_status(void);
 static int test_control_character_command(void);
 static int test_control_policy_command_limit(void);
 static int test_help_response(void);
@@ -148,6 +161,26 @@ main(void)
 	if (test_bbs_unknown_command() != 0)
 		return 1;
 	if (test_bbs_malformed_command() != 0)
+		return 1;
+	if (test_ax25_status() != 0)
+		return 1;
+	if (test_ax25_params() != 0)
+		return 1;
+	if (test_ax25_connections_empty() != 0)
+		return 1;
+	if (test_ax25_connections_populated() != 0)
+		return 1;
+	if (test_ax25_connections_port() != 0)
+		return 1;
+	if (test_ax25_connection_detail() != 0)
+		return 1;
+	if (test_ax25_connection_missing() != 0)
+		return 1;
+	if (test_ax25_counters() != 0)
+		return 1;
+	if (test_ax25_malformed_command() != 0)
+		return 1;
+	if (test_ax25_no_write_commands() != 0)
 		return 1;
 	if (test_help_response() != 0)
 		return 1;
@@ -288,8 +321,206 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->rf_commands = NULL;
 	snapshot->rf_abuse = NULL;
 	snapshot->rf_ignore = NULL;
+	snapshot->ax25_runtime = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
+}
+
+static int
+ax25_runtime_populate(struct kn_ax25_runtime *runtime)
+{
+	struct kn_ax25_connection_key key;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+
+	kn_ax25_runtime_init(runtime);
+	(void)kn_ax25_runtime_set_enabled(runtime, 1, 1);
+	if (kn_ax25_connection_key_from_callsigns(&key, "kiss0", "M6VPN-1",
+	    "N0CALL", NULL, 0) != KN_AX25_CONNECTION_KEY_OK)
+		return 1;
+	if (kn_ax25_connection_event_local_connect(&event, 1710000000,
+	    &key) != KN_AX25_CONNECTION_EVENT_OK)
+		return 1;
+	event.kind = KN_AX25_CONNECTION_EVENT_RX_SABM;
+	event.control.class = KN_AX25_CONTROL_CLASS_U;
+	event.control.u_subtype = KN_AX25_U_SUBTYPE_SABM;
+	return kn_ax25_runtime_inject_event(runtime, &event, &result) ==
+	    KN_AX25_RUNTIME_OK ? 0 : 1;
+}
+
+static int
+test_ax25_connection_detail(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (ax25_runtime_populate(&runtime) != 0)
+		return 1;
+	snapshot.ax25_runtime = &runtime;
+	if (kn_control_protocol_handle("AX25 CONNECTION 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK AX25 CONNECTION id=1\n") == NULL)
+		return 1;
+
+	return strstr(out, "AX25 PLAN index=0 kind=UA") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_connection_missing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 CONNECTION 1", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR connection-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_ax25_connections_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 CONNECTIONS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out, "OK AX25 CONNECTIONS count=0\nEND\n") == 0 ?
+	    0 : 1;
+}
+
+static int
+test_ax25_connections_populated(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (ax25_runtime_populate(&runtime) != 0)
+		return 1;
+	snapshot.ax25_runtime = &runtime;
+	if (kn_control_protocol_handle("AX25 CONNECTIONS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK AX25 CONNECTIONS count=1\n") == NULL)
+		return 1;
+
+	return strstr(out, "state=connected") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_connections_port(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (ax25_runtime_populate(&runtime) != 0)
+		return 1;
+	snapshot.ax25_runtime = &runtime;
+	if (kn_control_protocol_handle("AX25 CONNECTIONS PORT kiss0",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 CONNECTIONS count=1\n") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_counters(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (ax25_runtime_populate(&runtime) != 0)
+		return 1;
+	snapshot.ax25_runtime = &runtime;
+	if (kn_control_protocol_handle("AX25 COUNTERS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 COUNTERS events=1") != NULL ? 0 : 1;
+}
+
+static int
+test_ax25_malformed_command(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-ax25-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_ax25_no_write_commands(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 CONNECT N0CALL", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+
+	return strcmp(out, "ERR invalid-ax25-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_ax25_params(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 PARAMS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 PARAMS modulo=8 window=1") != NULL ?
+	    0 : 1;
+}
+
+static int
+test_ax25_status(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 STATUS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+
+	return strcmp(out,
+	    "OK AX25 STATUS enabled=false connected_mode=false "
+	    "connections=0 max_connections=32 diagnostics=true\nEND\n") == 0 ?
+	    0 : 1;
 }
 
 static int

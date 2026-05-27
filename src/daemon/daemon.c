@@ -20,6 +20,7 @@
 #include "kilonode/control.h"
 #include "kilonode/daemon.h"
 #include "kilonode/ax25.h"
+#include "kilonode/ax25_runtime.h"
 #include "kilonode/heard.h"
 #include "kilonode/kiss_stream.h"
 #include "kilonode/message_store.h"
@@ -70,7 +71,7 @@ static int control_handle(struct kn_control_socket *,
 	struct kn_tx_queue *, struct kn_tx_dispatcher *,
 	const struct kn_config_rf_command *,
 	const struct kn_rf_command_queue *, const struct kn_rf_abuse_state *,
-	const struct kn_rf_ignore_list *);
+	const struct kn_rf_ignore_list *, const struct kn_ax25_runtime *);
 static int pop_frames(struct daemon_port *, struct kn_daemon_stats *,
 	struct kn_heard_table *, uint8_t, struct kn_rx_queue *,
 	struct kn_rx_session_table *, const struct kn_config *,
@@ -116,6 +117,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	struct kn_rf_ignore_list rf_ignore;
 	struct kn_tx_queue tx_queue;
 	struct kn_tx_dispatcher tx_dispatch;
+	struct kn_ax25_runtime ax25_runtime;
 	struct kn_message_store bbs_store;
 	struct kn_node_shell_state shell;
 	struct sigaction sa;
@@ -146,6 +148,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	kn_control_socket_init(&control);
 	kn_message_store_init(&bbs_store);
 	kn_node_shell_init(&shell);
+	kn_ax25_runtime_init(&ax25_runtime);
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_handler;
 	(void)sigaction(SIGINT, &sa, NULL);
@@ -400,11 +403,13 @@ kn_daemon_run_foreground(const struct kn_config *config)
 			    &config->access.policy, &rx_events, &rx_sessions,
 			    config->receive.events_enabled, &tx_queue,
 			    &tx_dispatch, &config->rf_command,
-			    &rf_commands, &rf_abuse, &rf_ignore) != 0) {
+			    &rf_commands, &rf_abuse, &rf_ignore,
+			    &ax25_runtime) != 0) {
 				close_ports(ports, port_count);
 				kn_control_socket_close(&control);
 				kn_node_shell_close(&shell);
 				kn_message_store_close(&bbs_store);
+				kn_ax25_runtime_free(&ax25_runtime);
 				return KN_DAEMON_ERR_RUNTIME;
 			}
 		}
@@ -443,6 +448,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 	kn_control_socket_close(&control);
 	kn_node_shell_close(&shell);
 	kn_message_store_close(&bbs_store);
+	kn_ax25_runtime_free(&ax25_runtime);
 	return KN_DAEMON_OK;
 }
 
@@ -534,7 +540,8 @@ control_handle(struct kn_control_socket *control,
 	const struct kn_config_rf_command *rf_config,
 	const struct kn_rf_command_queue *rf_commands,
 	const struct kn_rf_abuse_state *rf_abuse,
-	const struct kn_rf_ignore_list *rf_ignore)
+	const struct kn_rf_ignore_list *rf_ignore,
+	const struct kn_ax25_runtime *ax25_runtime)
 {
 	struct kn_port_stats port_stats[KN_CONFIG_PORT_MAX];
 	struct kn_control_snapshot snapshot;
@@ -586,6 +593,7 @@ control_handle(struct kn_control_socket *control,
 	snapshot.rf_commands = rf_commands;
 	snapshot.rf_abuse = rf_abuse;
 	snapshot.rf_ignore = rf_ignore;
+	snapshot.ax25_runtime = ax25_runtime;
 	if (policy != NULL) {
 		snapshot.control_max_command_bytes =
 		    policy->control_max_command_bytes;

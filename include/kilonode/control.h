@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include "kilonode/ax25_runtime.h"
 #include "kilonode/heard.h"
 #include "kilonode/message_store.h"
 #include "kilonode/rf_abuse.h"
@@ -51,6 +52,7 @@ struct kn_control_snapshot {
 	const struct kn_rf_command_queue *rf_commands;
 	const struct kn_rf_abuse_state *rf_abuse;
 	const struct kn_rf_ignore_list *rf_ignore;
+	const struct kn_ax25_runtime *ax25_runtime;
 	size_t control_max_command_bytes;
 	size_t control_max_response_lines;
 };

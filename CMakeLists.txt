@@ -67,6 +67,7 @@ add_library(packetcore STATIC
 	src/proto/ax25.c
 	src/proto/ax25_action.c
 	src/proto/ax25_action_mapper.c
+	src/proto/ax25_control_plane.c
 	src/proto/ax25_control.c
 	src/proto/ax25_connection.c
 	src/proto/ax25_connection_diag.c
@@ -76,6 +77,7 @@ add_library(packetcore STATIC
 	src/proto/ax25_frame_builder.c
 	src/proto/ax25_frame_plan.c
 	src/proto/ax25_params.c
+	src/proto/ax25_runtime.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
 	src/proto/fx25.c
@@ -169,6 +171,11 @@ target_link_libraries(test_ax25_control PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_control)
 add_test(NAME ax25_control COMMAND test_ax25_control)
 
+add_executable(test_ax25_control_plane tests/test_ax25_control_plane.c)
+target_link_libraries(test_ax25_control_plane PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_control_plane)
+add_test(NAME ax25_control_plane COMMAND test_ax25_control_plane)
+
 add_executable(test_ax25_connection tests/test_ax25_connection.c)
 target_link_libraries(test_ax25_connection PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_connection)
@@ -208,6 +215,11 @@ add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
 add_test(NAME ax25_params COMMAND test_ax25_params)
+
+add_executable(test_ax25_runtime tests/test_ax25_runtime.c)
+target_link_libraries(test_ax25_runtime PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_runtime)
+add_test(NAME ax25_runtime COMMAND test_ax25_runtime)
 
 add_executable(test_ax25_sequence tests/test_ax25_sequence.c)
 target_link_libraries(test_ax25_sequence PRIVATE packetcore)
@@ -253,6 +265,11 @@ add_executable(test_control_socket tests/test_control_socket.c)
 target_link_libraries(test_control_socket PRIVATE packetcore)
 kilonode_target_defaults(test_control_socket)
 add_test(NAME control_socket COMMAND test_control_socket)
+
+add_executable(test_daemon_ax25 tests/test_daemon_ax25.c)
+target_link_libraries(test_daemon_ax25 PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_ax25)
+add_test(NAME daemon_ax25 COMMAND test_daemon_ax25)
 
 add_executable(test_compat_transcript tests/test_compat_transcript.c)
 target_link_libraries(test_compat_transcript PRIVATE packetcore)

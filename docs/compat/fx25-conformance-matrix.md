@@ -17,4 +17,6 @@
 | Interop captures        | planned  | Future black-box captures only. |
 | Connected-mode boundary | scaffold | FX.25 remains separate. Future decode must produce AX.25 bytes before AX.25 connection state handling. |
 | Connection table boundary | scaffold | AX.25 connection records operate only on decoded AX.25 frames and AX.25 frame plans. |
+| AX.25 diagnostics boundary | scaffold | Read-only diagnostics report AX.25 runtime state after the future FX.25 unwrap point. |
 | Live FX.25 integration   | planned  | No RX unwrap or TX wrap path is wired into runtime. |
+| FX.25 FEC with AX.25 runtime | planned | No FEC code exists and AX.25 diagnostics do not inspect FX.25 frames. |

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "kilonode/ax25_control_plane.h"
 #include "kilonode/bbs_control.h"
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
@@ -33,6 +34,8 @@ static enum kn_control_error append_format(char *, size_t, size_t *,
 	const char *, ...);
 static enum kn_control_error cap_response_lines(char *, size_t, size_t);
 static uint8_t command_clean(const char *);
+static enum kn_control_error format_ax25(const struct kn_control_snapshot *,
+	const char *, char *, size_t);
 static void format_digipeaters(const struct kn_heard_entry *, char *, size_t);
 static enum kn_control_error format_bbs(const struct kn_control_snapshot *,
 	const char *, char *, size_t);
@@ -165,6 +168,22 @@ format_digipeaters(const struct kn_heard_entry *entry, char *buf,
 }
 
 static enum kn_control_error
+format_ax25(const struct kn_control_snapshot *snapshot, const char *command,
+	char *buf, size_t bufsiz)
+{
+	enum kn_ax25_control_plane_error rc;
+
+	rc = kn_ax25_control_plane_format(command, snapshot->ax25_runtime, buf,
+	    bufsiz);
+	if (rc == KN_AX25_CONTROL_PLANE_OK)
+		return KN_CONTROL_OK;
+	if (rc == KN_AX25_CONTROL_PLANE_ERR_BUFFER)
+		return KN_CONTROL_ERR_IO;
+
+	return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+}
+
+static enum kn_control_error
 format_bbs(const struct kn_control_snapshot *snapshot, const char *command,
 	char *buf, size_t bufsiz)
 {
@@ -247,7 +266,7 @@ format_help(char *buf, size_t bufsiz)
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
 	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX TX RF HELP "
-	    "QUIT\n");
+	    "AX25 QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -1387,6 +1406,13 @@ kn_control_protocol_handle(const char *command,
 		(void)snprintf(out, out_len, "ERR invalid-heard-command\n");
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
 	}
+	if (strcmp(command, "AX25") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-ax25-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strncmp(command, "AX25 ", 5) == 0)
+		return return_with_cap(snapshot, out, out_len,
+		    format_ax25(snapshot, command + 5, out, out_len));
 	if (strcmp(command, "BBS") == 0) {
 		(void)snprintf(out, out_len, "ERR invalid-bbs-command\n");
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;

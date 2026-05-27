@@ -14,6 +14,7 @@
 
 #define CTL_RESPONSE_BUFSIZ KN_CONTROL_QUEUE_MAX
 
+static int command_ax25(char *, size_t, int *, int, char **);
 static int command_bbs(char *, size_t, int *, int, char **);
 static const char *command_map(const char *);
 static int command_rf(char *, size_t, int *, int, char **);
@@ -76,6 +77,14 @@ main(int argc, char *argv[])
 			}
 			continue;
 		}
+		if (strcmp(argv[i], "ax25") == 0) {
+			if (command_ax25(command, sizeof(command), &i, argc,
+			    argv) != 0) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			continue;
+		}
 		if (strcmp(argv[i], "rx") == 0) {
 			if (command_rx(command, sizeof(command), &i, argc,
 			    argv) != 0) {
@@ -113,6 +122,57 @@ main(int argc, char *argv[])
 	}
 
 	return run_command(socket_path, command);
+}
+
+static int
+command_ax25(char *dst, size_t dst_len, int *index, int argc, char *argv[])
+{
+	const char *sub;
+	int needed;
+
+	if (*index + 1 >= argc)
+		return 1;
+
+	sub = argv[*index + 1];
+	if (strcmp(sub, "status") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 STATUS");
+	}
+	if (strcmp(sub, "params") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 PARAMS");
+	}
+	if (strcmp(sub, "connections") == 0) {
+		if (*index + 2 >= argc) {
+			*index += 1;
+			return command_set(dst, dst_len, "AX25 CONNECTIONS");
+		}
+		if (strcmp(argv[*index + 2], "--port") != 0 ||
+		    *index + 3 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "AX25 CONNECTIONS PORT %s",
+		    argv[*index + 3]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 3;
+		return 0;
+	}
+	if (strcmp(sub, "connection") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "AX25 CONNECTION %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "counters") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 COUNTERS");
+	}
+
+	return 1;
 }
 
 static int
@@ -597,6 +657,12 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH stats\n", argv0);
 	fprintf(out, "       %s --socket PATH heard\n", argv0);
 	fprintf(out, "       %s --socket PATH heard --port NAME\n", argv0);
+	fprintf(out, "       %s --socket PATH ax25 status\n", argv0);
+	fprintf(out, "       %s --socket PATH ax25 params\n", argv0);
+	fprintf(out, "       %s --socket PATH ax25 connections [--port PORT]\n",
+	    argv0);
+	fprintf(out, "       %s --socket PATH ax25 connection ID\n", argv0);
+	fprintf(out, "       %s --socket PATH ax25 counters\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs status\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs stats\n", argv0);
 	fprintf(out, "       %s --socket PATH bbs areas\n", argv0);
