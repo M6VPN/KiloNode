@@ -58,8 +58,14 @@
 | I-frame data build             | planned     | Connected information transfer frame generation is deferred. |
 | Live TX queue integration      | planned     | Response frame queueing is not wired to runtime paths. |
 | Connected-mode state machine   | partial     | First isolated unit-tested core exists. It is not wired to runtime RX/TX. |
-| Timers                         | scaffold    | T1 and T3 are action intents only. No scheduler is started. |
-| Retries                        | partial     | N2 retry count is used by isolated timeout transitions. |
+| T1 logical timer scaffold      | implemented | Logical T1 uses injected monotonic millisecond values and maps to `timeout-t1`. |
+| T2 logical timer scaffold      | scaffold    | Logical T2 can expire in the queue but delayed-ACK behaviour remains planned. |
+| T3 logical timer scaffold      | implemented | Logical T3 uses injected monotonic millisecond values and maps to `timeout-t3`. |
+| N2 retry accounting            | implemented | Bounded retry helper covers reset, increment, under-limit, and exhaustion checks. |
+| Timer expiry event mapping     | partial     | T1 and T3 map to state-machine timeout events. T2 remains a planned placeholder. |
+| Scheduler scaffold             | implemented | Offline scheduler applies timer/retry action intents and processes injected expiries. |
+| Timers                         | partial     | Logical timers exist for tests. No daemon scheduler is started. |
+| Retries                        | partial     | N2 retry count is used by isolated timeout transitions and scheduler diagnostics. |
 | Modulo 8                       | implemented | Basic sequence increment, receive accounting, and ack handling are tested. |
 | Modulo 128                     | planned     | Parameter placeholder exists. Extended control decode is deferred. |
 | FRMR handling                  | partial     | Control subtype and protocol-error action placeholder exist. |
@@ -71,8 +77,10 @@
 | Live response queueing         | planned     | Generated frame plans are not queued or dispatched. |
 | TX response from bench         | planned     | Receive-only bench configs do not enable TX queue writes or dispatch. |
 | Payload delivery               | planned     | I-frame payload bytes are not delivered to shell or BBS code. |
-| Timer scheduler                | planned     | Runtime does not start or stop real timers. |
+| Timer scheduler                | scaffold    | Runtime owns a disabled scheduler scaffold, but no live polling occurs. |
+| Live daemon timer integration  | planned     | No daemon loop, OS timer, thread, alarm, or signal integration exists. |
+| Retransmission dispatch        | planned     | Timeout send actions are not queued or dispatched. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |
-| Timers real scheduling         | planned     | Timeout events are unit-test inputs only. No scheduler is started. |
+| Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |
 | FCS handling                   | deferred    | KISS-facing code operates at AX.25 body boundary. |
 | KISS payload boundary          | implemented | Existing KISS encode/decode treats AX.25 bytes as payload. |

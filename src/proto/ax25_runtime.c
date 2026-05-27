@@ -30,6 +30,7 @@ kn_ax25_runtime_free(struct kn_ax25_runtime *runtime)
 		return;
 
 	kn_ax25_connection_table_free(&runtime->table);
+	kn_ax25_scheduler_reset(&runtime->scheduler);
 	memset(runtime, 0, sizeof(*runtime));
 }
 
@@ -58,6 +59,7 @@ kn_ax25_runtime_init(struct kn_ax25_runtime *runtime)
 	kn_ax25_params_default(&runtime->params);
 	runtime->params.allow_connected_mode = 0;
 	kn_ax25_connection_table_init(&runtime->table);
+	kn_ax25_scheduler_init(&runtime->scheduler);
 	runtime->table.max_connections = runtime->max_connections;
 	runtime_apply_table_params(runtime);
 }
@@ -134,6 +136,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	memset(&runtime->counters, 0, sizeof(runtime->counters));
 	memset(&runtime->live_counters, 0, sizeof(runtime->live_counters));
 	kn_ax25_connection_table_reset(&runtime->table);
+	kn_ax25_scheduler_reset(&runtime->scheduler);
 	runtime->params = params;
 	runtime->live = live;
 	runtime->max_connections = max_connections;

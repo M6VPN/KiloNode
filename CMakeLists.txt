@@ -86,10 +86,14 @@ add_library(packetcore STATIC
 	src/proto/ax25_frame_plan.c
 	src/proto/ax25_live_diag.c
 	src/proto/ax25_params.c
+	src/proto/ax25_retry.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
+	src/proto/ax25_scheduler.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
+	src/proto/ax25_timer.c
+	src/proto/ax25_timer_queue.c
 	src/proto/fx25.c
 	src/proto/fx25_params.c
 	src/proto/kiss.c
@@ -231,6 +235,11 @@ target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
 add_test(NAME ax25_params COMMAND test_ax25_params)
 
+add_executable(test_ax25_retry tests/test_ax25_retry.c)
+target_link_libraries(test_ax25_retry PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_retry)
+add_test(NAME ax25_retry COMMAND test_ax25_retry)
+
 add_executable(test_ax25_rx_feed tests/test_ax25_rx_feed.c)
 target_link_libraries(test_ax25_rx_feed PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_rx_feed)
@@ -246,10 +255,25 @@ target_link_libraries(test_ax25_sequence PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_sequence)
 add_test(NAME ax25_sequence COMMAND test_ax25_sequence)
 
+add_executable(test_ax25_scheduler tests/test_ax25_scheduler.c)
+target_link_libraries(test_ax25_scheduler PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_scheduler)
+add_test(NAME ax25_scheduler COMMAND test_ax25_scheduler)
+
 add_executable(test_ax25_state tests/test_ax25_state.c)
 target_link_libraries(test_ax25_state PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_state)
 add_test(NAME ax25_state COMMAND test_ax25_state)
+
+add_executable(test_ax25_timer tests/test_ax25_timer.c)
+target_link_libraries(test_ax25_timer PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_timer)
+add_test(NAME ax25_timer COMMAND test_ax25_timer)
+
+add_executable(test_ax25_timer_queue tests/test_ax25_timer_queue.c)
+target_link_libraries(test_ax25_timer_queue PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_timer_queue)
+add_test(NAME ax25_timer_queue COMMAND test_ax25_timer_queue)
 
 add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)

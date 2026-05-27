@@ -14,8 +14,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 action-to-frame mapper | tested | Action intents map to frame plans only, no queue or dispatch |
 | AX.25 connection table scaffold | tested | Bounded key and table layer feeds isolated state core and retains frame plans |
 | AX.25 connection diagnostics | tested | Read-only formatters for keys, records, actions, frame plans, and table summary |
+| AX.25 timer scaffold | tested | Logical T1/T2/T3 timers only, no OS timers or live polling |
+| AX.25 retry scaffold | tested | Bounded N2 helper for offline scheduler diagnostics |
+| AX.25 scheduler scaffold | tested | Applies timer/retry action intents and produces timeout events without TX |
 | Live AX.25 connection table in daemon | planned | Not implemented |
 | AX.25 live response queueing | planned | Not implemented |
+| Live AX.25 retransmission | planned | Timeout send intents are not queued or dispatched |
 | AX.25 connected-mode state machine | partial | First core exists, live sessions are planned |
 | Live AX.25 connected sessions | planned | Not implemented |
 | RF CONNECT command | planned | Not implemented |

@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "kilonode/ax25_connection_table.h"
+#include "kilonode/ax25_scheduler.h"
 
 enum kn_ax25_runtime_error {
 	KN_AX25_RUNTIME_OK = 0,
@@ -55,6 +56,7 @@ struct kn_ax25_runtime {
 	size_t max_connections;
 	struct kn_ax25_params params;
 	struct kn_ax25_connection_table table;
+	struct kn_ax25_scheduler scheduler;
 	struct kn_ax25_runtime_counters counters;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_live_counters live_counters;
