@@ -19,3 +19,4 @@ ctest --test-dir build --output-on-failure
 ./scripts/compat-check-node-plan.sh
 ./build/kilonode-compat check-observation tests/fixtures/compat/blackbox-node-help.observation
 ./build/kilonode-compat check-observation tests/fixtures/compat/blackbox-node-info.observation
+./scripts/bench-rx-check-configs.sh

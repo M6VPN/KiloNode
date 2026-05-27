@@ -43,6 +43,29 @@ check_config()
 	fi
 }
 
+check_rx_bench_config()
+{
+	file="$1"
+
+	check_config "$file"
+
+	transmit_enabled="$(awk '
+		$1 == "transmit" && $2 == "{" { in_tx = 1; next }
+		in_tx && $1 == "}" { in_tx = 0; next }
+		in_tx && $1 == "enabled" { print $2 }
+	' "$file")"
+	if [ "$transmit_enabled" != "false" ]; then
+		echo "receive bench config enables transmit: $file"
+		status=1
+	fi
+
+	if grep -n -E 'tx-enabled[[:space:]]+true|dispatch-enabled[[:space:]]+true' \
+	    "$file"; then
+		echo "receive bench config enables a TX gate: $file"
+		status=1
+	fi
+}
+
 check_manpage()
 {
 	file="$1"
@@ -65,6 +88,21 @@ check_config packaging/examples/kilonode-bbs-local.conf
 check_config packaging/examples/kilonode-monitor-only.conf
 check_config packaging/examples/kilonode-tx-test-only.conf
 check_config packaging/examples/kilonode-tx-lab-only.conf
+check_rx_bench_config packaging/examples/kilonode-rx-bench-tcp-kiss.conf
+check_rx_bench_config packaging/examples/kilonode-rx-bench-serial-kiss.conf
+check_rx_bench_config packaging/examples/kilonode-rx-bench-pty-kiss.conf
+check_rx_bench_config packaging/examples/kilonode-rx-bench-unix-kiss.conf
+
+require_file docs/bench/README.md
+require_file docs/bench/receive-only-safety.md
+require_file docs/bench/direwolf-usb-soundcard-kiss.md
+require_file docs/bench/kilotnc-receive-only.md
+require_file docs/bench/serial-kiss-receive-only.md
+require_file docs/bench/tcp-kiss-receive-only.md
+require_file docs/bench/pty-kiss-receive-only.md
+require_file docs/bench/unix-socket-kiss-receive-only.md
+require_file docs/bench/ax25-live-diagnostics-checklist.md
+require_file docs/bench/fx25-future-bench-notes.md
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -76,7 +114,9 @@ check_manpage docs/man/kilonode-store.1
 
 blocked_word="s""udo"
 if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
-	scripts/uninstall-local.sh; then
+	scripts/uninstall-local.sh scripts/bench-rx-check-configs.sh \
+	scripts/bench-rx-direwolf-notes.sh scripts/bench-rx-kiss-tcp-smoke.sh \
+	scripts/bench-rx-monitor-tcp.sh scripts/bench-rx-ax25-status.sh; then
 	echo "packaging files must not contain privileged helper commands"
 	status=1
 fi

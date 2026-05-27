@@ -19,6 +19,8 @@
 | Connection table boundary | scaffold | AX.25 connection records operate only on decoded AX.25 frames and AX.25 frame plans. |
 | AX.25 diagnostics boundary | scaffold | Read-only diagnostics report AX.25 runtime state after the future FX.25 unwrap point. |
 | Live AX.25 feed boundary | scaffold | M1.37 live diagnostics consume decoded AX.25 frames only. Future FX.25 decode must happen before this point. |
+| FX.25 bench notes        | implemented | Receive-only bench docs include future FX.25 validation notes without claiming support. |
+| FX.25 receive validation | planned  | Future bench work must validate FX.25 detection, FEC stats, payload extraction, and fallback. |
 | FX.25 pre-decode integration | planned | No FX.25 unwrap path feeds AX.25 diagnostics yet. |
 | Live FX.25 integration   | planned  | No RX unwrap or TX wrap path is wired into runtime. |
 | FX.25 FEC with AX.25 runtime | planned | No FEC code exists and AX.25 diagnostics do not inspect FX.25 frames. |

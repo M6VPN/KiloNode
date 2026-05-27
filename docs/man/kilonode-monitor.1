@@ -1,6 +1,6 @@
 .\" KiloNode - Developed by M6VPN (M6VPN@tuta.com)
 .\" kilonode/docs/man/kilonode-monitor.1
-.Dd May 26, 2026
+.Dd May 27, 2026
 .Dt KILONODE-MONITOR 1
 .Os
 .Sh NAME
@@ -25,6 +25,8 @@
 .Nm
 reads KISS byte streams from one local transport, decodes KISS frames, attempts
 AX.25 decode for data frames, and prints deterministic monitor lines.
+It is also useful as a receive-only bench helper for inspecting local TCP,
+serial, PTY, and Unix socket KISS sources. It never transmits.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Fl -stdio
@@ -52,9 +54,13 @@ Example Unix socket path.
 .Sh EXAMPLES
 .Dl kilonode-monitor --stdio < sample.kiss
 .Dl kilonode-monitor --tcp-listen 127.0.0.1 8001
+.Dl kilonode-monitor --tcp-connect 127.0.0.1 8001 --max-frame 2048
 .Sh SECURITY NOTES
 Treat captured packet data as hostile. Avoid binding listeners to public
-interfaces unless the surrounding system is intentionally isolated.
+interfaces unless the surrounding system is intentionally isolated. For
+receive-only bench work, keep transmitter and PTT paths disabled and validate
+daemon TX gates with
+.Xr kilonodectl 1 .
 .Sh SEE ALSO
 .Xr kilonoded 8
 .Sh AUTHORS

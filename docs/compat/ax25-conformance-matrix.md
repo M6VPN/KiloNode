@@ -33,6 +33,9 @@
 | Inbound DISC/UA/DM/RR/RNR/REJ diagnostic update | implemented | Live feed updates existing diagnostic records and counters. |
 | Inbound I-frame diagnostic update | implemented | Live feed updates sequence diagnostics and stores payload length only. |
 | Live frame-plan retention      | implemented | Generated frame plans are retained in diagnostics only and are never queued. |
+| Receive-only bench docs       | implemented | USB sound card, Dire Wolf, KiloTNC, serial, TCP, PTY, and Unix KISS receive workflows are documented. |
+| Live RX diagnostics bench checklist | implemented | Bench checklist covers config check, TX gates, RX events, heard list, live counters, and connection diagnostics. |
+| Real AX.25 source validation   | planned     | Manual bench validation with receive-only hardware is planned. CI remains synthetic. |
 | Inbound SABM table handling    | implemented | Unit tests create a table record and retain a UA frame plan. No response is queued. |
 | Inbound DISC table handling    | implemented | Unit tests update an existing record and retain a UA frame plan. No response is queued. |
 | Local-connect unit-test event  | implemented | Internal test helper drives the state core and produces a SABM frame plan. It is not user exposed. |
@@ -51,6 +54,7 @@
 | Live daemon RX integration     | implemented | Feed is wired behind disabled-by-default config gates. |
 | Live CONNECT                   | planned     | No shell, BBS, or RF command exposes connect behaviour. |
 | Live response queueing         | planned     | Generated frame plans are not queued or dispatched. |
+| TX response from bench         | planned     | Receive-only bench configs do not enable TX queue writes or dispatch. |
 | Payload delivery               | planned     | I-frame payload bytes are not delivered to shell or BBS code. |
 | Timer scheduler                | planned     | Runtime does not start or stop real timers. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |

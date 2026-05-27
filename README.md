@@ -19,6 +19,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Usage](#usage)
 - [Build Profiles](#build-profiles)
 - [Install](#install)
+- [Receive-Only Bench Validation](#receive-only-bench-validation)
 - [Compatibility](#compatibility)
 - [License](#license)
 
@@ -131,6 +132,16 @@ Recommended runtime paths:
 
 Service examples live under `packaging/`. They are examples for packagers and
 are not installed into system service directories automatically.
+
+## Receive-Only Bench Validation
+
+Receive-only bench docs live in [docs/bench](docs/bench/README.md). They cover
+Dire Wolf with a USB sound card, KiloTNC, and serial, TCP, PTY, and Unix socket
+KISS inputs. Bench configs keep transmit disabled.
+
+```sh
+./scripts/bench-rx-check-configs.sh
+```
 
 ## Compatibility
 

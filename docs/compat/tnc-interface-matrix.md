@@ -23,6 +23,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | KISS serial | partial | RX supported, TX gated, no hardware CI |
 | KISS PTY | implemented | RX supported, TX gated with local write-path tests |
 | Unix socket KISS | implemented | RX supported, TX gated after socket connect or accept |
+| Dire Wolf TCP KISS via USB sound card | implemented | Receive-only bench docs and TCP KISS config, no hardware CI |
+| KiloTNC KISS receive bench | implemented | Serial and TCP KISS receive-only workflow documented |
+| Serial KISS receive bench | implemented | Receive-only example config keeps serial port disabled until edited |
+| TCP KISS receive bench | implemented | Localhost TCP KISS receive config and helper scripts |
+| PTY KISS receive bench | implemented | PTY receive config and bench docs |
+| Unix socket KISS receive bench | implemented | Local Unix socket receive config and bench docs |
 | KiloTNC | partial | Serial KISS can consume it, dedicated tests pending |
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |
