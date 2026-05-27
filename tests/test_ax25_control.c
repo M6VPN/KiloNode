@@ -125,6 +125,10 @@ test_u_classification(void)
 	if (info.u_subtype != KN_AX25_U_SUBTYPE_DISC)
 		return 1;
 
+	kn_ax25_control_decode(0x0f, &info);
+	if (info.u_subtype != KN_AX25_U_SUBTYPE_DM)
+		return 1;
+
 	kn_ax25_control_decode(0x63, &info);
 	if (info.u_subtype != KN_AX25_U_SUBTYPE_UA)
 		return 1;

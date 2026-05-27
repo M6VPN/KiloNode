@@ -92,12 +92,16 @@ kn_ax25_connection_format(const struct kn_ax25_connection *connection,
 		return KN_AX25_CONNECTION_ERR_INVALID_ARGUMENT;
 
 	needed = snprintf(buf, bufsiz,
-	    "state=%s modulo=%s tx_output=false vs=%u vr=%u va=%u",
+	    "state=%s modulo=%s tx_output=false vs=%u vr=%u va=%u "
+	    "retries=%u remote_busy=%s retransmit=%s",
 	    kn_ax25_connection_state_name(connection->state),
 	    kn_ax25_params_modulo_name(connection->params.modulo_mode),
 	    (unsigned int)connection->send_state,
 	    (unsigned int)connection->receive_state,
-	    (unsigned int)connection->acknowledge_state);
+	    (unsigned int)connection->acknowledge_state,
+	    (unsigned int)connection->retry_count,
+	    connection->remote_busy != 0 ? "true" : "false",
+	    connection->retransmit_needed != 0 ? "true" : "false");
 	if (needed < 0 || (size_t)needed >= bufsiz)
 		return KN_AX25_CONNECTION_ERR_BUFFER;
 
@@ -185,6 +189,14 @@ kn_ax25_connection_validate(const struct kn_ax25_connection *connection)
 	    KN_AX25_PARAMS_OK)
 		return KN_AX25_CONNECTION_ERR_INVALID_VALUE;
 	if (connection->tx_output_allowed != 0)
+		return KN_AX25_CONNECTION_ERR_INVALID_VALUE;
+	if (connection->retry_count > connection->params.n2_retry_count)
+		return KN_AX25_CONNECTION_ERR_INVALID_VALUE;
+	if (connection->remote_busy > 1 || connection->retransmit_needed > 1 ||
+	    connection->use_sabme > 1)
+		return KN_AX25_CONNECTION_ERR_INVALID_VALUE;
+	if (connection->send_state > 7 || connection->receive_state > 7 ||
+	    connection->acknowledge_state > 7)
 		return KN_AX25_CONNECTION_ERR_INVALID_VALUE;
 	if (connection->state < KN_AX25_CONNECTION_DISABLED ||
 	    connection->state > KN_AX25_CONNECTION_TIMER_RECOVERY)

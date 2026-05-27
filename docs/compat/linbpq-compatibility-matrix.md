@@ -7,7 +7,12 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 UI frame encode/decode | tested | Address lists, PID, digipeaters, and binary payloads |
 | AX.25 control classification scaffold | tested | UI, I, S, and U class helpers compile and test |
 | AX.25 connected-mode scaffold | tested | Disabled structs, params, event names, and formatting only |
-| AX.25 connected-mode state machine | planned | Not implemented |
+| AX.25 connected-mode state-machine core | tested | Isolated unit-tested state core only, not wired to runtime |
+| AX.25 modulo 8 sequence accounting | tested | Basic receive and acknowledgement helpers |
+| AX.25 action intents | tested | Bounded intents only, no frame bytes or TX queue writes |
+| AX.25 connected-mode state machine | partial | First core exists, live sessions are planned |
+| Live AX.25 connected sessions | planned | Not implemented |
+| RF CONNECT command | planned | Not implemented |
 | FX.25 reference indexing | implemented | Local FX.25 reference is indexed for future work |
 | FX.25 layer scaffold | tested | Disabled params and decode placeholder only |
 | FX.25 FEC encode/decode | planned | Not implemented |

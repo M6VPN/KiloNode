@@ -13,3 +13,4 @@
 | KISS integration        | planned  | No KISS RX/TX integration in M1.32. |
 | Test vectors            | planned  | Synthetic and reference-derived vectors are needed. |
 | Interop captures        | planned  | Future black-box captures only. |
+| Connected-mode boundary | scaffold | FX.25 remains separate. Future decode must produce AX.25 bytes before AX.25 connection state handling. |

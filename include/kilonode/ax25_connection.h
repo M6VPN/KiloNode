@@ -54,6 +54,10 @@ struct kn_ax25_connection {
 	uint8_t send_state;
 	uint8_t receive_state;
 	uint8_t acknowledge_state;
+	uint8_t retry_count;
+	uint8_t remote_busy;
+	uint8_t retransmit_needed;
+	uint8_t use_sabme;
 	uint8_t tx_output_allowed;
 };
 
