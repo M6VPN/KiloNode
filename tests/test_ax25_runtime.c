@@ -24,8 +24,14 @@ static int test_live_feed_defaults_disabled(void);
 static int test_live_feed_updates_table_when_enabled(void);
 static int test_no_tx_queue_writes(void);
 static int test_params_stored(void);
+static int test_prepared_bridge_blocked_counter(void);
+static int test_prepared_defaults_enabled(void);
+static int test_prepared_disabled_stores_none(void);
+static int test_prepared_queue_full_counter(void);
+static int test_prepared_raw_build_disabled(void);
 static int test_reset_clears_live_counters(void);
 static int test_reset_clears_live_scheduler(void);
+static int test_reset_clears_prepared_queue(void);
 static int test_reset_clears_scheduler(void);
 static int test_reset_clears_table(void);
 static int test_scheduler_policy_defaults_disabled(void);
@@ -52,15 +58,27 @@ main(void)
 		return 1;
 	if (test_scheduler_policy_validates_dependencies() != 0)
 		return 1;
+	if (test_prepared_defaults_enabled() != 0)
+		return 1;
 	if (test_inject_sabm_creates_connection() != 0)
 		return 1;
 	if (test_counters_update() != 0)
+		return 1;
+	if (test_prepared_disabled_stores_none() != 0)
+		return 1;
+	if (test_prepared_raw_build_disabled() != 0)
+		return 1;
+	if (test_prepared_queue_full_counter() != 0)
+		return 1;
+	if (test_prepared_bridge_blocked_counter() != 0)
 		return 1;
 	if (test_reset_clears_table() != 0)
 		return 1;
 	if (test_reset_clears_live_counters() != 0)
 		return 1;
 	if (test_reset_clears_live_scheduler() != 0)
+		return 1;
+	if (test_reset_clears_prepared_queue() != 0)
 		return 1;
 	if (test_reset_clears_scheduler() != 0)
 		return 1;
@@ -342,6 +360,124 @@ test_params_stored(void)
 }
 
 static int
+test_prepared_defaults_enabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+	if (runtime.prepared_policy.enabled == 0 ||
+	    runtime.prepared_policy.build_raw == 0)
+		return 1;
+
+	return runtime.prepared_queue.max_frames ==
+	    KN_AX25_PREPARED_QUEUE_DEFAULT_MAX ? 0 : 1;
+}
+
+static int
+test_prepared_bridge_blocked_counter(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 1);
+	if (make_sabm_event(&event, 1710000000) != 0)
+		return 1;
+	if (kn_ax25_runtime_inject_event(&runtime, &event, &result) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	if (kn_ax25_runtime_bridge_prepared_to_tx(&runtime, 1) !=
+	    KN_AX25_RUNTIME_ERR_DISABLED)
+		return 1;
+
+	return runtime.prepared_counters.bridge_blocked == 1 &&
+	    runtime.prepared_counters.tx_queue_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_prepared_disabled_stores_none(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+	struct kn_ax25_prepared_policy policy;
+
+	kn_ax25_runtime_init(&runtime);
+	kn_ax25_prepared_policy_default(&policy);
+	policy.enabled = 0;
+	if (kn_ax25_runtime_set_prepared_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 1);
+	if (make_sabm_event(&event, 1710000000) != 0)
+		return 1;
+	if (kn_ax25_runtime_inject_event(&runtime, &event, &result) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+
+	return runtime.prepared_queue.count == 0 &&
+	    runtime.prepared_counters.frames_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_prepared_queue_full_counter(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+	struct kn_ax25_prepared_policy policy;
+
+	kn_ax25_runtime_init(&runtime);
+	kn_ax25_prepared_policy_default(&policy);
+	policy.max_frames = 1;
+	if (kn_ax25_runtime_set_prepared_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 1);
+	if (make_sabm_event(&event, 1710000000) != 0)
+		return 1;
+	if (kn_ax25_runtime_inject_event(&runtime, &event, &result) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	if (kn_ax25_runtime_prepare_plans(&runtime, 1, "kiss0", 1710000001,
+	    &result.plans) != KN_AX25_RUNTIME_OK)
+		return 1;
+
+	return runtime.prepared_counters.queue_full == 1 &&
+	    runtime.prepared_counters.tx_queue_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_prepared_raw_build_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+	struct kn_ax25_prepared_policy policy;
+	const struct kn_ax25_prepared_frame *frame;
+
+	kn_ax25_runtime_init(&runtime);
+	kn_ax25_prepared_policy_default(&policy);
+	policy.build_raw = 0;
+	if (kn_ax25_runtime_set_prepared_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 1);
+	if (make_sabm_event(&event, 1710000000) != 0)
+		return 1;
+	if (kn_ax25_runtime_inject_event(&runtime, &event, &result) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	frame = kn_ax25_prepared_queue_get(&runtime.prepared_queue, 1);
+	if (frame == NULL)
+		return 1;
+
+	return frame->raw_len == 0 &&
+	    runtime.prepared_counters.frames_stored == 1 ? 0 : 1;
+}
+
+static int
 test_reset_clears_live_counters(void)
 {
 	struct kn_ax25_runtime runtime;
@@ -369,6 +505,28 @@ test_reset_clears_live_scheduler(void)
 
 	return runtime.live_scheduler.cycles_run == 0 &&
 	    runtime.live_scheduler.expired_processed == 0 ? 0 : 1;
+}
+
+static int
+test_reset_clears_prepared_queue(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_connection_event_record event;
+	struct kn_ax25_connection_table_result result;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 1);
+	if (make_sabm_event(&event, 1710000000) != 0)
+		return 1;
+	if (kn_ax25_runtime_inject_event(&runtime, &event, &result) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	if (runtime.prepared_queue.count == 0)
+		return 1;
+	kn_ax25_runtime_reset(&runtime);
+
+	return runtime.prepared_queue.count == 0 &&
+	    runtime.prepared_policy.enabled == 1 ? 0 : 1;
 }
 
 static int

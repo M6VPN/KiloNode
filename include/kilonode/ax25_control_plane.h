@@ -6,6 +6,8 @@
 
 #include <sys/types.h>
 
+#include <stdint.h>
+
 #include "kilonode/ax25_runtime.h"
 
 enum kn_ax25_control_plane_error {
@@ -28,6 +30,13 @@ enum kn_ax25_control_plane_error kn_ax25_control_plane_format_live(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_params(
 	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error kn_ax25_control_plane_format_prepared(
+	const struct kn_ax25_runtime *, const char *, uint32_t, char *,
+	size_t);
+enum kn_ax25_control_plane_error kn_ax25_control_plane_format_prepared_counters(
+	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error kn_ax25_control_plane_format_prepared_frame(
+	const struct kn_ax25_runtime *, uint64_t, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler_counters(

@@ -21,6 +21,8 @@ static int test_ax25_invalid_scheduler_max(void);
 static int test_ax25_invalid_scheduler_tx_actions(void);
 static int test_ax25_invalid_max_connections(void);
 static int test_ax25_invalid_modulo(void);
+static int test_ax25_invalid_prepared_bridge(void);
+static int test_ax25_invalid_prepared_max(void);
 static int test_ax25_omitted_defaults(void);
 static int test_ax25_unknown_key(void);
 static int test_ax25_valid_block(void);
@@ -130,6 +132,10 @@ main(void)
 	if (test_ax25_invalid_scheduler_tx_actions() != 0)
 		return 1;
 	if (test_ax25_invalid_scheduler_max() != 0)
+		return 1;
+	if (test_ax25_invalid_prepared_bridge() != 0)
+		return 1;
+	if (test_ax25_invalid_prepared_max() != 0)
 		return 1;
 	if (test_ax25_invalid_max_connections() != 0)
 		return 1;
@@ -483,6 +489,34 @@ test_ax25_invalid_modulo(void)
 }
 
 static int
+test_ax25_invalid_prepared_bridge(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"prepared-bridge-to-tx true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_ax25_invalid_prepared_max(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"ax25 {\n"
+		"prepared-max-frames 0\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
 test_ax25_omitted_defaults(void)
 {
 	struct kn_config config;
@@ -504,6 +538,13 @@ test_ax25_omitted_defaults(void)
 		return 1;
 	if (config.ax25.live_scheduler_max_expired_per_cycle !=
 	    KN_AX25_LIVE_SCHEDULER_EXPIRED_DEFAULT)
+		return 1;
+	if (config.ax25.prepared_frames != 1 ||
+	    config.ax25.prepared_build_raw != 1 ||
+	    config.ax25.prepared_bridge_to_tx != 0)
+		return 1;
+	if (config.ax25.prepared_max_frames !=
+	    KN_AX25_PREPARED_QUEUE_DEFAULT_MAX)
 		return 1;
 
 	return config.ax25.diagnostics == 1 &&
@@ -543,6 +584,10 @@ test_ax25_valid_block(void)
 		"live-scheduler-process-expired false\n"
 		"live-scheduler-max-expired-per-cycle 4\n"
 		"live-scheduler-tx-actions false\n"
+		"prepared-frames true\n"
+		"prepared-build-raw true\n"
+		"prepared-max-frames 16\n"
+		"prepared-bridge-to-tx false\n"
 		"max-connections 8\n"
 		"modulo 8\n"
 		"window-size 1\n"
@@ -561,6 +606,9 @@ test_ax25_valid_block(void)
 	    config.ax25.live_scheduler_tx_actions != 0)
 		return 1;
 	if (config.ax25.max_connections != 8)
+		return 1;
+	if (config.ax25.prepared_max_frames != 16 ||
+	    config.ax25.prepared_bridge_to_tx != 0)
 		return 1;
 
 	return config.ax25.params.t3_ms == 300000 ? 0 : 1;

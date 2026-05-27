@@ -87,6 +87,10 @@ add_library(packetcore STATIC
 	src/proto/ax25_live_diag.c
 	src/proto/ax25_live_scheduler.c
 	src/proto/ax25_params.c
+	src/proto/ax25_prepared_diag.c
+	src/proto/ax25_prepared_frame.c
+	src/proto/ax25_prepared_policy.c
+	src/proto/ax25_prepared_queue.c
 	src/proto/ax25_retry.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
@@ -240,6 +244,26 @@ add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
 add_test(NAME ax25_params COMMAND test_ax25_params)
+
+add_executable(test_ax25_prepared_diag tests/test_ax25_prepared_diag.c)
+target_link_libraries(test_ax25_prepared_diag PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_diag)
+add_test(NAME ax25_prepared_diag COMMAND test_ax25_prepared_diag)
+
+add_executable(test_ax25_prepared_frame tests/test_ax25_prepared_frame.c)
+target_link_libraries(test_ax25_prepared_frame PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_frame)
+add_test(NAME ax25_prepared_frame COMMAND test_ax25_prepared_frame)
+
+add_executable(test_ax25_prepared_policy tests/test_ax25_prepared_policy.c)
+target_link_libraries(test_ax25_prepared_policy PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_policy)
+add_test(NAME ax25_prepared_policy COMMAND test_ax25_prepared_policy)
+
+add_executable(test_ax25_prepared_queue tests/test_ax25_prepared_queue.c)
+target_link_libraries(test_ax25_prepared_queue PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_prepared_queue)
+add_test(NAME ax25_prepared_queue COMMAND test_ax25_prepared_queue)
 
 add_executable(test_ax25_retry tests/test_ax25_retry.c)
 target_link_libraries(test_ax25_retry PRIVATE packetcore)

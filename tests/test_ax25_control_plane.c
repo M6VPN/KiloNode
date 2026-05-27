@@ -22,6 +22,11 @@ static int test_one_connection_response(void);
 static int test_output_truncation(void);
 static int test_params_response(void);
 static int test_port_filtered_connections_response(void);
+static int test_prepared_counters_response(void);
+static int test_prepared_frame_missing(void);
+static int test_prepared_frame_response(void);
+static int test_prepared_port_response(void);
+static int test_prepared_response(void);
 static int test_scheduler_counters_response(void);
 static int test_scheduler_response(void);
 static int test_scheduler_timers_response(void);
@@ -51,6 +56,16 @@ main(void)
 	if (test_scheduler_timers_response() != 0)
 		return 1;
 	if (test_scheduler_counters_response() != 0)
+		return 1;
+	if (test_prepared_response() != 0)
+		return 1;
+	if (test_prepared_port_response() != 0)
+		return 1;
+	if (test_prepared_frame_response() != 0)
+		return 1;
+	if (test_prepared_frame_missing() != 0)
+		return 1;
+	if (test_prepared_counters_response() != 0)
 		return 1;
 	if (test_invalid_port_filter_rejected() != 0)
 		return 1;
@@ -241,6 +256,83 @@ test_port_filtered_connections_response(void)
 
 	return strcmp(out, "OK AX25 CONNECTIONS count=0\nEND\n") == 0 ?
 	    0 : 1;
+}
+
+static int
+test_prepared_counters_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	if (populate_runtime(&runtime) != 0)
+		return 1;
+	if (kn_ax25_control_plane_format_prepared_counters(&runtime, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "stored=1") != NULL &&
+	    strstr(out, "tx_writes=0") != NULL ? 0 : 1;
+}
+
+static int
+test_prepared_frame_missing(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_ax25_runtime_init(&runtime);
+	if (kn_ax25_control_plane_format_prepared_frame(&runtime, 1, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_ERR_NOT_FOUND)
+		return 1;
+
+	return strcmp(out, "ERR prepared-frame-not-found\n") == 0 ? 0 : 1;
+}
+
+static int
+test_prepared_frame_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	if (populate_runtime(&runtime) != 0)
+		return 1;
+	if (kn_ax25_control_plane_format_prepared_frame(&runtime, 1, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 PREPARED FRAME id=1") != NULL &&
+	    strstr(out, "hex=") != NULL ? 0 : 1;
+}
+
+static int
+test_prepared_port_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	if (populate_runtime(&runtime) != 0)
+		return 1;
+	if (kn_ax25_control_plane_format_prepared(&runtime, "kiss0", 0,
+	    out, sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "OK AX25 PREPARED count=1") != NULL ? 0 : 1;
+}
+
+static int
+test_prepared_response(void)
+{
+	struct kn_ax25_runtime runtime;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	if (populate_runtime(&runtime) != 0)
+		return 1;
+	if (kn_ax25_control_plane_format_prepared(&runtime, NULL, 0, out,
+	    sizeof(out)) != KN_AX25_CONTROL_PLANE_OK)
+		return 1;
+
+	return strstr(out, "AX25 PREPARED id=1") != NULL &&
+	    strstr(out, "kind=UA") != NULL ? 0 : 1;
 }
 
 static int

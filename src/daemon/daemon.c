@@ -105,6 +105,19 @@ ax25_live_options_from_config(const struct kn_config *config,
 }
 
 static void
+ax25_prepared_policy_from_config(const struct kn_config *config,
+	struct kn_ax25_prepared_policy *policy)
+{
+	kn_ax25_prepared_policy_default(policy);
+	if (config == NULL)
+		return;
+	policy->enabled = config->ax25.prepared_frames;
+	policy->build_raw = config->ax25.prepared_build_raw;
+	policy->bridge_to_tx = config->ax25.prepared_bridge_to_tx;
+	policy->max_frames = config->ax25.prepared_max_frames;
+}
+
+static void
 ax25_scheduler_policy_from_config(const struct kn_config *config,
 	struct kn_ax25_scheduler_policy *policy)
 {
@@ -125,6 +138,7 @@ ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	const struct kn_config *config)
 {
 	struct kn_ax25_live_options live;
+	struct kn_ax25_prepared_policy prepared_policy;
 	struct kn_ax25_scheduler_policy scheduler_policy;
 
 	if (runtime == NULL || config == NULL)
@@ -144,6 +158,10 @@ ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	ax25_scheduler_policy_from_config(config, &scheduler_policy);
 	if (kn_ax25_runtime_set_scheduler_policy(runtime,
 	    &scheduler_policy) != KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	ax25_prepared_policy_from_config(config, &prepared_policy);
+	if (kn_ax25_runtime_set_prepared_policy(runtime,
+	    &prepared_policy) != KN_AX25_RUNTIME_OK)
 		return KN_DAEMON_ERR_CONFIG;
 
 	return KN_DAEMON_OK;

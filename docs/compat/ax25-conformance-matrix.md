@@ -92,6 +92,11 @@
 | Live daemon timer integration  | partial     | Daemon owns the wrapper and can call explicit polling, but no TX bridge exists. |
 | Retransmission dispatch        | planned     | Timeout send actions are not queued or dispatched. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |
+| Prepared response frame queue | implemented | Bounded diagnostics queue stores generated AX.25 response frame plans and optional raw AX.25 bytes. |
+| Raw AX.25 response bytes      | implemented | Existing frame builder output is retained for inspection only, without HDLC flags, FCS, KISS, or FX.25. |
+| Prepared frame diagnostics control plane | implemented | Read-only `AX25 PREPARED` commands list prepared diagnostic records and counters. |
+| Prepared-to-TX bridge blocked | implemented | Bridge helper returns blocked and config rejects `prepared-bridge-to-tx true`. |
+| Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
 | Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |
 | FCS handling                   | deferred    | KISS-facing code operates at AX.25 body boundary. |
 | KISS payload boundary          | implemented | Existing KISS encode/decode treats AX.25 bytes as payload. |

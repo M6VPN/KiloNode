@@ -16,7 +16,7 @@ static void mapper_context_from_record(
 	struct kn_ax25_action_mapper_context *);
 static void record_generated_plans(struct kn_ax25_runtime *,
 	struct kn_ax25_connection_record *,
-	const struct kn_ax25_action_list *);
+	uint32_t, uint64_t, const struct kn_ax25_action_list *);
 static uint64_t tx_action_count(const struct kn_ax25_action_list *);
 
 static uint64_t
@@ -58,7 +58,8 @@ mapper_context_from_record(const struct kn_ax25_connection_record *record,
 
 static void
 record_generated_plans(struct kn_ax25_runtime *runtime,
-	struct kn_ax25_connection_record *record,
+	struct kn_ax25_connection_record *record, uint32_t connection_id,
+	uint64_t now_ms,
 	const struct kn_ax25_action_list *actions)
 {
 	struct kn_ax25_action_mapper_context context;
@@ -78,6 +79,8 @@ record_generated_plans(struct kn_ax25_runtime *runtime,
 	}
 	runtime->live_scheduler.generated_frame_plans +=
 	    record->last_plans.count;
+	(void)kn_ax25_runtime_prepare_plans(runtime, connection_id,
+	    record->key.port_name, now_ms, &record->last_plans);
 }
 
 static uint64_t
@@ -190,7 +193,8 @@ kn_ax25_live_scheduler_poll(struct kn_ax25_runtime *runtime, uint64_t now_ms)
 		record->last_event = now_ms;
 		record->last_event_kind = result.event;
 		record->last_state_status = result.state_status;
-		record_generated_plans(runtime, record, &result.actions);
+		record_generated_plans(runtime, record,
+		    expired[i].connection_id, now_ms, &result.actions);
 	}
 
 	rc = KN_AX25_LIVE_SCHEDULER_OK;

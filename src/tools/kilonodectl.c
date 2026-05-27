@@ -187,6 +187,47 @@ command_ax25(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "AX25 SCHEDULER COUNTERS");
 	}
+	if (strcmp(sub, "prepared") == 0) {
+		if (*index + 2 >= argc) {
+			*index += 1;
+			return command_set(dst, dst_len, "AX25 PREPARED");
+		}
+		if (strcmp(argv[*index + 2], "--port") == 0) {
+			if (*index + 3 >= argc)
+				return 1;
+			needed = snprintf(dst, dst_len, "AX25 PREPARED PORT %s",
+			    argv[*index + 3]);
+			if (needed < 0 || (size_t)needed >= dst_len)
+				return 1;
+			*index += 3;
+			return 0;
+		}
+		if (strcmp(argv[*index + 2], "--connection") == 0) {
+			if (*index + 3 >= argc)
+				return 1;
+			needed = snprintf(dst, dst_len,
+			    "AX25 PREPARED CONNECTION %s", argv[*index + 3]);
+			if (needed < 0 || (size_t)needed >= dst_len)
+				return 1;
+			*index += 3;
+			return 0;
+		}
+		return 1;
+	}
+	if (strcmp(sub, "prepared-frame") == 0) {
+		if (*index + 2 >= argc)
+			return 1;
+		needed = snprintf(dst, dst_len, "AX25 PREPARED FRAME %s",
+		    argv[*index + 2]);
+		if (needed < 0 || (size_t)needed >= dst_len)
+			return 1;
+		*index += 2;
+		return 0;
+	}
+	if (strcmp(sub, "prepared-counters") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 PREPARED COUNTERS");
+	}
 
 	return 1;
 }

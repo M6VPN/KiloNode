@@ -119,6 +119,13 @@ config_validate(struct kn_config *config)
 	    KN_AX25_LIVE_SCHEDULER_EXPIRED_MAX)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "invalid ax25 live-scheduler-max-expired-per-cycle");
+	if (config->ax25.prepared_bridge_to_tx != 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 prepared-bridge-to-tx is disabled");
+	if (config->ax25.prepared_max_frames == 0 ||
+	    config->ax25.prepared_max_frames > KN_AX25_PREPARED_QUEUE_MAX)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "invalid ax25 prepared-max-frames");
 	config->ax25.params.allow_connected_mode =
 	    config->ax25.connected_mode;
 	if (config->ax25.max_connections < KN_CONFIG_AX25_CONNECTIONS_MIN ||
@@ -287,6 +294,9 @@ kn_config_init(struct kn_config *config)
 	config->ax25.live_rx_retain_frame_plans = 1;
 	config->ax25.live_scheduler_max_expired_per_cycle =
 	    KN_AX25_LIVE_SCHEDULER_EXPIRED_DEFAULT;
+	config->ax25.prepared_frames = 1;
+	config->ax25.prepared_build_raw = 1;
+	config->ax25.prepared_max_frames = KN_AX25_PREPARED_QUEUE_DEFAULT_MAX;
 	config->bbs.max_body_bytes = KN_CONFIG_BBS_BODY_MAX;
 	config->heard.enabled = 1;
 	config->heard.max_entries = KN_CONFIG_HEARD_MAX;
@@ -716,6 +726,54 @@ ax25_key_set(struct kn_config *config, char **tokens, size_t token_count,
 			    "invalid ax25 live-scheduler-max-expired-per-cycle");
 		config->ax25.live_scheduler_max_expired_per_cycle =
 		    (size_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "prepared-frames") == 0) {
+		if (key_seen(&config->ax25.has_prepared_frames, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1], &config->ax25.prepared_frames) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 prepared-frames value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "prepared-build-raw") == 0) {
+		if (key_seen(&config->ax25.has_prepared_build_raw, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.prepared_build_raw) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 prepared-build-raw value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "prepared-bridge-to-tx") == 0) {
+		if (key_seen(&config->ax25.has_prepared_bridge_to_tx,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.prepared_bridge_to_tx) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 prepared-bridge-to-tx value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "prepared-max-frames") == 0) {
+		if (key_seen(&config->ax25.has_prepared_max_frames, config,
+		    line_no) != 0)
+			return config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' || value == 0 ||
+		    value > KN_AX25_PREPARED_QUEUE_MAX)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid ax25 prepared-max-frames");
+		config->ax25.prepared_max_frames = (size_t)value;
 		return KN_CONFIG_OK;
 	}
 

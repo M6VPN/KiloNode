@@ -10,6 +10,7 @@
 
 #include "kilonode/ax25_connection_table.h"
 #include "kilonode/ax25_live_scheduler.h"
+#include "kilonode/ax25_prepared_queue.h"
 #include "kilonode/ax25_scheduler.h"
 
 enum kn_ax25_runtime_error {
@@ -50,6 +51,15 @@ struct kn_ax25_live_counters {
 	uint64_t tx_queue_writes_attempted;
 };
 
+struct kn_ax25_prepared_counters {
+	uint64_t frames_attempted;
+	uint64_t frames_stored;
+	uint64_t build_failures;
+	uint64_t queue_full;
+	uint64_t bridge_blocked;
+	uint64_t tx_queue_writes_attempted;
+};
+
 struct kn_ax25_runtime {
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -59,18 +69,26 @@ struct kn_ax25_runtime {
 	struct kn_ax25_connection_table table;
 	struct kn_ax25_scheduler scheduler;
 	struct kn_ax25_live_scheduler live_scheduler;
+	struct kn_ax25_prepared_queue prepared_queue;
+	struct kn_ax25_prepared_policy prepared_policy;
 	struct kn_ax25_runtime_counters counters;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_live_counters live_counters;
+	struct kn_ax25_prepared_counters prepared_counters;
 };
 
 void kn_ax25_runtime_free(struct kn_ax25_runtime *);
+enum kn_ax25_runtime_error kn_ax25_runtime_bridge_prepared_to_tx(
+	struct kn_ax25_runtime *, uint64_t);
 const struct kn_ax25_connection_record *kn_ax25_runtime_get_connection(
 	const struct kn_ax25_runtime *, size_t);
 void kn_ax25_runtime_init(struct kn_ax25_runtime *);
 enum kn_ax25_runtime_error kn_ax25_runtime_inject_event(
 	struct kn_ax25_runtime *, const struct kn_ax25_connection_event_record *,
 	struct kn_ax25_connection_table_result *);
+enum kn_ax25_runtime_error kn_ax25_runtime_prepare_plans(
+	struct kn_ax25_runtime *, uint32_t, const char *, uint64_t,
+	const struct kn_ax25_frame_plan_list *);
 size_t kn_ax25_runtime_connection_count(const struct kn_ax25_runtime *);
 void kn_ax25_runtime_reset(struct kn_ax25_runtime *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_enabled(
@@ -80,6 +98,8 @@ enum kn_ax25_runtime_error kn_ax25_runtime_set_live_options(
 enum kn_ax25_runtime_error kn_ax25_runtime_set_scheduler_policy(
 	struct kn_ax25_runtime *,
 	const struct kn_ax25_scheduler_policy *);
+enum kn_ax25_runtime_error kn_ax25_runtime_set_prepared_policy(
+	struct kn_ax25_runtime *, const struct kn_ax25_prepared_policy *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_params(
 	struct kn_ax25_runtime *, const struct kn_ax25_params *, size_t);
 

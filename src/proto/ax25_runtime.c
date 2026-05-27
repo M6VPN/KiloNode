@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+#include "kilonode/ax25_prepared_frame.h"
 #include "kilonode/ax25_runtime.h"
 
 static void runtime_apply_table_params(struct kn_ax25_runtime *);
@@ -23,6 +24,29 @@ runtime_apply_table_params(struct kn_ax25_runtime *runtime)
 	(void)kn_ax25_connection_table_set_params(&runtime->table, &params);
 }
 
+enum kn_ax25_runtime_error
+kn_ax25_runtime_bridge_prepared_to_tx(struct kn_ax25_runtime *runtime,
+	uint64_t id)
+{
+	const struct kn_ax25_prepared_frame *frame;
+	enum kn_ax25_prepared_policy_error rc;
+
+	if (runtime == NULL || id == 0)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	frame = kn_ax25_prepared_queue_get(&runtime->prepared_queue, id);
+	if (frame == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	rc = kn_ax25_prepared_bridge_to_tx(frame);
+	if (rc == KN_AX25_PREPARED_POLICY_ERR_BRIDGE_BLOCKED) {
+		runtime->prepared_counters.bridge_blocked++;
+		return KN_AX25_RUNTIME_ERR_DISABLED;
+	}
+	if (rc != KN_AX25_PREPARED_POLICY_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
+	return KN_AX25_RUNTIME_ERR_DISABLED;
+}
+
 void
 kn_ax25_runtime_free(struct kn_ax25_runtime *runtime)
 {
@@ -32,6 +56,7 @@ kn_ax25_runtime_free(struct kn_ax25_runtime *runtime)
 	kn_ax25_connection_table_free(&runtime->table);
 	kn_ax25_scheduler_reset(&runtime->scheduler);
 	kn_ax25_live_scheduler_reset(&runtime->live_scheduler);
+	kn_ax25_prepared_queue_free(&runtime->prepared_queue);
 	memset(runtime, 0, sizeof(*runtime));
 }
 
@@ -62,6 +87,8 @@ kn_ax25_runtime_init(struct kn_ax25_runtime *runtime)
 	kn_ax25_connection_table_init(&runtime->table);
 	kn_ax25_scheduler_init(&runtime->scheduler);
 	kn_ax25_live_scheduler_init(&runtime->live_scheduler);
+	kn_ax25_prepared_queue_init(&runtime->prepared_queue);
+	kn_ax25_prepared_policy_default(&runtime->prepared_policy);
 	runtime->table.max_connections = runtime->max_connections;
 	runtime_apply_table_params(runtime);
 }
@@ -101,8 +128,59 @@ kn_ax25_runtime_inject_event(struct kn_ax25_runtime *runtime,
 	if (result->created != 0)
 		runtime->counters.connections_created++;
 	runtime->counters.frame_plans_generated += result->plans.count;
+	(void)kn_ax25_runtime_prepare_plans(runtime,
+	    (uint32_t)(result->record_index + 1U), event->key.port_name,
+	    event->timestamp, &result->plans);
 	if (result->state_status != KN_AX25_STATE_OK)
 		runtime->counters.protocol_errors++;
+
+	return KN_AX25_RUNTIME_OK;
+}
+
+enum kn_ax25_runtime_error
+kn_ax25_runtime_prepare_plans(struct kn_ax25_runtime *runtime,
+	uint32_t connection_id, const char *port_name, uint64_t now_ms,
+	const struct kn_ax25_frame_plan_list *plans)
+{
+	struct kn_ax25_prepared_frame prepared;
+	uint64_t id;
+	size_t i;
+	enum kn_ax25_prepared_queue_error queue_rc;
+
+	if (runtime == NULL || port_name == NULL || plans == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	if (connection_id == 0)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	if (runtime->prepared_policy.enabled == 0)
+		return KN_AX25_RUNTIME_OK;
+	if (kn_ax25_prepared_policy_validate(&runtime->prepared_policy) !=
+	    KN_AX25_PREPARED_POLICY_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
+	for (i = 0; i < plans->count; i++) {
+		runtime->prepared_counters.frames_attempted++;
+		if (kn_ax25_prepared_frame_from_plan(&prepared,
+		    &plans->plans[i], connection_id, port_name, now_ms,
+		    runtime->prepared_policy.build_raw) !=
+		    KN_AX25_PREPARED_FRAME_OK) {
+			runtime->prepared_counters.build_failures++;
+			continue;
+		}
+		if (prepared.status ==
+		    KN_AX25_PREPARED_FRAME_STATUS_BUILD_FAILED)
+			runtime->prepared_counters.build_failures++;
+		queue_rc = kn_ax25_prepared_queue_push(
+		    &runtime->prepared_queue, &prepared, &id);
+		if (queue_rc == KN_AX25_PREPARED_QUEUE_ERR_FULL) {
+			runtime->prepared_counters.queue_full++;
+			continue;
+		}
+		if (queue_rc != KN_AX25_PREPARED_QUEUE_OK) {
+			runtime->prepared_counters.build_failures++;
+			continue;
+		}
+		runtime->prepared_counters.frames_stored++;
+	}
 
 	return KN_AX25_RUNTIME_OK;
 }
@@ -122,6 +200,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	struct kn_ax25_params params;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_scheduler_policy scheduler_policy;
+	struct kn_ax25_prepared_policy prepared_policy;
 	size_t max_connections;
 	uint8_t enabled;
 	uint8_t connected_mode_enabled;
@@ -133,18 +212,24 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	params = runtime->params;
 	live = runtime->live;
 	scheduler_policy = runtime->live_scheduler.policy;
+	prepared_policy = runtime->prepared_policy;
 	max_connections = runtime->max_connections;
 	enabled = runtime->enabled;
 	connected_mode_enabled = runtime->connected_mode_enabled;
 	diagnostics_enabled = runtime->diagnostics_enabled;
 	memset(&runtime->counters, 0, sizeof(runtime->counters));
 	memset(&runtime->live_counters, 0, sizeof(runtime->live_counters));
+	memset(&runtime->prepared_counters, 0,
+	    sizeof(runtime->prepared_counters));
 	kn_ax25_connection_table_reset(&runtime->table);
 	kn_ax25_scheduler_reset(&runtime->scheduler);
 	kn_ax25_live_scheduler_reset(&runtime->live_scheduler);
+	kn_ax25_prepared_queue_reset(&runtime->prepared_queue);
 	runtime->params = params;
 	runtime->live = live;
 	runtime->live_scheduler.policy = scheduler_policy;
+	runtime->prepared_policy = prepared_policy;
+	runtime->prepared_queue.max_frames = prepared_policy.max_frames;
 	runtime->max_connections = max_connections;
 	runtime->enabled = enabled;
 	runtime->connected_mode_enabled = connected_mode_enabled;
@@ -202,6 +287,23 @@ kn_ax25_runtime_set_scheduler_policy(struct kn_ax25_runtime *runtime,
 	    policy) != KN_AX25_LIVE_SCHEDULER_OK)
 		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
 
+	return KN_AX25_RUNTIME_OK;
+}
+
+enum kn_ax25_runtime_error
+kn_ax25_runtime_set_prepared_policy(struct kn_ax25_runtime *runtime,
+	const struct kn_ax25_prepared_policy *policy)
+{
+	if (runtime == NULL || policy == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	if (kn_ax25_prepared_policy_validate(policy) !=
+	    KN_AX25_PREPARED_POLICY_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+	if (kn_ax25_prepared_queue_set_max(&runtime->prepared_queue,
+	    policy->max_frames) != KN_AX25_PREPARED_QUEUE_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
+	runtime->prepared_policy = *policy;
 	return KN_AX25_RUNTIME_OK;
 }
 

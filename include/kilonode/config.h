@@ -10,6 +10,7 @@
 
 #include "kilonode/access_policy.h"
 #include "kilonode/ax25_params.h"
+#include "kilonode/ax25_prepared_policy.h"
 #include "kilonode/ax25_scheduler_policy.h"
 #include "kilonode/callsign.h"
 #include "kilonode/tx_policy.h"
@@ -86,6 +87,10 @@ struct kn_config_ax25 {
 	uint8_t live_scheduler_process_expired;
 	uint8_t live_scheduler_tx_actions;
 	size_t live_scheduler_max_expired_per_cycle;
+	uint8_t prepared_frames;
+	uint8_t prepared_build_raw;
+	uint8_t prepared_bridge_to_tx;
+	size_t prepared_max_frames;
 	uint8_t has_block;
 	uint8_t has_enabled;
 	uint8_t has_connected_mode;
@@ -97,6 +102,10 @@ struct kn_config_ax25 {
 	uint8_t has_live_scheduler_process_expired;
 	uint8_t has_live_scheduler_tx_actions;
 	uint8_t has_live_scheduler_max_expired_per_cycle;
+	uint8_t has_prepared_frames;
+	uint8_t has_prepared_build_raw;
+	uint8_t has_prepared_bridge_to_tx;
+	uint8_t has_prepared_max_frames;
 	uint8_t has_max_connections;
 	uint8_t has_modulo;
 	uint8_t has_window_size;

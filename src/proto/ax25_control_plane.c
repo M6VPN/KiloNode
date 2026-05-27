@@ -11,6 +11,7 @@
 #include "kilonode/ax25_control_plane.h"
 #include "kilonode/ax25_connection_diag.h"
 #include "kilonode/ax25_live_diag.h"
+#include "kilonode/ax25_prepared_diag.h"
 #include "kilonode/ax25_scheduler_diag.h"
 #include "kilonode/config.h"
 
@@ -326,7 +327,10 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    "live_plans=%llu live_retained=%llu live_tx_writes=%llu "
 	    "scheduler_cycles=%llu scheduler_expired=%llu "
 	    "scheduler_blocked=%llu scheduler_plans=%llu "
-	    "scheduler_tx_blocked=%llu scheduler_tx_writes=%llu\nEND\n",
+	    "scheduler_tx_blocked=%llu scheduler_tx_writes=%llu "
+	    "prepared_attempted=%llu prepared_stored=%llu "
+	    "prepared_failed=%llu prepared_full=%llu "
+	    "prepared_bridge_blocked=%llu prepared_tx_writes=%llu\nEND\n",
 	    (unsigned long long)rt->counters.events_accepted,
 	    (unsigned long long)rt->counters.events_rejected,
 	    (unsigned long long)rt->counters.connections_created,
@@ -351,8 +355,59 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    rt->live_scheduler.expired_blocked_by_policy,
 	    (unsigned long long)rt->live_scheduler.generated_frame_plans,
 	    (unsigned long long)rt->live_scheduler.tx_actions_blocked,
-	    (unsigned long long)rt->live_scheduler.tx_writes_attempted);
+	    (unsigned long long)rt->live_scheduler.tx_writes_attempted,
+	    (unsigned long long)rt->prepared_counters.frames_attempted,
+	    (unsigned long long)rt->prepared_counters.frames_stored,
+	    (unsigned long long)rt->prepared_counters.build_failures,
+	    (unsigned long long)rt->prepared_counters.queue_full,
+	    (unsigned long long)rt->prepared_counters.bridge_blocked,
+	    (unsigned long long)
+	    rt->prepared_counters.tx_queue_writes_attempted);
 	if (needed < 0 || (size_t)needed >= bufsiz)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared(const struct kn_ax25_runtime *runtime,
+	const char *port, uint32_t connection_id, char *buf, size_t bufsiz)
+{
+	if (buf == NULL || bufsiz == 0)
+		return KN_AX25_CONTROL_PLANE_ERR_INVALID_ARGUMENT;
+	if (port != NULL && port_filter_valid(port) == 0) {
+		(void)snprintf(buf, bufsiz, "ERR invalid-port\n");
+		return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;
+	}
+	if (kn_ax25_prepared_diag_format_list(runtime, port, connection_id,
+	    buf, bufsiz) != KN_AX25_PREPARED_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_counters(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_prepared_diag_format_counters(runtime, buf, bufsiz) !=
+	    KN_AX25_PREPARED_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_prepared_frame(
+	const struct kn_ax25_runtime *runtime, uint64_t id, char *buf,
+	size_t bufsiz)
+{
+	enum kn_ax25_prepared_diag_error rc;
+
+	rc = kn_ax25_prepared_diag_format_frame(runtime, id, buf, bufsiz);
+	if (rc == KN_AX25_PREPARED_DIAG_ERR_NOT_FOUND)
+		return KN_AX25_CONTROL_PLANE_ERR_NOT_FOUND;
+	if (rc != KN_AX25_PREPARED_DIAG_OK)
 		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
 
 	return KN_AX25_CONTROL_PLANE_OK;
@@ -447,6 +502,35 @@ kn_ax25_control_plane_format(const char *command,
 		    buf, bufsiz);
 	if (strcmp(command, "SCHEDULER COUNTERS") == 0)
 		return kn_ax25_control_plane_format_scheduler_counters(runtime,
+		    buf, bufsiz);
+	if (strcmp(command, "PREPARED") == 0)
+		return kn_ax25_control_plane_format_prepared(runtime, NULL, 0,
+		    buf, bufsiz);
+	if (strncmp(command, "PREPARED PORT ", 14) == 0)
+		return kn_ax25_control_plane_format_prepared(runtime,
+		    command + 14, 0, buf, bufsiz);
+	if (strncmp(command, "PREPARED CONNECTION ", 20) == 0) {
+		id = strtoul(command + 20, &end, 10);
+		if (*end != '\0' || id == 0 || id > UINT32_MAX) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR invalid-connection-id\n");
+			return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;
+		}
+		return kn_ax25_control_plane_format_prepared(runtime, NULL,
+		    (uint32_t)id, buf, bufsiz);
+	}
+	if (strncmp(command, "PREPARED FRAME ", 15) == 0) {
+		id = strtoul(command + 15, &end, 10);
+		if (*end != '\0' || id == 0) {
+			(void)snprintf(buf, bufsiz,
+			    "ERR invalid-prepared-frame-id\n");
+			return KN_AX25_CONTROL_PLANE_ERR_INVALID_COMMAND;
+		}
+		return kn_ax25_control_plane_format_prepared_frame(runtime,
+		    (uint64_t)id, buf, bufsiz);
+	}
+	if (strcmp(command, "PREPARED COUNTERS") == 0)
+		return kn_ax25_control_plane_format_prepared_counters(runtime,
 		    buf, bufsiz);
 
 	(void)snprintf(buf, bufsiz, "ERR invalid-ax25-command\n");
