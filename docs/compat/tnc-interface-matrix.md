@@ -35,6 +35,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Manual capture replay | tested | Imported captures replay without hardware or transport access |
 | Default receive examples | tested | Receive-only examples keep transmit, dispatch, and port TX disabled. |
 | AX.25 response safety gate | implemented | Future response TX is blocked by checklist and no-transmit regression checks. |
+| M1 receive/diagnostics readiness | implemented | Milestone checks cover synthetic KISS/AX.25 fixtures, manual capture workflow, and no-hardware replay. |
+| v0.1-alpha default TNC posture | tested | Default and bench examples stay receive-only or dry-run unless future lab gates are explicitly completed. |
 | TX lab future gate | planned | Lab-only TX remains blocked until safety gate, operator preflight, and bench proof are complete. |
 | Manual KiloTNC captures | planned | Future receive-only captures should be imported as reviewed bench observations |
 | Manual Dire Wolf captures | planned | Future USB sound card captures should use the manual import path |

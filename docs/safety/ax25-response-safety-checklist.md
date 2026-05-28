@@ -31,6 +31,7 @@ items remain blockers.
 - [x] Timer replay assertions pass.
 - [x] Manual capture replay path is validated.
 - [x] No-transmit regression script passes.
+- [x] Live scheduler smoke mode has a no-transmit check.
 - [ ] Dummy-load or non-radiating TX lab validation exists.
 - [ ] Controlled legal over-air validation exists.
 

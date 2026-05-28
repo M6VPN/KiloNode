@@ -115,6 +115,14 @@ require_file docs/bench/ax25-response-bench-gate.md
 require_file docs/bench/ax25-prepared-response-validation.md
 require_file docs/bench/ax25-future-tx-lab-notes.md
 
+require_file docs/milestones/M1-v0.1-alpha-readiness.md
+require_file docs/milestones/M1-feature-inventory.md
+require_file docs/milestones/M1-test-inventory.md
+require_file docs/milestones/M1-safety-audit.md
+require_file docs/milestones/M1-compatibility-audit.md
+require_file docs/milestones/M1-known-limitations.md
+require_file docs/milestones/M1-next-milestones.md
+
 require_file docs/safety/README.md
 require_file docs/safety/ax25-response-safety-checklist.md
 require_file docs/safety/ax25-prepared-to-tx-gate.md
@@ -137,6 +145,11 @@ require_file scripts/ax25-safety-check.sh
 require_file scripts/ax25-no-transmit-check.sh
 require_file scripts/ax25-prepared-gate-report.sh
 require_file scripts/ax25-response-bench-preflight.sh
+require_file scripts/m1-docs-audit.sh
+require_file scripts/m1-test-inventory.sh
+require_file scripts/m1-safety-audit.sh
+require_file scripts/m1-compatibility-audit.sh
+require_file scripts/m1-readiness-check.sh
 
 require_file tests/fixtures/bench/README.md
 require_file tests/fixtures/bench/manifest.bench
@@ -160,6 +173,9 @@ require_file tests/fixtures/safety/README.md
 require_file tests/fixtures/safety/ax25-response-safety.required
 require_file tests/fixtures/safety/ax25-response-safety.blocked
 require_file tests/fixtures/safety/ax25-response-safety.report.expected
+require_file tests/fixtures/milestones/README.md
+require_file tests/fixtures/milestones/m1-required-checks.txt
+require_file tests/fixtures/milestones/m1-blocked-features.txt
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -181,7 +197,9 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/bench-rx-workspace-list.sh scripts/bench-rx-workspace-replay.sh \
 	scripts/bench-rx-workspace-report.sh scripts/ax25-safety-check.sh \
 	scripts/ax25-no-transmit-check.sh scripts/ax25-prepared-gate-report.sh \
-	scripts/ax25-response-bench-preflight.sh; then
+	scripts/ax25-response-bench-preflight.sh scripts/m1-docs-audit.sh \
+	scripts/m1-test-inventory.sh scripts/m1-safety-audit.sh \
+	scripts/m1-compatibility-audit.sh scripts/m1-readiness-check.sh; then
 	echo "packaging files must not contain privileged helper commands"
 	status=1
 fi

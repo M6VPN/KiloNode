@@ -24,8 +24,10 @@ Manual capture workspaces are documented in
 Future response TX bench gates are documented in
 [ax25-response-bench-gate.md](ax25-response-bench-gate.md),
 [ax25-prepared-response-validation.md](ax25-prepared-response-validation.md),
-and [ax25-future-tx-lab-notes.md](ax25-future-tx-lab-notes.md). Current bench
-work remains offline or receive-only.
+and [ax25-future-tx-lab-notes.md](ax25-future-tx-lab-notes.md). Live scheduler
+smoke diagnostics are documented in
+[ax25-live-scheduler-smoke.md](ax25-live-scheduler-smoke.md). Current bench work
+remains offline or receive-only.
 
 Primary validation commands:
 
@@ -40,3 +42,6 @@ Primary validation commands:
 
 Read [receive-only-safety.md](receive-only-safety.md) before connecting bench
 hardware.
+
+Milestone readiness checks are collected under
+[docs/milestones](../milestones/M1-v0.1-alpha-readiness.md).

@@ -215,6 +215,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 prepared-to-TX bridge gate | implemented | Disabled diagnostic gate evaluates prepared frames without real TX queue writes if tests pass. |
 | AX.25 response safety checklist | implemented | Docs and scripts define blockers before any real connected-mode response TX. |
 | AX.25 live scheduler smoke mode | implemented | Daemon smoke diagnostics can poll AX.25 timers without TX queue writes if tests pass. |
+| M1 compatibility audit | implemented | Milestone docs and scripts validate clean-room fixtures, observation packs, and planning files without running LinBPQ. |
+| v0.1-alpha receive/diagnostics readiness | implemented | Recommended scope is native receive, diagnostics, local BBS/control, compatibility lab tooling, and safety gates only. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |
 | Real connected-mode response TX | planned | Prepared diagnostics are not transmitted. |
 | BPQ/LinBPQ connected-mode response TX | blocked | Requires future black-box interop work and safety gate completion. |

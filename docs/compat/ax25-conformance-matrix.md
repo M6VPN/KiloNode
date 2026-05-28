@@ -113,6 +113,11 @@
 | No-transmit regression checks   | implemented | Shell checks verify default examples and replay outputs keep TX writes at zero. |
 | Prepared-to-TX gate report      | implemented | Non-transmitting report script verifies the prepared bridge stays blocked. |
 | Future response TX bench gate   | implemented | Bench docs define Stage 0/1 current work and Stage 2/3 blocked future work. |
+| M1 feature inventory            | implemented | Milestone docs inventory receive, BBS, control, compatibility, AX.25 diagnostics, prepared frames, and safety gates. |
+| M1 test inventory               | implemented | Milestone docs and script inventory deterministic tests, fixtures, and no-hardware checks. |
+| M1 safety audit                 | implemented | Milestone audit records no-transmit defaults, blocked prepared bridge, smoke scheduler safety, and no CONNECT. |
+| M1 readiness check              | implemented | Readiness script chains docs, safety, compatibility, replay, and smoke checks without hardware or LinBPQ. |
+| v0.1-alpha receive/diagnostics scope | implemented | Tag scope is receive-side monitoring, local BBS/control tools, diagnostics scaffolds, and no-transmit gates only. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
 | Real response TX               | blocked     | Requires safety checklist completion and a separate implementation milestone. |
 | Dispatch planned              | planned     | Prepared bridge diagnostics do not run TX dispatch. |

@@ -1,0 +1,12 @@
+# KiloNode M1 required checks v1
+required full-test-suite
+required no-transmit-check
+required ax25-safety-check
+required bench-fixture-replay
+required bench-diagnostic-replay
+required ax25-timer-replay
+required ax25-prepared-replay
+required ax25-live-scheduler-smoke-check
+required observation-pack-check
+required node-plan-check
+required docs-audit

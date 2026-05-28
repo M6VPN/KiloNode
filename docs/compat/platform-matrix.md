@@ -16,3 +16,4 @@ Status values: `planned`, `partial`, `tested`, `unsupported`.
 | NetBSD rc.d example | tested | planned | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | partial | Example script only |
 | CMake install target | tested | tested | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | tested | Installs tools, examples, manpages, and service examples |
 | Manpages | tested | tested | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | tested | Stub pages for installed tools |
+| M1 readiness scripts | partial | partial | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | partial | POSIX shell checks are no-hardware and Linux-oriented until BSD validation is run |

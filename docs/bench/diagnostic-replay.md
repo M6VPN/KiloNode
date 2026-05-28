@@ -20,6 +20,7 @@ Run the default fixture pack:
 
 ```sh
 ./scripts/bench-rx-replay-diagnostics.sh
+./scripts/ax25-prepared-replay-fixtures.sh
 ```
 
 Run direct commands:
@@ -41,6 +42,11 @@ must remain zero.
 Prepared-frame checks compare the replay result against
 `tests/fixtures/bench/prepared-frames.expected`. They inspect only the AX.25
 prepared diagnostics queue. They do not bridge frames to the real TX queue.
+
+M1 readiness also runs these replay paths through
+`./scripts/m1-readiness-check.sh`. A passing M1 replay result means the
+receive/diagnostics fixtures are internally consistent; it does not mean live
+connected-mode response TX is implemented.
 
 FX.25 placeholder captures are reported as planned or unsupported. They do not
 claim FX.25 decode or FEC support.

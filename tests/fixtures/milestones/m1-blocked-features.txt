@@ -1,0 +1,13 @@
+# KiloNode M1 blocked features v1
+blocked live-connect
+blocked real-connected-mode-response-tx
+blocked prepared-to-real-tx-runtime-bridge
+blocked auto-dispatch
+blocked rf-bbs-access
+blocked netrom-routing
+blocked bbs-forwarding
+blocked fbb-forwarding
+blocked linbpq-command-compatibility
+blocked fx25-fec
+blocked ptt-control
+blocked channel-busy-policy

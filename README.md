@@ -21,6 +21,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Install](#install)
 - [Receive-Only Bench Validation](#receive-only-bench-validation)
 - [AX.25 Response Safety Gate](#ax25-response-safety-gate)
+- [v0.1-alpha Readiness](#v01-alpha-readiness)
 - [Compatibility](#compatibility)
 - [License](#license)
 
@@ -171,6 +172,23 @@ non-transmitting checks are:
 
 Future real response TX requires the safety checklist, bench gate, operator
 preflight, and a separate implementation milestone.
+
+## v0.1-alpha Readiness
+
+M1 v0.1-alpha is a receive/diagnostics readiness target. It includes KISS
+monitoring, local daemon/control tools, local shell and BBS storage, AX.25
+receive diagnostics, connected-mode diagnostic scaffolds, prepared-frame
+diagnostics, compatibility fixtures, and no-transmit safety gates.
+
+It is not a live connected-mode, RF BBS, NET/ROM, real TX, retransmission, or
+FX.25 release. The readiness audit lives in
+[docs/milestones/M1-v0.1-alpha-readiness.md](docs/milestones/M1-v0.1-alpha-readiness.md).
+
+```sh
+./scripts/m1-readiness-check.sh
+./scripts/ax25-no-transmit-check.sh
+./scripts/test.sh
+```
 
 ## Compatibility
 

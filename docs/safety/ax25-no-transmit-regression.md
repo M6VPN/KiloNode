@@ -9,6 +9,7 @@ Required checks:
 - prepared bridge remains disabled
 - prepared replay outputs show TX writes at zero
 - timer replay outputs show TX writes at zero
+- live scheduler smoke outputs show TX writes and dispatch calls at zero
 - scripts do not open serial or TNC transmit paths
 - tests do not require hardware
 - dispatch commands are not run by default
@@ -20,3 +21,5 @@ Scripts:
 - `scripts/ax25-safety-check.sh`
 - `scripts/ax25-prepared-gate-report.sh`
 - `scripts/ax25-response-bench-preflight.sh`
+- `scripts/ax25-live-scheduler-smoke-check.sh`
+- `scripts/m1-safety-audit.sh`

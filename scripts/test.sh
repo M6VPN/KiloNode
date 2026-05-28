@@ -18,6 +18,7 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat replay-bench-prepared tests/fixtures/bench/manifest.bench --expect tests/fixtures/bench/prepared-frames.expected
 ./build/kilonode-compat run-ax25-timer-replay-dir tests/fixtures/ax25-timer
 ./build/kilonode-compat run-ax25-timer-prepared-dir tests/fixtures/ax25-timer
+./scripts/m1-docs-audit.sh
 ./scripts/ax25-no-transmit-check.sh
 ./scripts/ax25-live-scheduler-smoke-check.sh
 ./scripts/ax25-safety-check.sh

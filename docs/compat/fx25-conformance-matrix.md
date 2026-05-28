@@ -46,3 +46,5 @@
 | FX.25 safety placeholders | implemented | Safety docs list future FX.25 TX proof requirements without claiming support. |
 | FX.25 wrapping blocked | implemented | Current AX.25 response safety gate keeps FX.25 wrapping disabled. |
 | FX.25 FEC planned | planned | Encode/decode correctness and interop remain future work. |
+| M1 readiness accounting | implemented | Milestone docs track FX.25 as indexed, scaffolded, and planned only. |
+| v0.1-alpha FX.25 scope | scaffold | FX.25 has references, placeholders, and safety notes, but no decode, FEC, wrapping, or TX path. |
