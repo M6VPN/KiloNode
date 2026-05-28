@@ -19,6 +19,7 @@
 #include "kilonode/config.h"
 #include "kilonode/control.h"
 #include "kilonode/daemon.h"
+#include "kilonode/daemon_ax25_scheduler.h"
 #include "kilonode/ax25.h"
 #include "kilonode/ax25_rx_feed.h"
 #include "kilonode/ax25_runtime.h"
@@ -133,6 +134,18 @@ ax25_scheduler_policy_from_config(const struct kn_config *config,
 	policy->diagnostics_enabled = config->ax25.diagnostics;
 }
 
+static void
+ax25_scheduler_smoke_options_from_config(const struct kn_config *config,
+	struct kn_ax25_scheduler_smoke_options *options)
+{
+	kn_ax25_scheduler_smoke_options_default(options);
+	if (config == NULL)
+		return;
+	options->enabled = config->ax25.live_scheduler_smoke;
+	options->create_test_connection =
+	    config->ax25.live_scheduler_smoke_create_test_connection;
+}
+
 static enum kn_daemon_error
 ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	const struct kn_config *config)
@@ -140,6 +153,7 @@ ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	struct kn_ax25_live_options live;
 	struct kn_ax25_prepared_policy prepared_policy;
 	struct kn_ax25_scheduler_policy scheduler_policy;
+	struct kn_ax25_scheduler_smoke_options smoke_options;
 
 	if (runtime == NULL || config == NULL)
 		return KN_DAEMON_ERR_INVALID_ARGUMENT;
@@ -158,6 +172,10 @@ ax25_runtime_configure(struct kn_ax25_runtime *runtime,
 	ax25_scheduler_policy_from_config(config, &scheduler_policy);
 	if (kn_ax25_runtime_set_scheduler_policy(runtime,
 	    &scheduler_policy) != KN_AX25_RUNTIME_OK)
+		return KN_DAEMON_ERR_CONFIG;
+	ax25_scheduler_smoke_options_from_config(config, &smoke_options);
+	if (kn_ax25_runtime_set_scheduler_smoke_options(runtime,
+	    &smoke_options) != KN_AX25_RUNTIME_OK)
 		return KN_DAEMON_ERR_CONFIG;
 	ax25_prepared_policy_from_config(config, &prepared_policy);
 	if (kn_ax25_runtime_set_prepared_policy(runtime,
@@ -383,7 +401,7 @@ kn_daemon_run_foreground(const struct kn_config *config)
 
 	while (daemon_stop == 0) {
 		if (ax25_runtime.live_scheduler.policy.enabled != 0)
-			(void)kn_ax25_live_scheduler_poll(&ax25_runtime,
+			(void)kn_daemon_ax25_scheduler_poll(&ax25_runtime,
 			    daemon_monotonic_ms());
 		if (shell_enabled != 0)
 			kn_node_shell_prune_idle(&shell, (uint64_t)time(NULL));

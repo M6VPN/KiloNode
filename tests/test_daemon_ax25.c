@@ -14,6 +14,8 @@ static int test_daemon_ax25_runtime_defaults(void);
 static int test_daemon_ax25_runtime_no_live_processing_default(void);
 static int test_daemon_scheduler_default_disabled(void);
 static int test_daemon_scheduler_poll_no_tx(void);
+static int test_daemon_scheduler_smoke_default_disabled(void);
+static int test_daemon_scheduler_smoke_no_tx(void);
 static int test_synthetic_sabm_reaches_runtime_when_enabled(void);
 static int test_synthetic_ui_does_not_create_connection(void);
 static int test_tx_queue_unchanged_by_feed(void);
@@ -28,6 +30,10 @@ main(void)
 	if (test_daemon_scheduler_default_disabled() != 0)
 		return 1;
 	if (test_daemon_scheduler_poll_no_tx() != 0)
+		return 1;
+	if (test_daemon_scheduler_smoke_default_disabled() != 0)
+		return 1;
+	if (test_daemon_scheduler_smoke_no_tx() != 0)
 		return 1;
 	if (test_synthetic_sabm_reaches_runtime_when_enabled() != 0)
 		return 1;
@@ -92,6 +98,46 @@ test_daemon_scheduler_poll_no_tx(void)
 		return 1;
 
 	return runtime.live_scheduler.tx_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_daemon_scheduler_smoke_default_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+
+	return runtime.smoke_options.enabled == 0 &&
+	    runtime.smoke_options.create_test_connection == 0 ? 0 : 1;
+}
+
+static int
+test_daemon_scheduler_smoke_no_tx(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_scheduler_policy policy;
+	struct kn_ax25_scheduler_smoke_options smoke;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	kn_ax25_scheduler_policy_default(&policy);
+	policy.enabled = 1;
+	policy.process_expired = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	kn_ax25_scheduler_smoke_options_default(&smoke);
+	smoke.enabled = 1;
+	smoke.create_test_connection = 1;
+	if (kn_ax25_runtime_set_scheduler_smoke_options(&runtime,
+	    &smoke) != KN_AX25_RUNTIME_OK)
+		return 1;
+	if (kn_ax25_scheduler_smoke_poll(&runtime, 0) !=
+	    KN_AX25_SCHEDULER_SMOKE_OK)
+		return 1;
+
+	return runtime.smoke_counters.tx_writes_attempted == 0 &&
+	    runtime.smoke_counters.dispatch_calls_attempted == 0 ? 0 : 1;
 }
 
 static int

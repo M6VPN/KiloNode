@@ -15,4 +15,5 @@ Start here:
 - [AX.25 response bench gate](ax25-response-bench-gate.md)
 - [Operator preflight](ax25-operator-preflight.md)
 - [No-transmit regression](ax25-no-transmit-regression.md)
+- [AX.25 live scheduler smoke safety](ax25-live-scheduler-smoke-safety.md)
 - [FX.25 safety placeholders](fx25-safety-placeholders.md)

@@ -37,6 +37,8 @@ static int test_reset_clears_scheduler(void);
 static int test_reset_clears_table(void);
 static int test_scheduler_policy_defaults_disabled(void);
 static int test_scheduler_policy_validates_dependencies(void);
+static int test_scheduler_smoke_defaults_disabled(void);
+static int test_scheduler_smoke_reset_clears_counters(void);
 
 int
 main(void)
@@ -58,6 +60,10 @@ main(void)
 	if (test_scheduler_policy_defaults_disabled() != 0)
 		return 1;
 	if (test_scheduler_policy_validates_dependencies() != 0)
+		return 1;
+	if (test_scheduler_smoke_defaults_disabled() != 0)
+		return 1;
+	if (test_scheduler_smoke_reset_clears_counters() != 0)
 		return 1;
 	if (test_prepared_defaults_enabled() != 0)
 		return 1;
@@ -361,6 +367,44 @@ test_params_stored(void)
 
 	return runtime.params.t1_ms == 4000 &&
 	    runtime.connected_mode_enabled == 1 ? 0 : 1;
+}
+
+static int
+test_scheduler_smoke_defaults_disabled(void)
+{
+	struct kn_ax25_runtime runtime;
+
+	kn_ax25_runtime_init(&runtime);
+
+	return runtime.smoke_options.enabled == 0 &&
+	    runtime.smoke_counters.tx_writes_attempted == 0 ? 0 : 1;
+}
+
+static int
+test_scheduler_smoke_reset_clears_counters(void)
+{
+	struct kn_ax25_runtime runtime;
+	struct kn_ax25_scheduler_policy policy;
+	struct kn_ax25_scheduler_smoke_options smoke;
+
+	kn_ax25_runtime_init(&runtime);
+	(void)kn_ax25_runtime_set_enabled(&runtime, 1, 0);
+	kn_ax25_scheduler_policy_default(&policy);
+	policy.enabled = 1;
+	if (kn_ax25_runtime_set_scheduler_policy(&runtime, &policy) !=
+	    KN_AX25_RUNTIME_OK)
+		return 1;
+	kn_ax25_scheduler_smoke_options_default(&smoke);
+	smoke.enabled = 1;
+	if (kn_ax25_runtime_set_scheduler_smoke_options(&runtime,
+	    &smoke) != KN_AX25_RUNTIME_OK)
+		return 1;
+	runtime.smoke_counters.cycles = 2;
+	kn_ax25_runtime_reset(&runtime);
+	if (runtime.smoke_options.enabled != 1)
+		return 1;
+
+	return runtime.smoke_counters.cycles == 0 ? 0 : 1;
 }
 
 static int

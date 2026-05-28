@@ -90,6 +90,10 @@
 | Live poll helper               | scaffold    | Explicit poll helper can process bounded expiries when enabled by config. |
 | Timer scheduler                | scaffold    | Runtime owns a disabled scheduler scaffold and live diagnostic wrapper. |
 | Live daemon timer integration  | partial     | Daemon owns the wrapper and can call explicit polling, but no TX bridge exists. |
+| Live scheduler smoke mode      | implemented | Disabled-by-default daemon smoke mode polls scheduler diagnostics and keeps TX writes zero. |
+| Daemon scheduler poll helper   | implemented | Daemon calls a wrapper that supports normal live scheduler polling and smoke diagnostics. |
+| Scheduler smoke counters       | implemented | Control output reports smoke cycles, test connections, expiries, prepared frames, bridge blocks, TX writes, and dispatch attempts. |
+| No-transmit scheduler proof    | implemented | Smoke tests and scripts assert TX writes and dispatch attempts stay zero. |
 | Retransmission dispatch        | planned     | Timeout send actions are not queued or dispatched. |
 | Action-plan to TX queue bridge | planned     | Frame plans are retained for diagnostics only. |
 | Prepared response frame queue | implemented | Bounded diagnostics queue stores generated AX.25 response frame plans and optional raw AX.25 bytes. |

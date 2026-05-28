@@ -14,6 +14,7 @@
 #include "kilonode/ax25_prepared_diag.h"
 #include "kilonode/ax25_prepared_tx_diag.h"
 #include "kilonode/ax25_scheduler_diag.h"
+#include "kilonode/ax25_scheduler_smoke_diag.h"
 #include "kilonode/config.h"
 
 static enum kn_ax25_control_plane_error append_format(char *, size_t,
@@ -329,6 +330,10 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    "scheduler_cycles=%llu scheduler_expired=%llu "
 	    "scheduler_blocked=%llu scheduler_plans=%llu "
 	    "scheduler_tx_blocked=%llu scheduler_tx_writes=%llu "
+	    "smoke_cycles=%llu smoke_connections=%llu smoke_polls=%llu "
+	    "smoke_expired=%llu smoke_prepared=%llu "
+	    "smoke_bridge_blocked=%llu smoke_tx_writes=%llu "
+	    "smoke_dispatch_calls=%llu "
 	    "prepared_attempted=%llu prepared_stored=%llu "
 	    "prepared_failed=%llu prepared_full=%llu "
 	    "prepared_bridge_blocked=%llu prepared_tx_writes=%llu "
@@ -361,6 +366,14 @@ kn_ax25_control_plane_format_counters(const struct kn_ax25_runtime *runtime,
 	    (unsigned long long)rt->live_scheduler.generated_frame_plans,
 	    (unsigned long long)rt->live_scheduler.tx_actions_blocked,
 	    (unsigned long long)rt->live_scheduler.tx_writes_attempted,
+	    (unsigned long long)rt->smoke_counters.cycles,
+	    (unsigned long long)rt->smoke_counters.test_connections_created,
+	    (unsigned long long)rt->smoke_counters.scheduler_polls,
+	    (unsigned long long)rt->smoke_counters.expired_processed,
+	    (unsigned long long)rt->smoke_counters.prepared_frames_generated,
+	    (unsigned long long)rt->smoke_counters.prepared_bridge_blocked,
+	    (unsigned long long)rt->smoke_counters.tx_writes_attempted,
+	    (unsigned long long)rt->smoke_counters.dispatch_calls_attempted,
 	    (unsigned long long)rt->prepared_counters.frames_attempted,
 	    (unsigned long long)rt->prepared_counters.frames_stored,
 	    (unsigned long long)rt->prepared_counters.build_failures,
@@ -486,6 +499,17 @@ kn_ax25_control_plane_format_scheduler_counters(
 }
 
 enum kn_ax25_control_plane_error
+kn_ax25_control_plane_format_scheduler_smoke(
+	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
+{
+	if (kn_ax25_scheduler_smoke_diag_format(runtime, buf, bufsiz) !=
+	    KN_AX25_SCHEDULER_SMOKE_DIAG_OK)
+		return KN_AX25_CONTROL_PLANE_ERR_BUFFER;
+
+	return KN_AX25_CONTROL_PLANE_OK;
+}
+
+enum kn_ax25_control_plane_error
 kn_ax25_control_plane_format_scheduler_timers(
 	const struct kn_ax25_runtime *runtime, char *buf, size_t bufsiz)
 {
@@ -552,6 +576,9 @@ kn_ax25_control_plane_format(const char *command,
 		    buf, bufsiz);
 	if (strcmp(command, "SCHEDULER COUNTERS") == 0)
 		return kn_ax25_control_plane_format_scheduler_counters(runtime,
+		    buf, bufsiz);
+	if (strcmp(command, "SCHEDULER SMOKE") == 0)
+		return kn_ax25_control_plane_format_scheduler_smoke(runtime,
 		    buf, bufsiz);
 	if (strcmp(command, "PREPARED") == 0)
 		return kn_ax25_control_plane_format_prepared(runtime, NULL, 0,

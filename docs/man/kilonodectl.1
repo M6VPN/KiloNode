@@ -54,6 +54,8 @@ Show read-only AX.25 live scheduler status.
 Show AX.25 logical scheduler timers.
 .It Cm ax25 scheduler-counters
 Show AX.25 live scheduler counters.
+.It Cm ax25 scheduler-smoke
+Show AX.25 live scheduler smoke diagnostics.
 .It Cm ax25 prepared Op Fl -port Ar name | Fl -connection Ar id
 Show prepared AX.25 response frame diagnostics.
 .It Cm ax25 prepared-frame Ar id
@@ -120,6 +122,7 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 scheduler
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 scheduler-timers
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 scheduler-counters
+.Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 scheduler-smoke
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-frame 1
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-counters

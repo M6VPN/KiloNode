@@ -19,6 +19,7 @@ ctest --test-dir build --output-on-failure
 ./build/kilonode-compat run-ax25-timer-replay-dir tests/fixtures/ax25-timer
 ./build/kilonode-compat run-ax25-timer-prepared-dir tests/fixtures/ax25-timer
 ./scripts/ax25-no-transmit-check.sh
+./scripts/ax25-live-scheduler-smoke-check.sh
 ./scripts/ax25-safety-check.sh
 ./scripts/ax25-prepared-gate-report.sh
 ./scripts/ax25-response-bench-preflight.sh

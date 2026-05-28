@@ -111,6 +111,23 @@ config_validate(struct kn_config *config)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "ax25 live-scheduler-process-expired requires "
 		    "live-scheduler");
+	if (config->ax25.live_scheduler_smoke != 0 &&
+	    config->ax25.enabled == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-smoke requires enabled ax25");
+	if (config->ax25.live_scheduler_smoke != 0 &&
+	    config->ax25.live_scheduler == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-smoke requires live-scheduler");
+	if (config->ax25.live_scheduler_smoke != 0 &&
+	    config->ax25.diagnostics == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-smoke requires diagnostics");
+	if (config->ax25.live_scheduler_smoke_create_test_connection != 0 &&
+	    config->ax25.live_scheduler_smoke == 0)
+		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+		    "ax25 live-scheduler-smoke-create-test-connection "
+		    "requires live-scheduler-smoke");
 	if (config->ax25.live_scheduler_tx_actions != 0)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "ax25 live-scheduler-tx-actions is disabled");
@@ -696,6 +713,35 @@ ax25_key_set(struct kn_config *config, char **tokens, size_t token_count,
 			    line_no,
 			    "invalid ax25 live-scheduler-process-expired "
 			    "value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "live-scheduler-smoke") == 0) {
+		if (key_seen(&config->ax25.has_live_scheduler_smoke,
+		    config, line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.live_scheduler_smoke) != KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-scheduler-smoke value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0],
+	    "live-scheduler-smoke-create-test-connection") == 0) {
+		if (key_seen(&config->ax25.
+		    has_live_scheduler_smoke_create_test_connection, config,
+		    line_no) != 0)
+			return config->error;
+		if (parse_bool(tokens[1],
+		    &config->ax25.
+		    live_scheduler_smoke_create_test_connection) !=
+		    KN_CONFIG_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no,
+			    "invalid ax25 live-scheduler-smoke-create-test-"
+			    "connection value");
 		return KN_CONFIG_OK;
 	}
 

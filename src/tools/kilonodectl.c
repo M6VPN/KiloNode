@@ -187,6 +187,10 @@ command_ax25(char *dst, size_t dst_len, int *index, int argc, char *argv[])
 		*index += 1;
 		return command_set(dst, dst_len, "AX25 SCHEDULER COUNTERS");
 	}
+	if (strcmp(sub, "scheduler-smoke") == 0) {
+		*index += 1;
+		return command_set(dst, dst_len, "AX25 SCHEDULER SMOKE");
+	}
 	if (strcmp(sub, "prepared") == 0) {
 		if (*index + 2 >= argc) {
 			*index += 1;

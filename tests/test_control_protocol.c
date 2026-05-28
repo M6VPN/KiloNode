@@ -60,6 +60,7 @@ static int test_ax25_prepared_port(void);
 static int test_ax25_scheduler(void);
 static int test_ax25_scheduler_counters(void);
 static int test_ax25_scheduler_malformed(void);
+static int test_ax25_scheduler_smoke(void);
 static int test_ax25_scheduler_timers(void);
 static int test_ax25_status(void);
 static int test_control_character_command(void);
@@ -201,6 +202,8 @@ main(void)
 	if (test_ax25_scheduler_timers() != 0)
 		return 1;
 	if (test_ax25_scheduler_counters() != 0)
+		return 1;
+	if (test_ax25_scheduler_smoke() != 0)
 		return 1;
 	if (test_ax25_scheduler_malformed() != 0)
 		return 1;
@@ -807,6 +810,23 @@ test_ax25_scheduler_malformed(void)
 		return 1;
 
 	return strcmp(out, "ERR invalid-ax25-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_ax25_scheduler_smoke(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("AX25 SCHEDULER SMOKE", &snapshot,
+	    out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "OK AX25 SCHEDULER SMOKE enabled=false") == NULL)
+		return 1;
+
+	return strstr(out, "tx_writes=0 dispatch_calls=0") != NULL ? 0 : 1;
 }
 
 static int

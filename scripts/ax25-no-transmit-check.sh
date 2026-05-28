@@ -56,6 +56,8 @@ for file in $non_lab_configs; do
 	check_not_enabled_in_block "$file" transmit dispatch-real-kiss true
 	check_not_enabled_in_block "$file" transmit dispatch-enabled true
 	check_not_enabled_in_block "$file" ax25 prepared-bridge-to-tx true
+	check_not_enabled_in_block "$file" ax25 live-scheduler-tx-actions true
+	check_not_enabled_in_block "$file" ax25 live-scheduler-smoke-create-test-connection true
 done
 
 for file in $all_configs; do
@@ -70,6 +72,10 @@ for file in $all_configs; do
 	if grep -n -E 'connect-command[[:space:]]+true|live-connect[[:space:]]+true' \
 	    "$file"; then
 		fail "$file enables live connect"
+	fi
+	if grep -n -E 'live-scheduler-smoke[[:space:]]+true' "$file" |
+	    grep -q -E 'prepared-bridge-to-tx[[:space:]]+true|live-scheduler-tx-actions[[:space:]]+true'; then
+		fail "$file combines scheduler smoke with transmit actions"
 	fi
 done
 

@@ -36,12 +36,17 @@ require_file docs/safety/ax25-prepared-to-tx-gate.md
 require_file docs/safety/ax25-response-bench-gate.md
 require_file docs/safety/ax25-operator-preflight.md
 require_file docs/safety/ax25-no-transmit-regression.md
+require_file docs/safety/ax25-live-scheduler-smoke-safety.md
 require_file docs/safety/fx25-safety-placeholders.md
 require_file tests/fixtures/safety/ax25-response-safety.required
 require_file tests/fixtures/safety/ax25-response-safety.blocked
 require_file tests/fixtures/safety/ax25-response-safety.report.expected
 
 if ! ./scripts/ax25-no-transmit-check.sh; then
+	status=1
+fi
+
+if ! ./scripts/ax25-live-scheduler-smoke-check.sh; then
 	status=1
 fi
 

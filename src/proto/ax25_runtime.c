@@ -104,6 +104,8 @@ kn_ax25_runtime_init(struct kn_ax25_runtime *runtime)
 	kn_ax25_connection_table_init(&runtime->table);
 	kn_ax25_scheduler_init(&runtime->scheduler);
 	kn_ax25_live_scheduler_init(&runtime->live_scheduler);
+	kn_ax25_scheduler_smoke_options_default(&runtime->smoke_options);
+	kn_ax25_scheduler_smoke_reset_counters(&runtime->smoke_counters);
 	kn_ax25_prepared_queue_init(&runtime->prepared_queue);
 	kn_ax25_prepared_policy_default(&runtime->prepared_policy);
 	kn_ax25_prepared_tx_policy_default(&runtime->prepared_tx_policy);
@@ -218,6 +220,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	struct kn_ax25_params params;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_scheduler_policy scheduler_policy;
+	struct kn_ax25_scheduler_smoke_options smoke_options;
 	struct kn_ax25_prepared_policy prepared_policy;
 	struct kn_ax25_prepared_tx_policy prepared_tx_policy;
 	size_t max_connections;
@@ -231,6 +234,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	params = runtime->params;
 	live = runtime->live;
 	scheduler_policy = runtime->live_scheduler.policy;
+	smoke_options = runtime->smoke_options;
 	prepared_policy = runtime->prepared_policy;
 	prepared_tx_policy = runtime->prepared_tx_policy;
 	max_connections = runtime->max_connections;
@@ -239,6 +243,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	diagnostics_enabled = runtime->diagnostics_enabled;
 	memset(&runtime->counters, 0, sizeof(runtime->counters));
 	memset(&runtime->live_counters, 0, sizeof(runtime->live_counters));
+	kn_ax25_scheduler_smoke_reset_counters(&runtime->smoke_counters);
 	memset(&runtime->prepared_counters, 0,
 	    sizeof(runtime->prepared_counters));
 	memset(&runtime->prepared_tx_counters, 0,
@@ -250,6 +255,7 @@ kn_ax25_runtime_reset(struct kn_ax25_runtime *runtime)
 	runtime->params = params;
 	runtime->live = live;
 	runtime->live_scheduler.policy = scheduler_policy;
+	runtime->smoke_options = smoke_options;
 	runtime->prepared_policy = prepared_policy;
 	runtime->prepared_tx_policy = prepared_tx_policy;
 	runtime->prepared_queue.max_frames = prepared_policy.max_frames;
@@ -310,6 +316,20 @@ kn_ax25_runtime_set_scheduler_policy(struct kn_ax25_runtime *runtime,
 	    policy) != KN_AX25_LIVE_SCHEDULER_OK)
 		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
 
+	return KN_AX25_RUNTIME_OK;
+}
+
+enum kn_ax25_runtime_error
+kn_ax25_runtime_set_scheduler_smoke_options(struct kn_ax25_runtime *runtime,
+	const struct kn_ax25_scheduler_smoke_options *options)
+{
+	if (runtime == NULL || options == NULL)
+		return KN_AX25_RUNTIME_ERR_INVALID_ARGUMENT;
+	if (kn_ax25_scheduler_smoke_validate(runtime, options) !=
+	    KN_AX25_SCHEDULER_SMOKE_OK)
+		return KN_AX25_RUNTIME_ERR_INVALID_VALUE;
+
+	runtime->smoke_options = *options;
 	return KN_AX25_RUNTIME_OK;
 }
 

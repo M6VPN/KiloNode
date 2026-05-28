@@ -67,6 +67,7 @@ add_library(packetcore STATIC
 	src/core/session_limits.c
 	src/core/stats.c
 	src/daemon/daemon.c
+	src/daemon/daemon_ax25_scheduler.c
 	src/monitor/monitor.c
 	src/node/node_command.c
 	src/node/node_command_dispatch.c
@@ -104,6 +105,8 @@ add_library(packetcore STATIC
 	src/proto/ax25_scheduler.c
 	src/proto/ax25_scheduler_diag.c
 	src/proto/ax25_scheduler_policy.c
+	src/proto/ax25_scheduler_smoke.c
+	src/proto/ax25_scheduler_smoke_diag.c
 	src/proto/ax25_sequence.c
 	src/proto/ax25_state.c
 	src/proto/ax25_timer.c
@@ -358,6 +361,18 @@ target_link_libraries(test_ax25_scheduler_policy PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_scheduler_policy)
 add_test(NAME ax25_scheduler_policy COMMAND test_ax25_scheduler_policy)
 
+add_executable(test_ax25_scheduler_smoke tests/test_ax25_scheduler_smoke.c)
+target_link_libraries(test_ax25_scheduler_smoke PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_scheduler_smoke)
+add_test(NAME ax25_scheduler_smoke COMMAND test_ax25_scheduler_smoke)
+
+add_executable(test_ax25_scheduler_smoke_diag
+	tests/test_ax25_scheduler_smoke_diag.c)
+target_link_libraries(test_ax25_scheduler_smoke_diag PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_scheduler_smoke_diag)
+add_test(NAME ax25_scheduler_smoke_diag
+	COMMAND test_ax25_scheduler_smoke_diag)
+
 add_executable(test_ax25_state tests/test_ax25_state.c)
 target_link_libraries(test_ax25_state PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_state)
@@ -429,6 +444,12 @@ add_executable(test_daemon_ax25 tests/test_daemon_ax25.c)
 target_link_libraries(test_daemon_ax25 PRIVATE packetcore)
 kilonode_target_defaults(test_daemon_ax25)
 add_test(NAME daemon_ax25 COMMAND test_daemon_ax25)
+
+add_executable(test_daemon_ax25_scheduler
+	tests/test_daemon_ax25_scheduler.c)
+target_link_libraries(test_daemon_ax25_scheduler PRIVATE packetcore)
+kilonode_target_defaults(test_daemon_ax25_scheduler)
+add_test(NAME daemon_ax25_scheduler COMMAND test_daemon_ax25_scheduler)
 
 add_executable(test_compat_transcript tests/test_compat_transcript.c)
 target_link_libraries(test_compat_transcript PRIVATE packetcore)

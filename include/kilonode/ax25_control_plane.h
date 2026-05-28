@@ -50,6 +50,8 @@ enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler_counters(
 	const struct kn_ax25_runtime *, char *, size_t);
+enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler_smoke(
+	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_scheduler_timers(
 	const struct kn_ax25_runtime *, char *, size_t);
 enum kn_ax25_control_plane_error kn_ax25_control_plane_format_status(

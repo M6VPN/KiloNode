@@ -85,6 +85,8 @@ struct kn_config_ax25 {
 	uint8_t live_rx_retain_frame_plans;
 	uint8_t live_scheduler;
 	uint8_t live_scheduler_process_expired;
+	uint8_t live_scheduler_smoke;
+	uint8_t live_scheduler_smoke_create_test_connection;
 	uint8_t live_scheduler_tx_actions;
 	size_t live_scheduler_max_expired_per_cycle;
 	uint8_t prepared_frames;
@@ -100,6 +102,8 @@ struct kn_config_ax25 {
 	uint8_t has_live_rx_retain_frame_plans;
 	uint8_t has_live_scheduler;
 	uint8_t has_live_scheduler_process_expired;
+	uint8_t has_live_scheduler_smoke;
+	uint8_t has_live_scheduler_smoke_create_test_connection;
 	uint8_t has_live_scheduler_tx_actions;
 	uint8_t has_live_scheduler_max_expired_per_cycle;
 	uint8_t has_prepared_frames;

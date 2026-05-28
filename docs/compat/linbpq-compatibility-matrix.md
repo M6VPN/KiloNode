@@ -214,6 +214,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 prepared-frame replay assertions | implemented | Offline bench and timer replay can compare expected prepared diagnostics if tests pass. |
 | AX.25 prepared-to-TX bridge gate | implemented | Disabled diagnostic gate evaluates prepared frames without real TX queue writes if tests pass. |
 | AX.25 response safety checklist | implemented | Docs and scripts define blockers before any real connected-mode response TX. |
+| AX.25 live scheduler smoke mode | implemented | Daemon smoke diagnostics can poll AX.25 timers without TX queue writes if tests pass. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |
 | Real connected-mode response TX | planned | Prepared diagnostics are not transmitted. |
 | BPQ/LinBPQ connected-mode response TX | blocked | Requires future black-box interop work and safety gate completion. |

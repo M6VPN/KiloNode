@@ -13,6 +13,7 @@
 #include "kilonode/ax25_prepared_queue.h"
 #include "kilonode/ax25_prepared_tx_policy.h"
 #include "kilonode/ax25_scheduler.h"
+#include "kilonode/ax25_scheduler_smoke.h"
 
 enum kn_ax25_runtime_error {
 	KN_AX25_RUNTIME_OK = 0,
@@ -79,12 +80,14 @@ struct kn_ax25_runtime {
 	struct kn_ax25_connection_table table;
 	struct kn_ax25_scheduler scheduler;
 	struct kn_ax25_live_scheduler live_scheduler;
+	struct kn_ax25_scheduler_smoke_options smoke_options;
 	struct kn_ax25_prepared_queue prepared_queue;
 	struct kn_ax25_prepared_policy prepared_policy;
 	struct kn_ax25_prepared_tx_policy prepared_tx_policy;
 	struct kn_ax25_runtime_counters counters;
 	struct kn_ax25_live_options live;
 	struct kn_ax25_live_counters live_counters;
+	struct kn_ax25_scheduler_smoke_counters smoke_counters;
 	struct kn_ax25_prepared_counters prepared_counters;
 	struct kn_ax25_prepared_tx_counters prepared_tx_counters;
 };
@@ -110,6 +113,9 @@ enum kn_ax25_runtime_error kn_ax25_runtime_set_live_options(
 enum kn_ax25_runtime_error kn_ax25_runtime_set_scheduler_policy(
 	struct kn_ax25_runtime *,
 	const struct kn_ax25_scheduler_policy *);
+enum kn_ax25_runtime_error kn_ax25_runtime_set_scheduler_smoke_options(
+	struct kn_ax25_runtime *,
+	const struct kn_ax25_scheduler_smoke_options *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_prepared_policy(
 	struct kn_ax25_runtime *, const struct kn_ax25_prepared_policy *);
 enum kn_ax25_runtime_error kn_ax25_runtime_set_prepared_tx_policy(
