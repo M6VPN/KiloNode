@@ -118,6 +118,13 @@
 | M1 safety audit                 | implemented | Milestone audit records no-transmit defaults, blocked prepared bridge, smoke scheduler safety, and no CONNECT. |
 | M1 readiness check              | implemented | Readiness script chains docs, safety, compatibility, replay, and smoke checks without hardware or LinBPQ. |
 | v0.1-alpha receive/diagnostics scope | implemented | Tag scope is receive-side monitoring, local BBS/control tools, diagnostics scaffolds, and no-transmit gates only. |
+| In-memory connected-mode loopback | implemented | M2.1 simulator runs two AX.25 diagnostic endpoints through raw AX.25 bytes only. |
+| SABM/UA loopback                 | implemented | Loopback fixtures establish connected state without real KISS, TX queue writes, or dispatch. |
+| DISC/UA loopback                 | implemented | Loopback fixtures tear down connected state and keep TX writes at zero. |
+| I/RR loopback                    | partial     | Simulator-local I frame proof exchanges a bounded payload and RR. General live I-frame TX remains planned. |
+| Timeout loopback                 | implemented | Loopback fixture advances injected time, retries T1 setup, and accepts a later UA. |
+| Loopback safety counters         | implemented | Reports assert TX writes, dispatch calls, and FX.25 frame count remain zero. |
+| M2.1 loopback fixtures           | implemented | `tests/fixtures/ax25-loopback` scripts run through `kilonode-compat` and shell helpers. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
 | Real response TX               | blocked     | Requires safety checklist completion and a separate implementation milestone. |
 | Dispatch planned              | planned     | Prepared bridge diagnostics do not run TX dispatch. |

@@ -1,0 +1,99 @@
+/* KiloNode - Developed by M6VPN (M6VPN@tuta.com) */
+/* kilonode/include/kilonode/ax25_loopback_script.h */
+
+#ifndef KILONODE_AX25_LOOPBACK_SCRIPT_H
+#define KILONODE_AX25_LOOPBACK_SCRIPT_H
+
+#include <sys/types.h>
+
+#include <stdint.h>
+
+#include "kilonode/ax25_loopback_endpoint.h"
+
+#define KN_AX25_LOOPBACK_SCRIPT_COMMAND_MAX 128
+#define KN_AX25_LOOPBACK_SCRIPT_LINE_MAX    256
+#define KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX    128
+
+enum kn_ax25_loopback_script_command_type {
+	KN_AX25_LOOPBACK_SCRIPT_NONE = 0,
+	KN_AX25_LOOPBACK_SCRIPT_NOW,
+	KN_AX25_LOOPBACK_SCRIPT_ADVANCE,
+	KN_AX25_LOOPBACK_SCRIPT_PARAMS,
+	KN_AX25_LOOPBACK_SCRIPT_EVENT,
+	KN_AX25_LOOPBACK_SCRIPT_PROCESS_TIMERS,
+	KN_AX25_LOOPBACK_SCRIPT_TRANSFER,
+	KN_AX25_LOOPBACK_SCRIPT_RUN_UNTIL_IDLE,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT
+};
+
+enum kn_ax25_loopback_script_endpoint {
+	KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_NONE = 0,
+	KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A,
+	KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_B,
+	KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_BOTH
+};
+
+enum kn_ax25_loopback_script_event {
+	KN_AX25_LOOPBACK_SCRIPT_EVENT_NONE = 0,
+	KN_AX25_LOOPBACK_SCRIPT_EVENT_LOCAL_CONNECT,
+	KN_AX25_LOOPBACK_SCRIPT_EVENT_LOCAL_DISCONNECT,
+	KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_I
+};
+
+enum kn_ax25_loopback_script_expect {
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_NONE = 0,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_STATE,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_DELIVERED,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_PREPARED_COUNT,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_TRANSFERRED,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_TX_WRITES,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_DISPATCH_CALLS,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_FX25_FRAMES
+};
+
+enum kn_ax25_loopback_error {
+	KN_AX25_LOOPBACK_OK = 0,
+	KN_AX25_LOOPBACK_ERR_INVALID_ARGUMENT,
+	KN_AX25_LOOPBACK_ERR_PARSE,
+	KN_AX25_LOOPBACK_ERR_IO,
+	KN_AX25_LOOPBACK_ERR_UNSUPPORTED,
+	KN_AX25_LOOPBACK_ERR_MISMATCH,
+	KN_AX25_LOOPBACK_ERR_INTERNAL
+};
+
+struct kn_ax25_loopback_error_info {
+	enum kn_ax25_loopback_error error;
+	size_t line;
+	char message[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+};
+
+struct kn_ax25_loopback_script_command {
+	enum kn_ax25_loopback_script_command_type type;
+	enum kn_ax25_loopback_script_endpoint endpoint;
+	enum kn_ax25_loopback_script_endpoint endpoint_to;
+	enum kn_ax25_loopback_script_event event;
+	enum kn_ax25_loopback_script_expect expect;
+	enum kn_ax25_connection_state state;
+	struct kn_ax25_params params;
+	uint64_t value;
+	size_t line;
+	char text[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+};
+
+struct kn_ax25_loopback_script {
+	char name[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+	char endpoint_a[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+	char endpoint_b[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+	char port[KN_CONFIG_PORT_NAME_MAX];
+	struct kn_ax25_params params;
+	struct kn_ax25_loopback_script_command
+	    commands[KN_AX25_LOOPBACK_SCRIPT_COMMAND_MAX];
+	size_t command_count;
+};
+
+const char *kn_ax25_loopback_error_name(enum kn_ax25_loopback_error);
+enum kn_ax25_loopback_error kn_ax25_loopback_script_parse_file(
+	const char *, struct kn_ax25_loopback_script *,
+	struct kn_ax25_loopback_error_info *);
+
+#endif

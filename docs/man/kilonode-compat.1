@@ -6,6 +6,18 @@
 .Nd replay KiloNode compatibility lab transcripts
 .Sh SYNOPSIS
 .Nm
+.Cm check-ax25-loopback
+.Ar path
+.Nm
+.Cm run-ax25-loopback
+.Ar path
+.Nm
+.Cm run-ax25-loopback-dir
+.Ar path
+.Nm
+.Cm ax25-loopback-report
+.Ar path
+.Nm
 .Cm check-ax25-timer-replay
 .Ar path
 .Nm
@@ -214,6 +226,16 @@ Show command usage.
 .Bl -tag -width Ds
 .It Cm check-transcript Ar path
 Validate transcript syntax.
+.It Cm check-ax25-loopback Ar path
+Validate one AX.25 loopback script without running it.
+.It Cm run-ax25-loopback Ar path
+Run one offline in-memory AX.25 loopback script.
+.It Cm run-ax25-loopback-dir Ar path
+Run all
+.Pa *.loop
+files in sorted order.
+.It Cm ax25-loopback-report Ar path
+Run one loopback script and print a detailed diagnostic report.
 .It Cm check-ax25-timer-replay Ar path
 Validate one AX.25 timer replay script without running it.
 .It Cm run-ax25-timer-replay Ar path
@@ -364,10 +386,14 @@ kilonode-compat bench-coverage tests/fixtures/bench/manifest.bench
 kilonode-compat check-prepared-expect tests/fixtures/bench/prepared-frames.expected
 kilonode-compat replay-bench-prepared tests/fixtures/bench/manifest.bench --expect tests/fixtures/bench/prepared-frames.expected
 kilonode-compat run-ax25-timer-prepared-dir tests/fixtures/ax25-timer
+kilonode-compat run-ax25-loopback-dir tests/fixtures/ax25-loopback
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.
 Synthetic replay never dispatches TX frames.
+AX.25 loopback scripts are offline simulator inputs. They exchange raw AX.25
+bytes in memory only and do not expose CONNECT, open transports, enqueue TX, or
+dispatch frames.
 Future LinBPQ observations must be black-box behaviour only.
 LinBPQ is not run automatically; process observation requires an explicit
 binary path from the operator.

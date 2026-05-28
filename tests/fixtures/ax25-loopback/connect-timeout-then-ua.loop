@@ -1,0 +1,16 @@
+# KiloNode AX.25 loopback script v1
+name connect-timeout-then-ua
+endpoint-a M6VPN-1
+endpoint-b N0CALL
+port kiss0
+params modulo=8 window=1 t1=3000 t2=1000 t3=300000 n2=3
+event A local-connect
+advance 3000
+process-timers A
+transfer A-to-B
+transfer B-to-A
+expect A state=connected
+expect B state=connected
+expect tx-writes 0
+expect dispatch-calls 0
+expect fx25-frames 0

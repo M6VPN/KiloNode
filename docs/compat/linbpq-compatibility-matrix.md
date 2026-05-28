@@ -217,6 +217,11 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 live scheduler smoke mode | implemented | Daemon smoke diagnostics can poll AX.25 timers without TX queue writes if tests pass. |
 | M1 compatibility audit | implemented | Milestone docs and scripts validate clean-room fixtures, observation packs, and planning files without running LinBPQ. |
 | v0.1-alpha receive/diagnostics readiness | implemented | Recommended scope is native receive, diagnostics, local BBS/control, compatibility lab tooling, and safety gates only. |
+| KiloNode internal AX.25 loopback simulator | implemented | M2.1 runs two native endpoints in memory without LinBPQ, real KISS, RF, TX queue writes, or dispatch. |
+| AX.25 SABM/UA loopback | tested | Native loopback fixtures prove setup state transitions and prepared diagnostics only. |
+| AX.25 DISC/UA loopback | tested | Native loopback fixtures prove disconnect state transitions and no-transmit counters. |
+| AX.25 I/RR loopback | partial | Simulator-local I frame exchange is tested. Live connected-mode I-frame TX remains planned. |
+| Live RF connected-mode loopback | planned | Future work requires real TX safety gates and black-box interop planning. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |
 | Real connected-mode response TX | planned | Prepared diagnostics are not transmitted. |
 | BPQ/LinBPQ connected-mode response TX | blocked | Requires future black-box interop work and safety gate completion. |

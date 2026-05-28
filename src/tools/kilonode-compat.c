@@ -11,6 +11,8 @@
 
 #include "kilonode/ax25_timer_replay.h"
 #include "kilonode/ax25_timer_replay_report.h"
+#include "kilonode/ax25_loopback.h"
+#include "kilonode/ax25_loopback_report.h"
 #include "kilonode/ax25_prepared_expect.h"
 #include "kilonode/ax25_prepared_replay_check.h"
 #include "kilonode/ax25_prepared_replay_report.h"
@@ -48,6 +50,7 @@ struct compat_dir_entry {
 };
 
 static int command_check_transcript(const char *);
+static int command_check_ax25_loopback(const char *);
 static int command_check_ax25_timer_replay(const char *);
 static int command_check_bench_pack(const char *);
 static int command_check_bench_expected(const char *);
@@ -81,6 +84,8 @@ static int command_manual_workspace_init(const char *);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
+static int command_replay_ax25_loopback_dir(const char *);
+static int command_replay_ax25_loopback(const char *);
 static int command_replay_ax25_timer_dir(const char *);
 static int command_replay_ax25_timer(const char *);
 static int command_replay_ax25_timer_prepared_dir(const char *);
@@ -94,6 +99,7 @@ static int command_replay_capture(const char *);
 static int command_replay_capture_dir(const char *);
 static int command_replay_transcript(const char *);
 static int command_report_transcript(const char *);
+static int command_ax25_loopback_report(const char *);
 static int command_ax25_timer_replay_report(const char *);
 static int command_requirements_coverage(const char *, const char *);
 static int command_requirements_report(const char *);
@@ -106,6 +112,7 @@ static int compare_entries(const void *, const void *);
 static void date_today(char *, size_t);
 static int has_transcript_suffix(const char *);
 static int has_capture_suffix(const char *);
+static int has_loop_suffix(const char *);
 static int has_replay_suffix(const char *);
 static int decode_capture_file(const char *, struct kn_compat_packet_capture *,
 	struct kn_compat_packet_decode *);
@@ -157,6 +164,8 @@ main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "check-transcript") == 0 && argc == 3)
 		return command_check_transcript(argv[2]);
+	if (strcmp(argv[1], "check-ax25-loopback") == 0 && argc == 3)
+		return command_check_ax25_loopback(argv[2]);
 	if (strcmp(argv[1], "check-ax25-timer-replay") == 0 && argc == 3)
 		return command_check_ax25_timer_replay(argv[2]);
 	if (strcmp(argv[1], "check-bench-pack") == 0 && argc == 3)
@@ -240,6 +249,12 @@ main(int argc, char *argv[])
 	if (strcmp(argv[1], "run-ax25-timer-prepared-dir") == 0 &&
 	    argc == 3)
 		return command_replay_ax25_timer_prepared_dir(argv[2]);
+	if (strcmp(argv[1], "run-ax25-loopback") == 0 && argc == 3)
+		return command_replay_ax25_loopback(argv[2]);
+	if (strcmp(argv[1], "run-ax25-loopback-dir") == 0 && argc == 3)
+		return command_replay_ax25_loopback_dir(argv[2]);
+	if (strcmp(argv[1], "ax25-loopback-report") == 0 && argc == 3)
+		return command_ax25_loopback_report(argv[2]);
 	if (strcmp(argv[1], "replay-capture") == 0 && argc == 3)
 		return command_replay_capture(argv[2]);
 	if (strcmp(argv[1], "replay-capture-dir") == 0 && argc == 3)
@@ -270,6 +285,12 @@ main(int argc, char *argv[])
 
 	usage();
 	return 1;
+}
+
+static int
+command_ax25_loopback_report(const char *path)
+{
+	return command_replay_ax25_loopback(path);
 }
 
 static int
@@ -351,6 +372,26 @@ command_bench_pack_report(const char *path)
 	    sizeof(report)) != KN_COMPAT_BENCH_OK)
 		return 1;
 	printf("%s", report);
+	return 0;
+}
+
+static int
+command_check_ax25_loopback(const char *path)
+{
+	struct kn_ax25_loopback_script script;
+	struct kn_ax25_loopback_error_info error;
+
+	if (kn_ax25_loopback_script_parse_file(path, &script, &error) !=
+	    KN_AX25_LOOPBACK_OK) {
+		fprintf(stderr, "ERR ax25-loopback path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_loopback_error_name(error.error),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	printf("OK ax25-loopback=%s commands=%llu\n", script.name,
+	    (unsigned long long)script.command_count);
 	return 0;
 }
 
@@ -1186,6 +1227,84 @@ command_risk_report(const char *path)
 }
 
 static int
+command_replay_ax25_loopback(const char *path)
+{
+	struct kn_ax25_loopback_result result;
+	struct kn_ax25_loopback_error_info error;
+	char report[KN_AX25_LOOPBACK_REPORT_MAX];
+	enum kn_ax25_loopback_error rc;
+
+	rc = kn_ax25_loopback_run_file(path, &result, &error);
+	if (rc != KN_AX25_LOOPBACK_OK &&
+	    rc != KN_AX25_LOOPBACK_ERR_MISMATCH) {
+		fprintf(stderr, "ERR ax25-loopback path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_loopback_error_name(rc),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	if (kn_ax25_loopback_report_format(&result, report,
+	    sizeof(report)) != KN_AX25_LOOPBACK_REPORT_OK)
+		return 1;
+	printf("%s", report);
+	return result.pass != 0 && result.real_tx_queue_writes == 0 &&
+	    result.dispatch_calls == 0 && result.fx25_frames_generated == 0 ?
+	    0 : 1;
+}
+
+static int
+command_replay_ax25_loopback_dir(const char *path)
+{
+	struct compat_dir_entry entries[COMPAT_DIR_MAX];
+	DIR *dir;
+	struct dirent *entry;
+	size_t count;
+	size_t i;
+	int failed;
+	int needed;
+
+	dir = opendir(path);
+	if (dir == NULL) {
+		fprintf(stderr, "ERR open-dir path=%s\n", path);
+		return 1;
+	}
+	count = 0;
+	while ((entry = readdir(dir)) != NULL) {
+		if (has_loop_suffix(entry->d_name) == 0)
+			continue;
+		if (count >= COMPAT_DIR_MAX) {
+			closedir(dir);
+			fprintf(stderr, "ERR too-many-loopbacks\n");
+			return 1;
+		}
+		needed = snprintf(entries[count].path,
+		    sizeof(entries[count].path), "%s/%s", path,
+		    entry->d_name);
+		if (needed < 0 ||
+		    (size_t)needed >= sizeof(entries[count].path)) {
+			closedir(dir);
+			fprintf(stderr, "ERR path-too-long\n");
+			return 1;
+		}
+		count++;
+	}
+	closedir(dir);
+	qsort(entries, count, sizeof(entries[0]), compare_entries);
+	failed = 0;
+	for (i = 0; i < count; i++) {
+		if (command_replay_ax25_loopback(entries[i].path) != 0)
+			failed = 1;
+	}
+	if (count == 0) {
+		fprintf(stderr, "ERR no-loopbacks\n");
+		return 1;
+	}
+
+	return failed;
+}
+
+static int
 command_replay_ax25_timer(const char *path)
 {
 	struct kn_ax25_timer_replay_result result;
@@ -1798,6 +1917,23 @@ has_capture_suffix(const char *name)
 }
 
 static int
+has_loop_suffix(const char *name)
+{
+	const char suffix[] = ".loop";
+	size_t name_len;
+	size_t suffix_len;
+
+	if (name == NULL)
+		return 0;
+	name_len = strlen(name);
+	suffix_len = strlen(suffix);
+	if (name_len < suffix_len)
+		return 0;
+
+	return strcmp(name + name_len - suffix_len, suffix) == 0 ? 1 : 0;
+}
+
+static int
 has_replay_suffix(const char *name)
 {
 	const char suffix[] = ".replay";
@@ -2105,6 +2241,7 @@ usage(void)
 {
 	fprintf(stderr,
 	    "usage: kilonode-compat check-transcript PATH\n"
+	    "       kilonode-compat check-ax25-loopback PATH\n"
 	    "       kilonode-compat check-ax25-timer-replay PATH\n"
 	    "       kilonode-compat check-bench-pack PATH\n"
 	    "       kilonode-compat check-bench-expected PATH\n"
@@ -2140,6 +2277,9 @@ usage(void)
 	    "       kilonode-compat run-ax25-timer-replay-dir PATH\n"
 	    "       kilonode-compat run-ax25-timer-prepared PATH\n"
 	    "       kilonode-compat run-ax25-timer-prepared-dir PATH\n"
+	    "       kilonode-compat run-ax25-loopback PATH\n"
+	    "       kilonode-compat run-ax25-loopback-dir PATH\n"
+	    "       kilonode-compat ax25-loopback-report PATH\n"
 	    "       kilonode-compat ax25-timer-replay-report PATH\n"
 	    "       kilonode-compat replay-dir PATH\n"
 	    "       kilonode-compat report-transcript PATH\n"

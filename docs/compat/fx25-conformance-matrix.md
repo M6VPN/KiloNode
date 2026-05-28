@@ -48,3 +48,6 @@
 | FX.25 FEC planned | planned | Encode/decode correctness and interop remain future work. |
 | M1 readiness accounting | implemented | Milestone docs track FX.25 as indexed, scaffolded, and planned only. |
 | v0.1-alpha FX.25 scope | scaffold | FX.25 has references, placeholders, and safety notes, but no decode, FEC, wrapping, or TX path. |
+| AX.25 loopback boundary | scaffold | M2.1 loopback exchanges raw AX.25 bytes only and keeps FX.25 outside the simulator. |
+| Loopback FX.25 frame count | unsupported | Loopback fixture reports must keep `fx25_frames=0`. |
+| FX.25 loopback wrapping | planned | Future FX.25 loopback must wrap or unwrap around the AX.25 byte boundary with separate FEC tests. |

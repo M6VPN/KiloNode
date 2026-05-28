@@ -1,0 +1,53 @@
+# AX.25 Loopback Endpoint Model
+
+An AX.25 loopback endpoint is a simulator-owned diagnostic object. It is not a
+daemon runtime object and does not own a transport.
+
+Each endpoint owns:
+
+- endpoint name
+- local callsign
+- peer callsign
+- port name
+- AX.25 parameter snapshot
+- scoped AX.25 connection table
+- logical scheduler and timer state
+- prepared-frame diagnostics queue
+- inbound frame counter
+- outbound prepared frame counter
+- delivered payload counter
+- last state
+- last error
+
+## Events
+
+Supported local events are:
+
+- `local-connect`
+- `local-disconnect`
+- `send-i text=<payload>`
+
+`local-connect` and `local-disconnect` use the existing AX.25 connection table,
+state machine, scheduler side effects, action mapper, and prepared-frame
+diagnostics queue.
+
+`send-i` is only available after the endpoint reaches connected state. It builds
+a bounded raw AX.25 I frame inside the simulator and gives it to the in-memory
+link. The simulator does not enqueue that frame into the real TX queue.
+
+## Inbound Frames
+
+Inbound raw AX.25 bytes are decoded at the AX.25 body boundary. SABM, SABME,
+UA, DISC, RR, RNR, REJ, DM, and I frames feed the diagnostic state machine.
+
+If an inbound I frame has a bounded payload, the endpoint increments the
+delivered payload counter and may generate an RR prepared diagnostic frame.
+
+Malformed frames are rejected with deterministic counters and errors. They are
+not forwarded to shell, BBS, RF command, or dispatch code.
+
+## Reset
+
+Reset clears connection records, timers, prepared diagnostics, counters, and
+last error state. It does not affect global daemon state because the endpoint is
+simulator-local.

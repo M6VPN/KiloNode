@@ -87,6 +87,11 @@ add_library(packetcore STATIC
 	src/proto/ax25_frame_plan.c
 	src/proto/ax25_live_diag.c
 	src/proto/ax25_live_scheduler.c
+	src/proto/ax25_loopback.c
+	src/proto/ax25_loopback_endpoint.c
+	src/proto/ax25_loopback_link.c
+	src/proto/ax25_loopback_report.c
+	src/proto/ax25_loopback_script.c
 	src/proto/ax25_params.c
 	src/proto/ax25_prepared_diag.c
 	src/proto/ax25_prepared_expect.c
@@ -404,6 +409,34 @@ add_executable(test_ax25_timer_replay_script
 target_link_libraries(test_ax25_timer_replay_script PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_timer_replay_script)
 add_test(NAME ax25_timer_replay_script COMMAND test_ax25_timer_replay_script)
+
+add_executable(test_ax25_loopback tests/test_ax25_loopback.c)
+target_link_libraries(test_ax25_loopback PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback)
+add_test(NAME ax25_loopback COMMAND test_ax25_loopback)
+
+add_executable(test_ax25_loopback_endpoint
+	tests/test_ax25_loopback_endpoint.c)
+target_link_libraries(test_ax25_loopback_endpoint PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_endpoint)
+add_test(NAME ax25_loopback_endpoint COMMAND test_ax25_loopback_endpoint)
+
+add_executable(test_ax25_loopback_link tests/test_ax25_loopback_link.c)
+target_link_libraries(test_ax25_loopback_link PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_link)
+add_test(NAME ax25_loopback_link COMMAND test_ax25_loopback_link)
+
+add_executable(test_ax25_loopback_script
+	tests/test_ax25_loopback_script.c)
+target_link_libraries(test_ax25_loopback_script PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_script)
+add_test(NAME ax25_loopback_script COMMAND test_ax25_loopback_script)
+
+add_executable(test_ax25_loopback_report
+	tests/test_ax25_loopback_report.c)
+target_link_libraries(test_ax25_loopback_report PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_report)
+add_test(NAME ax25_loopback_report COMMAND test_ax25_loopback_report)
 
 add_executable(test_callsign tests/test_callsign.c)
 target_link_libraries(test_callsign PRIVATE packetcore)
