@@ -1,0 +1,8 @@
+# KiloNode AX.25 response safety required checks v1
+required no-transmit-configs
+required prepared-bridge-disabled
+required prepared-replay-pass
+required timer-replay-pass
+required tx-writes-zero
+required no-auto-dispatch
+required fx25-disabled

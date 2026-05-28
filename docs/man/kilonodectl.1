@@ -145,6 +145,10 @@ Example local control socket path.
 The control protocol is local-only in this pass. Use filesystem permissions to
 limit access to the socket. Real TX dispatch is blocked unless every global and
 per-port safety gate is enabled.
+AX.25 prepared bridge commands are diagnostics only. They do not enable TX,
+enqueue prepared frames, or dispatch frames. See
+.Pa docs/safety/README.md
+for the response safety gate.
 .Sh SEE ALSO
 .Xr kilonoded 8
 .Sh AUTHORS

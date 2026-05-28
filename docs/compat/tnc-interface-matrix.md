@@ -33,6 +33,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Offline AX.25 diagnostic replay | tested | Bench captures emulate receive-only KISS/TNC inputs for CI diagnostics |
 | Manual capture workspace | tested | Receive-only captures from Dire Wolf, KiloTNC, serial, TCP, PTY, or Unix KISS can be imported offline |
 | Manual capture replay | tested | Imported captures replay without hardware or transport access |
+| Default receive examples | tested | Receive-only examples keep transmit, dispatch, and port TX disabled. |
+| AX.25 response safety gate | implemented | Future response TX is blocked by checklist and no-transmit regression checks. |
+| TX lab future gate | planned | Lab-only TX remains blocked until safety gate, operator preflight, and bench proof are complete. |
 | Manual KiloTNC captures | planned | Future receive-only captures should be imported as reviewed bench observations |
 | Manual Dire Wolf captures | planned | Future USB sound card captures should use the manual import path |
 | KiloTNC | partial | Serial KISS can consume it, dedicated tests pending |

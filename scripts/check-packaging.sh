@@ -111,6 +111,17 @@ require_file docs/bench/manual-capture-workspace.md
 require_file docs/bench/manual-capture-index.md
 require_file docs/bench/manual-capture-replay.md
 require_file docs/bench/fx25-capture-placeholders.md
+require_file docs/bench/ax25-response-bench-gate.md
+require_file docs/bench/ax25-prepared-response-validation.md
+require_file docs/bench/ax25-future-tx-lab-notes.md
+
+require_file docs/safety/README.md
+require_file docs/safety/ax25-response-safety-checklist.md
+require_file docs/safety/ax25-prepared-to-tx-gate.md
+require_file docs/safety/ax25-response-bench-gate.md
+require_file docs/safety/ax25-operator-preflight.md
+require_file docs/safety/ax25-no-transmit-regression.md
+require_file docs/safety/fx25-safety-placeholders.md
 
 require_file scripts/bench-rx-replay-diagnostics.sh
 require_file scripts/bench-rx-replay-fixtures.sh
@@ -122,6 +133,10 @@ require_file scripts/bench-rx-workspace-import.sh
 require_file scripts/bench-rx-workspace-list.sh
 require_file scripts/bench-rx-workspace-replay.sh
 require_file scripts/bench-rx-workspace-report.sh
+require_file scripts/ax25-safety-check.sh
+require_file scripts/ax25-no-transmit-check.sh
+require_file scripts/ax25-prepared-gate-report.sh
+require_file scripts/ax25-response-bench-preflight.sh
 
 require_file tests/fixtures/bench/README.md
 require_file tests/fixtures/bench/manifest.bench
@@ -141,6 +156,10 @@ require_file tests/fixtures/manual-captures/workspace.manifest
 require_file tests/fixtures/manual-captures/import-source/kiss-manual-ui.capture
 require_file tests/fixtures/manual-captures/import-source/kiss-manual-sabm.capture
 require_file tests/fixtures/manual-captures/import-source/fx25-manual-placeholder.capture
+require_file tests/fixtures/safety/README.md
+require_file tests/fixtures/safety/ax25-response-safety.required
+require_file tests/fixtures/safety/ax25-response-safety.blocked
+require_file tests/fixtures/safety/ax25-response-safety.report.expected
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -160,8 +179,14 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/bench-rx-capture-report.sh scripts/bench-rx-fixture-status.sh \
 	scripts/bench-rx-workspace-init.sh scripts/bench-rx-workspace-import.sh \
 	scripts/bench-rx-workspace-list.sh scripts/bench-rx-workspace-replay.sh \
-	scripts/bench-rx-workspace-report.sh; then
+	scripts/bench-rx-workspace-report.sh scripts/ax25-safety-check.sh \
+	scripts/ax25-no-transmit-check.sh scripts/ax25-prepared-gate-report.sh \
+	scripts/ax25-response-bench-preflight.sh; then
 	echo "packaging files must not contain privileged helper commands"
+	status=1
+fi
+
+if ! ./scripts/ax25-no-transmit-check.sh; then
 	status=1
 fi
 

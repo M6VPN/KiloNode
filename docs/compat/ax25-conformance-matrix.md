@@ -105,7 +105,12 @@
 | Bridge decision diagnostics | implemented | Read-only control output reports bridge policy, per-frame decision, and counters. |
 | Test-only TX frame conversion | implemented | Unit tests can build an in-memory dry-run TX frame from a prepared frame after all gates pass. |
 | Prepared bridge runtime disabled | implemented | Runtime bridge calls remain blocked and do not enqueue frames. |
+| Response safety checklist       | implemented | Safety docs define protocol, bench, operator, failure, and deferred blocker gates. |
+| No-transmit regression checks   | implemented | Shell checks verify default examples and replay outputs keep TX writes at zero. |
+| Prepared-to-TX gate report      | implemented | Non-transmitting report script verifies the prepared bridge stays blocked. |
+| Future response TX bench gate   | implemented | Bench docs define Stage 0/1 current work and Stage 2/3 blocked future work. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
+| Real response TX               | blocked     | Requires safety checklist completion and a separate implementation milestone. |
 | Dispatch planned              | planned     | Prepared bridge diagnostics do not run TX dispatch. |
 | Timers real scheduling         | planned     | Timeout events are unit-test/offline inputs only. No live scheduler is started. |
 | FCS handling                   | deferred    | KISS-facing code operates at AX.25 body boundary. |

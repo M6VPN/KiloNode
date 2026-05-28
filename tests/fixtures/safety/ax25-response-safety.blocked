@@ -1,0 +1,7 @@
+# KiloNode AX.25 response safety blockers v1
+blocked real-prepared-to-tx-bridge
+blocked live-connect-command
+blocked real-retransmission-dispatch
+blocked channel-busy-policy
+blocked ptt-policy
+blocked fx25-wrapping

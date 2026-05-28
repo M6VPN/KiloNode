@@ -42,3 +42,6 @@
 | Prepared FX.25 expectations | planned | FX.25 prepared-frame expectations remain unsupported until FX.25 decode/wrap exists. |
 | Prepared-to-TX FX.25 wrapping | planned | Bridge gate blocks FX.25 wrapping requests and reports `fx25-not-supported`. |
 | FX.25 FEC from TX bridge | planned | No FEC encoder or wrapper is present. |
+| FX.25 safety placeholders | implemented | Safety docs list future FX.25 TX proof requirements without claiming support. |
+| FX.25 wrapping blocked | implemented | Current AX.25 response safety gate keeps FX.25 wrapping disabled. |
+| FX.25 FEC planned | planned | Encode/decode correctness and interop remain future work. |

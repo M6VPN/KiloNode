@@ -1,0 +1,4 @@
+# KiloNode AX.25 response safety report expected snippets v1
+EXPECT OK ax25-no-transmit configs=true bridge_disabled=true dispatch_default=false fx25=false
+EXPECT OK ax25-prepared-gate bridge=blocked real_tx=false fx25=false
+EXPECT OK ax25-response-bench-preflight stage0=current stage1=receive-only stage2=blocked stage3=blocked

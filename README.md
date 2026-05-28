@@ -20,6 +20,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Build Profiles](#build-profiles)
 - [Install](#install)
 - [Receive-Only Bench Validation](#receive-only-bench-validation)
+- [AX.25 Response Safety Gate](#ax25-response-safety-gate)
 - [Compatibility](#compatibility)
 - [License](#license)
 
@@ -152,6 +153,24 @@ diagnostics runtime and checks that TX write attempts stay at zero.
 
 Manual capture workspaces are covered in
 [manual-capture-workspace.md](docs/bench/manual-capture-workspace.md).
+
+## AX.25 Response Safety Gate
+
+AX.25 connected-mode response TX remains blocked. Prepared response frames are
+diagnostics only, and the prepared-to-TX bridge stays disabled in runtime.
+
+Safety gate docs live in [docs/safety](docs/safety/README.md). The current
+non-transmitting checks are:
+
+```sh
+./scripts/ax25-no-transmit-check.sh
+./scripts/ax25-safety-check.sh
+./scripts/ax25-prepared-gate-report.sh
+./scripts/ax25-response-bench-preflight.sh
+```
+
+Future real response TX requires the safety checklist, bench gate, operator
+preflight, and a separate implementation milestone.
 
 ## Compatibility
 

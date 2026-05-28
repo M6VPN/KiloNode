@@ -21,6 +21,11 @@ Manual capture workspaces are documented in
 [manual-capture-workspace.md](manual-capture-workspace.md),
 [manual-capture-index.md](manual-capture-index.md), and
 [manual-capture-replay.md](manual-capture-replay.md).
+Future response TX bench gates are documented in
+[ax25-response-bench-gate.md](ax25-response-bench-gate.md),
+[ax25-prepared-response-validation.md](ax25-prepared-response-validation.md),
+and [ax25-future-tx-lab-notes.md](ax25-future-tx-lab-notes.md). Current bench
+work remains offline or receive-only.
 
 Primary validation commands:
 
