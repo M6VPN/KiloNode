@@ -1,0 +1,21 @@
+# KiloNode AX.25 loopback script v1
+name paclen-boundary
+endpoint-a M6VPN-1
+endpoint-b N0CALL
+port kiss0
+params modulo=8 window=1 paclen=5 t1=3000 t2=1000 t3=300000 n2=3
+event A local-connect
+run-until-idle max-steps=8
+event A send-i text="abcde" segment=true
+expect A state=connected
+expect B state=connected
+expect B delivered=1
+expect B rejected=0
+expect B reassembled=1
+expect B segment-count=1
+expect B last-reassembled-text="abcde"
+expect prepared-count 3
+expect transferred 4
+expect tx-writes 0
+expect dispatch-calls 0
+expect fx25-frames 0

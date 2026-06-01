@@ -94,6 +94,8 @@ add_library(packetcore STATIC
 	src/proto/ax25_loopback_payload.c
 	src/proto/ax25_loopback_report.c
 	src/proto/ax25_loopback_script.c
+	src/proto/ax25_loopback_segment.c
+	src/proto/ax25_paclen.c
 	src/proto/ax25_params.c
 	src/proto/ax25_payload_delivery.c
 	src/proto/ax25_prepared_diag.c
@@ -108,6 +110,7 @@ add_library(packetcore STATIC
 	src/proto/ax25_prepared_tx_gate.c
 	src/proto/ax25_prepared_tx_policy.c
 	src/proto/ax25_retry.c
+	src/proto/ax25_reassembly.c
 	src/proto/ax25_rx_feed.c
 	src/proto/ax25_runtime.c
 	src/proto/ax25_scheduler.c
@@ -116,6 +119,7 @@ add_library(packetcore STATIC
 	src/proto/ax25_scheduler_smoke.c
 	src/proto/ax25_scheduler_smoke_diag.c
 	src/proto/ax25_sequence.c
+	src/proto/ax25_segmenter.c
 	src/proto/ax25_state.c
 	src/proto/ax25_timer.c
 	src/proto/ax25_timer_queue.c
@@ -263,6 +267,11 @@ target_link_libraries(test_ax25_i_frame PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_i_frame)
 add_test(NAME ax25_i_frame COMMAND test_ax25_i_frame)
 
+add_executable(test_ax25_paclen tests/test_ax25_paclen.c)
+target_link_libraries(test_ax25_paclen PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_paclen)
+add_test(NAME ax25_paclen COMMAND test_ax25_paclen)
+
 add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
@@ -345,6 +354,11 @@ target_link_libraries(test_ax25_retry PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_retry)
 add_test(NAME ax25_retry COMMAND test_ax25_retry)
 
+add_executable(test_ax25_reassembly tests/test_ax25_reassembly.c)
+target_link_libraries(test_ax25_reassembly PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_reassembly)
+add_test(NAME ax25_reassembly COMMAND test_ax25_reassembly)
+
 add_executable(test_ax25_rx_feed tests/test_ax25_rx_feed.c)
 target_link_libraries(test_ax25_rx_feed PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_rx_feed)
@@ -364,6 +378,11 @@ add_executable(test_ax25_sequence tests/test_ax25_sequence.c)
 target_link_libraries(test_ax25_sequence PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_sequence)
 add_test(NAME ax25_sequence COMMAND test_ax25_sequence)
+
+add_executable(test_ax25_segmenter tests/test_ax25_segmenter.c)
+target_link_libraries(test_ax25_segmenter PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_segmenter)
+add_test(NAME ax25_segmenter COMMAND test_ax25_segmenter)
 
 add_executable(test_ax25_scheduler tests/test_ax25_scheduler.c)
 target_link_libraries(test_ax25_scheduler PRIVATE packetcore)
@@ -445,6 +464,12 @@ add_executable(test_ax25_loopback_payload
 target_link_libraries(test_ax25_loopback_payload PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_loopback_payload)
 add_test(NAME ax25_loopback_payload COMMAND test_ax25_loopback_payload)
+
+add_executable(test_ax25_loopback_segment
+	tests/test_ax25_loopback_segment.c)
+target_link_libraries(test_ax25_loopback_segment PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_segment)
+add_test(NAME ax25_loopback_segment COMMAND test_ax25_loopback_segment)
 
 add_executable(test_ax25_loopback_script
 	tests/test_ax25_loopback_script.c)

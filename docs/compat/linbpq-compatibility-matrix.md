@@ -9,6 +9,9 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 connected-mode scaffold | tested | Disabled structs, params, event names, and formatting only |
 | AX.25 connected-mode state-machine core | tested | Isolated unit-tested state core only, not wired to runtime |
 | AX.25 modulo 8 sequence accounting | tested | Basic receive and acknowledgement helpers |
+| Internal AX.25 segmented loopback | tested | KiloNode loopback splits paclen-sized I frames, records reassembly diagnostics, and returns RR frames |
+| BPQ/LinBPQ paclen compatibility | planned | Future black-box observation only, no BPQ/LinBPQ config or segmentation logic copied |
+| Live RF payload segmentation | planned | Not implemented |
 | AX.25 action intents | tested | Bounded intents only, no frame bytes or TX queue writes |
 | AX.25 response frame builder | tested | Raw AX.25 SABM/SABME/UA/DM/DISC/RR/RNR/REJ builder only |
 | AX.25 action-to-frame mapper | tested | Action intents map to frame plans only, no queue or dispatch |

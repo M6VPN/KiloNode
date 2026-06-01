@@ -11,6 +11,7 @@ static int test_default_valid(void);
 static int test_formatting(void);
 static int test_invalid_max_info(void);
 static int test_invalid_modulo(void);
+static int test_invalid_paclen(void);
 static int test_invalid_retry(void);
 static int test_invalid_timer(void);
 static int test_invalid_window(void);
@@ -27,6 +28,8 @@ main(void)
 	if (test_invalid_timer() != 0)
 		return 1;
 	if (test_invalid_max_info() != 0)
+		return 1;
+	if (test_invalid_paclen() != 0)
 		return 1;
 	if (test_invalid_modulo() != 0)
 		return 1;
@@ -73,6 +76,18 @@ test_invalid_max_info(void)
 
 	kn_ax25_params_default(&params);
 	params.max_info_len = 0;
+
+	return kn_ax25_params_validate(&params) ==
+	    KN_AX25_PARAMS_ERR_INVALID_VALUE ? 0 : 1;
+}
+
+static int
+test_invalid_paclen(void)
+{
+	struct kn_ax25_params params;
+
+	kn_ax25_params_default(&params);
+	params.paclen = params.max_info_len + 1;
 
 	return kn_ax25_params_validate(&params) ==
 	    KN_AX25_PARAMS_ERR_INVALID_VALUE ? 0 : 1;

@@ -234,6 +234,12 @@ Loopback scripts may include simulator-only I-frame payload commands such as
 .Ql event A send-i text="hello"
 or
 .Ql event A send-i hex=00ff41 .
+Segmented simulator payloads use AX.25 params paclen and
+.Ql segment=true ,
+for example
+.Ql params modulo=8 window=1 paclen=5 t1=3000 t2=1000 t3=300000 n2=3
+followed by
+.Ql event A send-i text="hello world" segment=true .
 Payloads remain diagnostics-only and are not bound to shell or BBS sessions.
 .It Cm run-ax25-loopback-dir Ar path
 Run all

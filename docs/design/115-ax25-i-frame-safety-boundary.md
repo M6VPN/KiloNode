@@ -28,3 +28,6 @@ fx25=0
 
 Payload delivery records are bounded diagnostics. They are not a user session,
 mailbox input, command input, or shell stream.
+
+M2.3 segmented payload reassembly records follow the same boundary. They are
+diagnostics only and are not bound to any live service.

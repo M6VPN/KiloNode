@@ -21,6 +21,9 @@ struct kn_ax25_loopback {
 	uint64_t prepared_frames_generated;
 	uint64_t raw_ax25_frames_transferred;
 	uint64_t rejected_payloads;
+	uint64_t reassembled_payloads;
+	uint64_t segments_sent;
+	uint64_t segments_received;
 	uint64_t i_frames_sent;
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;
@@ -43,6 +46,10 @@ struct kn_ax25_loopback_result {
 	uint64_t raw_ax25_frames_transferred;
 	uint64_t endpoint_a_rejected;
 	uint64_t endpoint_b_rejected;
+	uint64_t endpoint_a_reassembled;
+	uint64_t endpoint_b_reassembled;
+	uint64_t segments_sent;
+	uint64_t segments_received;
 	uint64_t i_frames_sent;
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;

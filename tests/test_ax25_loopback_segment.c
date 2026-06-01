@@ -1,5 +1,5 @@
 /* KiloNode - Developed by M6VPN (M6VPN@tuta.com) */
-/* kilonode/tests/test_ax25_loopback_payload.c */
+/* kilonode/tests/test_ax25_loopback_segment.c */
 
 #include <sys/types.h>
 
@@ -9,21 +9,21 @@
 
 static const char *fixture_path(const char *);
 static int run_fixture(const char *);
-static int test_binary_payload(void);
-static int test_sequence_mismatch(void);
-static int test_segmented_payload(void);
-static int test_text_payload(void);
+static int test_binary_segmented(void);
+static int test_boundary(void);
+static int test_text_segmented(void);
+static int test_window_one(void);
 
 int
 main(void)
 {
-	if (test_text_payload() != 0)
+	if (test_text_segmented() != 0)
 		return 1;
-	if (test_binary_payload() != 0)
+	if (test_binary_segmented() != 0)
 		return 1;
-	if (test_sequence_mismatch() != 0)
+	if (test_boundary() != 0)
 		return 1;
-	if (test_segmented_payload() != 0)
+	if (test_window_one() != 0)
 		return 1;
 	return 0;
 }
@@ -55,35 +55,36 @@ run_fixture(const char *path)
 	if (kn_ax25_loopback_run_file(path, &result, &error) !=
 	    KN_AX25_LOOPBACK_OK)
 		return 1;
-	return result.pass != 0 && result.real_tx_queue_writes == 0 &&
-	    result.dispatch_calls == 0 && result.fx25_frames_generated == 0 ?
-	    0 : 1;
+	if (result.pass == 0 || result.real_tx_queue_writes != 0 ||
+	    result.dispatch_calls != 0 || result.fx25_frames_generated != 0)
+		return 1;
+	return result.segments_sent == result.segments_received ? 0 : 1;
 }
 
 static int
-test_binary_payload(void)
+test_binary_segmented(void)
 {
 	return run_fixture(fixture_path(
-	    "tests/fixtures/ax25-loopback/i-frame-binary-payload.loop"));
+	    "tests/fixtures/ax25-loopback/segmented-binary-payload.loop"));
 }
 
 static int
-test_sequence_mismatch(void)
+test_boundary(void)
 {
 	return run_fixture(fixture_path(
-	    "tests/fixtures/ax25-loopback/i-frame-sequence-mismatch.loop"));
+	    "tests/fixtures/ax25-loopback/paclen-boundary.loop"));
 }
 
 static int
-test_segmented_payload(void)
+test_text_segmented(void)
 {
 	return run_fixture(fixture_path(
 	    "tests/fixtures/ax25-loopback/segmented-text-payload.loop"));
 }
 
 static int
-test_text_payload(void)
+test_window_one(void)
 {
 	return run_fixture(fixture_path(
-	    "tests/fixtures/ax25-loopback/connect-i-rr-disconnect.loop"));
+	    "tests/fixtures/ax25-loopback/window-one-segmented.loop"));
 }

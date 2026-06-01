@@ -121,7 +121,7 @@
 | In-memory connected-mode loopback | implemented | M2.1 simulator runs two AX.25 diagnostic endpoints through raw AX.25 bytes only. |
 | SABM/UA loopback                 | implemented | Loopback fixtures establish connected state without real KISS, TX queue writes, or dispatch. |
 | DISC/UA loopback                 | implemented | Loopback fixtures tear down connected state and keep TX writes at zero. |
-| I/RR loopback                    | partial     | Simulator-local I frame proof exchanges a bounded payload and RR. General live I-frame TX remains planned. |
+| I/RR loopback                    | implemented | Simulator-local I frame proof exchanges bounded text and binary payloads and RR. General live I-frame TX remains planned. |
 | Timeout loopback                 | implemented | Loopback fixture advances injected time, retries T1 setup, and accepts a later UA. |
 | Loopback safety counters         | implemented | Reports assert TX writes, dispatch calls, and FX.25 frame count remain zero. |
 | M2.1 loopback fixtures           | implemented | `tests/fixtures/ax25-loopback` scripts run through `kilonode-compat` and shell helpers. |
@@ -130,6 +130,12 @@
 | I-frame payload decode           | implemented | Decodes raw AX.25 I frames into callsigns, sequence fields, PID, payload length, and bounded previews. |
 | Loopback I/RR delivery           | implemented | Loopback fixtures deliver text and binary payload diagnostics and return RR acknowledgements. |
 | Sequence mismatch handling       | implemented | Loopback records rejected payload diagnostics and retains REJ frame plans without TX queue writes. |
+| Paclen validation                | implemented | `ax25_paclen` validates paclen and max-info bounds, including paclen not exceeding max-info. |
+| I-frame segmentation             | implemented | Simulator segmenter splits binary-safe payloads into ordered paclen-sized I-frame chunks. |
+| Window=1 segmented loopback      | implemented | Segmented loopback sends one I frame, processes RR, then sends the next segment. Larger windows remain planned. |
+| Reassembly diagnostics           | implemented | Loopback endpoints record bounded diagnostics for completed segmented payload reassembly. |
+| Binary segmented payload         | implemented | Fixture coverage reassembles binary payload previews without NUL assumptions. |
+| Live segmentation                | planned     | Daemon connected-mode segmentation is not wired to live sessions. |
 | Live daemon I-frame delivery     | planned     | Payloads are not delivered to daemon shell, BBS, RF command, or user sessions. |
 | Shell/BBS payload binding        | planned     | Connected-mode payload binding remains blocked behind future safety and session work. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |

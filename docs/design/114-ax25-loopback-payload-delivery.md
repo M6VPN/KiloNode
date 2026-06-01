@@ -21,6 +21,10 @@ A updates acknowledgement state
 
 The same flow supports bounded binary payloads through `hex=` script input.
 
+M2.3 adds `segment=true` for payloads larger than paclen. The simulator sends
+one I frame per segment, waits for the peer RR under window-size 1, and records
+one reassembly diagnostic after all segments are accepted.
+
 ## Delivery Diagnostics
 
 Each endpoint owns a bounded delivery queue. A record stores:
@@ -51,4 +55,5 @@ loopback link.
 ## Limits
 
 Payload size is bounded by AX.25 params. Loopback scripts reject malformed hex
-payloads and overlong payload command fields.
+payloads and overlong payload command fields. Segmented payloads are bounded by
+the simulator payload limit and by the fixed segment count.

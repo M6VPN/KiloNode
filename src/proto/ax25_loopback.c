@@ -7,6 +7,9 @@
 #include <string.h>
 
 #include "kilonode/ax25_loopback.h"
+#include "kilonode/ax25_loopback_segment.h"
+#include "kilonode/ax25_paclen.h"
+#include "kilonode/ax25_reassembly.h"
 
 static void collect_result(const struct kn_ax25_loopback *,
 	struct kn_ax25_loopback_result *);
@@ -43,6 +46,11 @@ collect_result(const struct kn_ax25_loopback *loop,
 	    loop->link.raw_ax25_frames_transferred;
 	result->endpoint_a_rejected = loop->a.rejected_payloads;
 	result->endpoint_b_rejected = loop->b.rejected_payloads;
+	result->endpoint_a_reassembled = loop->a.reassembled_payloads;
+	result->endpoint_b_reassembled = loop->b.reassembled_payloads;
+	result->segments_sent = loop->a.segments_sent + loop->b.segments_sent;
+	result->segments_received = loop->a.segments_received +
+	    loop->b.segments_received;
 	result->i_frames_sent = loop->a.i_frames_sent + loop->b.i_frames_sent;
 	result->i_frames_received = loop->a.i_frames_received +
 	    loop->b.i_frames_received;
@@ -82,6 +90,8 @@ execute_command(struct kn_ax25_loopback *loop,
 	struct kn_ax25_loopback_endpoint *to;
 	uint8_t frame[KN_AX25_LOOPBACK_LINK_FRAME_MAX];
 	size_t frame_len;
+	size_t paclen;
+	size_t segments_sent;
 	size_t moved;
 	uint64_t actual;
 	enum kn_ax25_connection_state state;
@@ -117,6 +127,19 @@ execute_command(struct kn_ax25_loopback *loop,
 			to = command->endpoint ==
 			    KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A ? &loop->b :
 			    &loop->a;
+			if (kn_ax25_paclen_derive(&ep->params, &paclen) !=
+			    KN_AX25_PACLEN_OK)
+				return KN_AX25_LOOPBACK_ERR_INTERNAL;
+			if (command->segment != 0) {
+				return kn_ax25_loopback_segment_send(ep, to,
+				    &loop->link, command->payload,
+				    command->payload_len, &segments_sent) ==
+				    KN_AX25_LOOPBACK_SEGMENT_OK ?
+				    KN_AX25_LOOPBACK_OK :
+				    KN_AX25_LOOPBACK_ERR_UNSUPPORTED;
+			}
+			if (command->payload_len > paclen)
+				return KN_AX25_LOOPBACK_ERR_UNSUPPORTED;
 			if (kn_ax25_loopback_endpoint_send_i(ep,
 			    command->payload, command->payload_len,
 			    command->ns_override, command->use_ns_override,
@@ -177,6 +200,14 @@ execute_command(struct kn_ax25_loopback *loop,
 			ep = endpoint(loop, command->endpoint);
 			actual = ep == NULL ? 0 : ep->rejected_payloads;
 		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_REASSEMBLED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->reassembled_payloads;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_SEGMENT_COUNT) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->segments_received;
+		} else if (command->expect ==
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT) {
 			const struct kn_ax25_payload_delivery_record *delivery;
 
@@ -206,6 +237,42 @@ execute_command(struct kn_ax25_loopback *loop,
 			    sizeof(hex)) != KN_AX25_PAYLOAD_DELIVERY_OK ||
 			    strcmp(hex, command->text) != 0) {
 				mismatch(loop, command, "last-payload-hex");
+				return KN_AX25_LOOPBACK_ERR_MISMATCH;
+			}
+			return KN_AX25_LOOPBACK_OK;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_REASSEMBLED_TEXT) {
+			const struct kn_ax25_reassembly_record *reassembly;
+
+			ep = endpoint(loop, command->endpoint);
+			reassembly = ep == NULL ? NULL :
+			    kn_ax25_reassembly_last_complete(
+			    &ep->reassemblies);
+			if (reassembly == NULL ||
+			    reassembly->payload_is_text == 0 ||
+			    reassembly->preview_len != strlen(command->text) ||
+			    memcmp(reassembly->preview, command->text,
+			    reassembly->preview_len) != 0) {
+				mismatch(loop, command,
+				    "last-reassembled-text");
+				return KN_AX25_LOOPBACK_ERR_MISMATCH;
+			}
+			return KN_AX25_LOOPBACK_OK;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_REASSEMBLED_HEX) {
+			const struct kn_ax25_reassembly_record *reassembly;
+			char hex[KN_AX25_REASSEMBLY_PREVIEW_MAX * 2 + 1];
+
+			ep = endpoint(loop, command->endpoint);
+			reassembly = ep == NULL ? NULL :
+			    kn_ax25_reassembly_last_complete(
+			    &ep->reassemblies);
+			if (reassembly == NULL ||
+			    kn_ax25_reassembly_preview_hex(reassembly, hex,
+			    sizeof(hex)) != KN_AX25_REASSEMBLY_OK ||
+			    strcmp(hex, command->text) != 0) {
+				mismatch(loop, command,
+				    "last-reassembled-hex");
 				return KN_AX25_LOOPBACK_ERR_MISMATCH;
 			}
 			return KN_AX25_LOOPBACK_OK;

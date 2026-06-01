@@ -106,6 +106,8 @@ kn_ax25_params_validate(const struct kn_ax25_params *params)
 	if (params->paclen == 0 ||
 	    params->paclen > KN_AX25_PARAMS_MAX_PACLEN)
 		return KN_AX25_PARAMS_ERR_INVALID_VALUE;
+	if (params->paclen > params->max_info_len)
+		return KN_AX25_PARAMS_ERR_INVALID_VALUE;
 
 	return KN_AX25_PARAMS_OK;
 }

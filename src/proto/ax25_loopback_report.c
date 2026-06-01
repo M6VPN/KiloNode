@@ -19,6 +19,8 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	    "AX25-LOOPBACK name=%s result=%s A=%s B=%s "
 	    "prepared=%llu transferred=%llu A_delivered=%llu "
 	    "B_delivered=%llu A_rejected=%llu B_rejected=%llu "
+	    "A_reassembled=%llu B_reassembled=%llu segments_sent=%llu "
+	    "segments_received=%llu "
 	    "i_sent=%llu i_received=%llu rr_sent=%llu rr_received=%llu "
 	    "tx_writes=%llu dispatch=%llu fx25=%llu "
 	    "mismatches=%llu last=%s\n",
@@ -31,6 +33,10 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	    (unsigned long long)result->endpoint_b_delivered,
 	    (unsigned long long)result->endpoint_a_rejected,
 	    (unsigned long long)result->endpoint_b_rejected,
+	    (unsigned long long)result->endpoint_a_reassembled,
+	    (unsigned long long)result->endpoint_b_reassembled,
+	    (unsigned long long)result->segments_sent,
+	    (unsigned long long)result->segments_received,
 	    (unsigned long long)result->i_frames_sent,
 	    (unsigned long long)result->i_frames_received,
 	    (unsigned long long)result->rr_frames_sent,

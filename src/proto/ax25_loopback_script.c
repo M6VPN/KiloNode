@@ -26,6 +26,7 @@ static int parse_params(char *[], size_t, struct kn_ax25_params *);
 static int parse_payload_tokens(char *[], size_t,
 	struct kn_ax25_loopback_script_command *);
 static int parse_u64(const char *, uint64_t *);
+static int split_tokens(char *, char *[], size_t, size_t *);
 static const char *strip_quotes(const char *);
 static int state_from_text(const char *, enum kn_ax25_connection_state *);
 static char *trim(char *);
@@ -126,6 +127,20 @@ expect_from_tokens(char *tokens[], size_t count,
 				return -1;
 			return 0;
 		}
+		if (strncmp(tokens[2], "reassembled=", 12) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_REASSEMBLED;
+			if (parse_u64(tokens[2] + 12, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "segment-count=", 14) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_SEGMENT_COUNT;
+			if (parse_u64(tokens[2] + 14, &command->value) != 0)
+				return -1;
+			return 0;
+		}
 		if (strncmp(tokens[2], "last-payload-text=", 18) == 0) {
 			command->expect =
 			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT;
@@ -138,6 +153,20 @@ expect_from_tokens(char *tokens[], size_t count,
 			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_HEX;
 			(void)snprintf(command->text, sizeof(command->text),
 			    "%s", tokens[2] + 17);
+			return 0;
+		}
+		if (strncmp(tokens[2], "last-reassembled-text=", 22) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_REASSEMBLED_TEXT;
+			(void)snprintf(command->text, sizeof(command->text),
+			    "%s", strip_quotes(tokens[2] + 22));
+			return 0;
+		}
+		if (strncmp(tokens[2], "last-reassembled-hex=", 21) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_REASSEMBLED_HEX;
+			(void)snprintf(command->text, sizeof(command->text),
+			    "%s", tokens[2] + 21);
 			return 0;
 		}
 		return -1;
@@ -244,6 +273,18 @@ parse_params(char *tokens[], size_t count, struct kn_ax25_params *params)
 			    value > 255)
 				return -1;
 			params->n2_retry_count = (uint8_t)value;
+		} else if (strncmp(tokens[i], "paclen=", 7) == 0) {
+			if (parse_u64(tokens[i] + 7, &value) != 0)
+				return -1;
+			if ((uint64_t)(size_t)value != value)
+				return -1;
+			params->paclen = (size_t)value;
+		} else if (strncmp(tokens[i], "max-info=", 9) == 0) {
+			if (parse_u64(tokens[i] + 9, &value) != 0)
+				return -1;
+			if ((uint64_t)(size_t)value != value)
+				return -1;
+			params->max_info_len = (size_t)value;
 		} else {
 			return -1;
 		}
@@ -296,6 +337,13 @@ parse_payload_tokens(char *tokens[], size_t count,
 				return -1;
 			command->ns_override = (uint8_t)value;
 			command->use_ns_override = 1;
+		} else if (strncmp(tokens[i], "segment=", 8) == 0) {
+			if (strcmp(tokens[i] + 8, "true") == 0)
+				command->segment = 1;
+			else if (strcmp(tokens[i] + 8, "false") == 0)
+				command->segment = 0;
+			else
+				return -1;
 		} else {
 			return -1;
 		}
@@ -336,6 +384,39 @@ strip_quotes(const char *text)
 		return stripped;
 	}
 	return text;
+}
+
+static int
+split_tokens(char *line, char *tokens[], size_t max_tokens, size_t *count)
+{
+	char *p;
+	uint8_t in_quote;
+
+	if (line == NULL || tokens == NULL || count == NULL ||
+	    max_tokens == 0)
+		return -1;
+	*count = 0;
+	p = line;
+	in_quote = 0;
+	while (*p != '\0') {
+		while (*p == ' ' || *p == '\t') {
+			*p = '\0';
+			p++;
+		}
+		if (*p == '\0')
+			break;
+		if (*count >= max_tokens)
+			return -1;
+		tokens[(*count)++] = p;
+		while (*p != '\0') {
+			if (*p == '"')
+				in_quote = in_quote == 0 ? 1 : 0;
+			if (in_quote == 0 && (*p == ' ' || *p == '\t'))
+				break;
+			p++;
+		}
+	}
+	return in_quote == 0 ? 0 : -1;
 }
 
 static int
@@ -429,11 +510,8 @@ kn_ax25_loopback_script_parse_file(const char *path,
 		text = trim(line);
 		if (text[0] == '\0' || text[0] == '#')
 			continue;
-		count = 0;
-		for (tokens[count] = strtok(text, " \t");
-		    tokens[count] != NULL && count + 1 < 16;
-		    tokens[count] = strtok(NULL, " \t"))
-			count++;
+		if (split_tokens(text, tokens, 16, &count) != 0)
+			goto parse_error;
 		if (count == 0)
 			continue;
 		memset(&command, 0, sizeof(command));

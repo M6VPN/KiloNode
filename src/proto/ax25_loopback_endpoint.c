@@ -152,14 +152,17 @@ kn_ax25_loopback_endpoint_format(
 
 	needed = snprintf(buf, bufsiz,
 	    "endpoint=%s local=%s peer=%s state=%s inbound=%llu "
-	    "prepared=%llu delivered=%llu rejected=%llu i_rx=%llu rr_rx=%llu "
-	    "tx_writes=%llu dispatch=%llu fx25=%llu",
+	    "prepared=%llu delivered=%llu rejected=%llu reassembled=%llu "
+	    "segments_rx=%llu i_rx=%llu rr_rx=%llu tx_writes=%llu "
+	    "dispatch=%llu fx25=%llu",
 	    endpoint->name, local, peer,
 	    kn_ax25_connection_state_name(endpoint->last_state),
 	    (unsigned long long)endpoint->inbound_frames,
 	    (unsigned long long)endpoint->outbound_prepared_frames,
 	    (unsigned long long)endpoint->delivered_payloads,
 	    (unsigned long long)endpoint->rejected_payloads,
+	    (unsigned long long)endpoint->reassembled_payloads,
+	    (unsigned long long)endpoint->segments_received,
 	    (unsigned long long)endpoint->i_frames_received,
 	    (unsigned long long)endpoint->rr_frames_received,
 	    (unsigned long long)endpoint->tx_queue_writes,
@@ -213,6 +216,7 @@ kn_ax25_loopback_endpoint_init(struct kn_ax25_loopback_endpoint *endpoint,
 	kn_ax25_scheduler_init(&endpoint->scheduler);
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
+	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 	set_error(endpoint, "ok");
 	return KN_AX25_LOOPBACK_ENDPOINT_OK;
@@ -377,6 +381,7 @@ kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *endpoint)
 	kn_ax25_scheduler_init(&endpoint->scheduler);
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
+	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 }
 

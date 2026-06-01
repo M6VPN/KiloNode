@@ -12,6 +12,7 @@
 #include "kilonode/ax25_connection_table.h"
 #include "kilonode/ax25_payload_delivery.h"
 #include "kilonode/ax25_prepared_queue.h"
+#include "kilonode/ax25_reassembly.h"
 #include "kilonode/ax25_scheduler.h"
 
 #define KN_AX25_LOOPBACK_ENDPOINT_NAME_MAX 32
@@ -42,12 +43,16 @@ struct kn_ax25_loopback_endpoint {
 	struct kn_ax25_scheduler scheduler;
 	struct kn_ax25_prepared_queue prepared;
 	struct kn_ax25_payload_delivery_queue deliveries;
+	struct kn_ax25_reassembly_queue reassemblies;
 	uint64_t now_ms;
 	size_t sent_prepared_count;
 	uint64_t inbound_frames;
 	uint64_t outbound_prepared_frames;
 	uint64_t delivered_payloads;
 	uint64_t rejected_payloads;
+	uint64_t reassembled_payloads;
+	uint64_t segments_sent;
+	uint64_t segments_received;
 	uint64_t i_frames_sent;
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;

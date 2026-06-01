@@ -27,6 +27,7 @@ The current fixtures cover:
 - initiator receive of UA
 - connected state on both endpoints
 - small simulator-built I frame payload delivery and RR acknowledgement
+- paclen-sized segmented I frame delivery and reassembly diagnostics
 - DISC and UA disconnect
 - T1 timeout retry followed by late UA
 
@@ -46,5 +47,9 @@ I-frame generation uses the M2.2 raw AX.25 I-frame helpers and remains
 simulator-only. This keeps live TX and daemon behaviour unchanged while allowing
 loopback tests to exercise small text and binary payloads plus RR acknowledgement
 diagnostics.
+
+Segmented I-frame delivery uses the M2.3 paclen segmenter. Window-size 1 is
+implemented: one segment is sent, acknowledged with RR, and then the next
+segment is sent. Larger windows remain planned.
 
 FX.25 is not part of the simulator. The report keeps `fx25_frames=0`.

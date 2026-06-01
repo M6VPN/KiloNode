@@ -19,3 +19,7 @@ Current loopback reports keep:
 ```text
 fx25=0
 ```
+
+M2.3 segmentation does not change this boundary. Segmentation splits AX.25
+I-frame payload bytes before raw AX.25 frame generation; FX.25 wrapping remains
+a future stage around complete AX.25 frames.
