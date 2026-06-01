@@ -36,6 +36,8 @@ enum kn_ax25_sequence_error kn_ax25_sequence_mod128_planned(void);
 uint8_t kn_ax25_sequence_normalize_mod8(uint8_t);
 enum kn_ax25_sequence_error kn_ax25_sequence_receive_i_mod8(
 	struct kn_ax25_sequence_state *, uint8_t);
+enum kn_ax25_sequence_error kn_ax25_sequence_send_i_mod8(
+	struct kn_ax25_sequence_state *, uint8_t *);
 void kn_ax25_sequence_state_clear(struct kn_ax25_sequence_state *);
 enum kn_ax25_sequence_error kn_ax25_sequence_window_valid(
 	enum kn_ax25_modulo_mode, uint8_t);

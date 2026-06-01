@@ -230,6 +230,11 @@ Validate transcript syntax.
 Validate one AX.25 loopback script without running it.
 .It Cm run-ax25-loopback Ar path
 Run one offline in-memory AX.25 loopback script.
+Loopback scripts may include simulator-only I-frame payload commands such as
+.Ql event A send-i text="hello"
+or
+.Ql event A send-i hex=00ff41 .
+Payloads remain diagnostics-only and are not bound to shell or BBS sessions.
 .It Cm run-ax25-loopback-dir Ar path
 Run all
 .Pa *.loop
@@ -387,6 +392,7 @@ kilonode-compat check-prepared-expect tests/fixtures/bench/prepared-frames.expec
 kilonode-compat replay-bench-prepared tests/fixtures/bench/manifest.bench --expect tests/fixtures/bench/prepared-frames.expected
 kilonode-compat run-ax25-timer-prepared-dir tests/fixtures/ax25-timer
 kilonode-compat run-ax25-loopback-dir tests/fixtures/ax25-loopback
+kilonode-compat ax25-loopback-report tests/fixtures/ax25-loopback/connect-i-rr-disconnect.loop
 .Ed
 .Sh SECURITY NOTES
 Treat transcript files as hostile input.

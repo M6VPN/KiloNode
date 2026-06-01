@@ -10,6 +10,7 @@
 
 #include "kilonode/ax25.h"
 #include "kilonode/ax25_connection_table.h"
+#include "kilonode/ax25_payload_delivery.h"
 #include "kilonode/ax25_prepared_queue.h"
 #include "kilonode/ax25_scheduler.h"
 
@@ -40,11 +41,17 @@ struct kn_ax25_loopback_endpoint {
 	struct kn_ax25_connection_table table;
 	struct kn_ax25_scheduler scheduler;
 	struct kn_ax25_prepared_queue prepared;
+	struct kn_ax25_payload_delivery_queue deliveries;
 	uint64_t now_ms;
 	size_t sent_prepared_count;
 	uint64_t inbound_frames;
 	uint64_t outbound_prepared_frames;
 	uint64_t delivered_payloads;
+	uint64_t rejected_payloads;
+	uint64_t i_frames_sent;
+	uint64_t i_frames_received;
+	uint64_t rr_frames_sent;
+	uint64_t rr_frames_received;
 	uint64_t tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames;
@@ -71,7 +78,7 @@ kn_ax25_loopback_endpoint_process_timers(
 void kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *);
 enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_send_i(
 	struct kn_ax25_loopback_endpoint *, const uint8_t *, size_t,
-	uint8_t *, size_t, size_t *);
+	uint8_t, uint8_t, uint8_t *, size_t, size_t *);
 enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_state(
 	const struct kn_ax25_loopback_endpoint *,
 	enum kn_ax25_connection_state *);

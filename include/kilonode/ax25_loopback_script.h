@@ -12,6 +12,7 @@
 
 #define KN_AX25_LOOPBACK_SCRIPT_COMMAND_MAX 128
 #define KN_AX25_LOOPBACK_SCRIPT_LINE_MAX    256
+#define KN_AX25_LOOPBACK_SCRIPT_PAYLOAD_MAX 128
 #define KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX    128
 
 enum kn_ax25_loopback_script_command_type {
@@ -44,6 +45,9 @@ enum kn_ax25_loopback_script_expect {
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_NONE = 0,
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_STATE,
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_DELIVERED,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_REJECTED,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT,
+	KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_HEX,
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_PREPARED_COUNT,
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_TRANSFERRED,
 	KN_AX25_LOOPBACK_SCRIPT_EXPECT_TX_WRITES,
@@ -76,6 +80,11 @@ struct kn_ax25_loopback_script_command {
 	enum kn_ax25_connection_state state;
 	struct kn_ax25_params params;
 	uint64_t value;
+	uint8_t payload[KN_AX25_LOOPBACK_SCRIPT_PAYLOAD_MAX];
+	size_t payload_len;
+	uint8_t payload_is_hex;
+	uint8_t ns_override;
+	uint8_t use_ns_override;
 	size_t line;
 	char text[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
 };

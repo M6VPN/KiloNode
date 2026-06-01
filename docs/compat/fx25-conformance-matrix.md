@@ -51,3 +51,5 @@
 | AX.25 loopback boundary | scaffold | M2.1 loopback exchanges raw AX.25 bytes only and keeps FX.25 outside the simulator. |
 | Loopback FX.25 frame count | unsupported | Loopback fixture reports must keep `fx25_frames=0`. |
 | FX.25 loopback wrapping | planned | Future FX.25 loopback must wrap or unwrap around the AX.25 byte boundary with separate FEC tests. |
+| AX.25 I-frame boundary | scaffold | M2.2 I-frame build/decode operates on AX.25 bytes before any future FX.25 wrapping. |
+| FX.25 I-frame wrapping | planned | No FX.25 wrapper, FEC encoder, or FEC decoder is used for loopback payload fixtures. |

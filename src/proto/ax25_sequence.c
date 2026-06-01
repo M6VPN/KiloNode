@@ -94,6 +94,21 @@ kn_ax25_sequence_receive_i_mod8(struct kn_ax25_sequence_state *state,
 	return KN_AX25_SEQUENCE_OK;
 }
 
+enum kn_ax25_sequence_error
+kn_ax25_sequence_send_i_mod8(struct kn_ax25_sequence_state *state,
+	uint8_t *ns)
+{
+	if (state == NULL || ns == NULL)
+		return KN_AX25_SEQUENCE_ERR_INVALID_ARGUMENT;
+	if (state->send_state > 7)
+		return KN_AX25_SEQUENCE_ERR_INVALID_VALUE;
+
+	*ns = state->send_state;
+	state->send_state = kn_ax25_sequence_increment_mod8(
+	    state->send_state);
+	return KN_AX25_SEQUENCE_OK;
+}
+
 void
 kn_ax25_sequence_state_clear(struct kn_ax25_sequence_state *state)
 {

@@ -20,8 +20,13 @@ static int event_from_text(const char *,
 	enum kn_ax25_loopback_script_event *);
 static int expect_from_tokens(char *[], size_t,
 	struct kn_ax25_loopback_script_command *);
+static int hex_nibble(char);
+static int parse_hex_payload(const char *, uint8_t *, size_t, size_t *);
 static int parse_params(char *[], size_t, struct kn_ax25_params *);
+static int parse_payload_tokens(char *[], size_t,
+	struct kn_ax25_loopback_script_command *);
 static int parse_u64(const char *, uint64_t *);
+static const char *strip_quotes(const char *);
 static int state_from_text(const char *, enum kn_ax25_connection_state *);
 static char *trim(char *);
 
@@ -114,6 +119,27 @@ expect_from_tokens(char *tokens[], size_t count,
 				return -1;
 			return 0;
 		}
+		if (strncmp(tokens[2], "rejected=", 9) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_REJECTED;
+			if (parse_u64(tokens[2] + 9, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "last-payload-text=", 18) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT;
+			(void)snprintf(command->text, sizeof(command->text),
+			    "%s", strip_quotes(tokens[2] + 18));
+			return 0;
+		}
+		if (strncmp(tokens[2], "last-payload-hex=", 17) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_HEX;
+			(void)snprintf(command->text, sizeof(command->text),
+			    "%s", tokens[2] + 17);
+			return 0;
+		}
 		return -1;
 	}
 	command->endpoint = KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_NONE;
@@ -137,6 +163,43 @@ expect_from_tokens(char *tokens[], size_t count,
 	if (parse_u64(tokens[2], &value) != 0)
 		return -1;
 	command->value = value;
+	return 0;
+}
+
+static int
+hex_nibble(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return -1;
+}
+
+static int
+parse_hex_payload(const char *text, uint8_t *out, size_t out_len,
+	size_t *written)
+{
+	size_t len;
+	size_t i;
+	int hi;
+	int lo;
+
+	if (text == NULL || out == NULL || written == NULL)
+		return -1;
+	len = strlen(text);
+	if ((len & 1U) != 0 || len / 2 > out_len)
+		return -1;
+	for (i = 0; i < len / 2; i++) {
+		hi = hex_nibble(text[i * 2]);
+		lo = hex_nibble(text[i * 2 + 1]);
+		if (hi < 0 || lo < 0)
+			return -1;
+		out[i] = (uint8_t)((hi << 4) | lo);
+	}
+	*written = len / 2;
 	return 0;
 }
 
@@ -189,6 +252,58 @@ parse_params(char *tokens[], size_t count, struct kn_ax25_params *params)
 }
 
 static int
+parse_payload_tokens(char *tokens[], size_t count,
+	struct kn_ax25_loopback_script_command *command)
+{
+	uint64_t value;
+	const char *text;
+	size_t i;
+	size_t len;
+	uint8_t saw_payload;
+
+	if (tokens == NULL || command == NULL)
+		return -1;
+	saw_payload = 0;
+	for (i = 3; i < count; i++) {
+		if (strncmp(tokens[i], "text=", 5) == 0) {
+			text = strip_quotes(tokens[i] + 5);
+			len = strlen(text);
+			if (len > sizeof(command->payload))
+				return -1;
+			memcpy(command->payload, text, len);
+			command->payload_len = len;
+			(void)snprintf(command->text,
+			    sizeof(command->text), "%s", text);
+			saw_payload = 1;
+		} else if (strncmp(tokens[i], "hex=", 4) == 0) {
+			if (parse_hex_payload(tokens[i] + 4, command->payload,
+			    sizeof(command->payload),
+			    &command->payload_len) != 0)
+				return -1;
+			command->payload_is_hex = 1;
+			(void)snprintf(command->text,
+			    sizeof(command->text), "%s", tokens[i] + 4);
+			saw_payload = 1;
+		} else if (strncmp(tokens[i], "len=", 4) == 0) {
+			if (parse_u64(tokens[i] + 4, &value) != 0 ||
+			    value != 0)
+				return -1;
+			command->payload_len = 0;
+			saw_payload = 1;
+		} else if (strncmp(tokens[i], "ns=", 3) == 0) {
+			if (parse_u64(tokens[i] + 3, &value) != 0 ||
+			    value > 7)
+				return -1;
+			command->ns_override = (uint8_t)value;
+			command->use_ns_override = 1;
+		} else {
+			return -1;
+		}
+	}
+	return saw_payload != 0 ? 0 : -1;
+}
+
+static int
 parse_u64(const char *text, uint64_t *value)
 {
 	char *end;
@@ -202,6 +317,25 @@ parse_u64(const char *text, uint64_t *value)
 		return -1;
 	*value = (uint64_t)parsed;
 	return 0;
+}
+
+static const char *
+strip_quotes(const char *text)
+{
+	size_t len;
+	static char stripped[KN_AX25_LOOPBACK_SCRIPT_TEXT_MAX];
+
+	if (text == NULL)
+		return "";
+	len = strlen(text);
+	if (len >= 2 && text[0] == '"' && text[len - 1] == '"') {
+		if (len - 2 >= sizeof(stripped))
+			return text;
+		memcpy(stripped, text + 1, len - 2);
+		stripped[len - 2] = '\0';
+		return stripped;
+	}
+	return text;
 }
 
 static int
@@ -362,11 +496,9 @@ kn_ax25_loopback_script_parse_file(const char *path,
 				goto parse_error;
 			command.type = KN_AX25_LOOPBACK_SCRIPT_EVENT;
 			if (command.event == KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_I) {
-				if (count != 4 || strncmp(tokens[3],
-				    "text=", 5) != 0)
+				if (parse_payload_tokens(tokens, count,
+				    &command) != 0)
 					goto parse_error;
-				(void)snprintf(command.text,
-				    sizeof(command.text), "%s", tokens[3] + 5);
 			} else if (count != 3) {
 				goto parse_error;
 			}

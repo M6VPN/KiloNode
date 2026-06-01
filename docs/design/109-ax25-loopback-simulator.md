@@ -42,9 +42,9 @@ All loopback runs are bounded by script limits and `run-until-idle` maximum step
 counts. The link moves a bounded number of frames per step and rejects oversized
 or malformed raw AX.25 input.
 
-I-frame generation is simulator-local in this pass. The general AX.25 response
-frame builder still covers U and S control frames only. This keeps live TX and
-daemon behaviour unchanged while allowing loopback tests to exercise a small
-payload and RR path.
+I-frame generation uses the M2.2 raw AX.25 I-frame helpers and remains
+simulator-only. This keeps live TX and daemon behaviour unchanged while allowing
+loopback tests to exercise small text and binary payloads plus RR acknowledgement
+diagnostics.
 
 FX.25 is not part of the simulator. The report keeps `fx25_frames=0`.

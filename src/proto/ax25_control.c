@@ -168,6 +168,25 @@ kn_ax25_control_decode(uint8_t control, struct kn_ax25_control_info *info)
 }
 
 enum kn_ax25_control_error
+kn_ax25_control_encode_i(uint8_t ns, uint8_t nr, uint8_t poll_final,
+	uint8_t *control)
+{
+	uint8_t value;
+
+	if (control == NULL)
+		return KN_AX25_CONTROL_ERR_INVALID_ARGUMENT;
+	if (ns > 7 || nr > 7 || poll_final > 1)
+		return KN_AX25_CONTROL_ERR_INVALID_VALUE;
+
+	value = (uint8_t)((ns << 1) | (nr << 5));
+	if (poll_final != 0)
+		value = (uint8_t)(value | 0x10U);
+
+	*control = value;
+	return KN_AX25_CONTROL_OK;
+}
+
+enum kn_ax25_control_error
 kn_ax25_control_encode_s(enum kn_ax25_s_subtype subtype, uint8_t nr,
 	uint8_t poll_final, uint8_t *control)
 {

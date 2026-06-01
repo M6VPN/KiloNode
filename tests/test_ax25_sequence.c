@@ -17,6 +17,7 @@ static int test_mod128_planned(void);
 static int test_receive_update(void);
 static int test_rej_marks_retransmit(void);
 static int test_rnr_marks_busy(void);
+static int test_send_update(void);
 static int test_wrap(void);
 
 int
@@ -43,6 +44,8 @@ main(void)
 	if (test_mod128_planned() != 0)
 		return 1;
 	if (test_receive_update() != 0)
+		return 1;
+	if (test_send_update() != 0)
 		return 1;
 
 	return 0;
@@ -167,6 +170,20 @@ test_rnr_marks_busy(void)
 		return 1;
 
 	return state.remote_busy == 1 && state.acknowledge_state == 5 ? 0 : 1;
+}
+
+static int
+test_send_update(void)
+{
+	struct kn_ax25_sequence_state state;
+	uint8_t ns;
+
+	kn_ax25_sequence_state_clear(&state);
+	state.send_state = 7;
+	if (kn_ax25_sequence_send_i_mod8(&state, &ns) !=
+	    KN_AX25_SEQUENCE_OK)
+		return 1;
+	return ns == 7 && state.send_state == 0 ? 0 : 1;
 }
 
 static int

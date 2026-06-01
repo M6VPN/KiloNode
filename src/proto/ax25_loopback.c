@@ -41,6 +41,15 @@ collect_result(const struct kn_ax25_loopback *loop,
 	    loop->a.outbound_prepared_frames + loop->b.outbound_prepared_frames;
 	result->raw_ax25_frames_transferred =
 	    loop->link.raw_ax25_frames_transferred;
+	result->endpoint_a_rejected = loop->a.rejected_payloads;
+	result->endpoint_b_rejected = loop->b.rejected_payloads;
+	result->i_frames_sent = loop->a.i_frames_sent + loop->b.i_frames_sent;
+	result->i_frames_received = loop->a.i_frames_received +
+	    loop->b.i_frames_received;
+	result->rr_frames_sent = loop->a.rr_frames_sent +
+	    loop->b.rr_frames_sent;
+	result->rr_frames_received = loop->a.rr_frames_received +
+	    loop->b.rr_frames_received;
 	result->real_tx_queue_writes =
 	    loop->a.tx_queue_writes + loop->b.tx_queue_writes;
 	result->dispatch_calls = loop->a.dispatch_calls + loop->b.dispatch_calls;
@@ -109,8 +118,9 @@ execute_command(struct kn_ax25_loopback *loop,
 			    KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A ? &loop->b :
 			    &loop->a;
 			if (kn_ax25_loopback_endpoint_send_i(ep,
-			    (const uint8_t *)command->text,
-			    strlen(command->text), frame, sizeof(frame),
+			    command->payload, command->payload_len,
+			    command->ns_override, command->use_ns_override,
+			    frame, sizeof(frame),
 			    &frame_len) != KN_AX25_LOOPBACK_ENDPOINT_OK)
 				return KN_AX25_LOOPBACK_ERR_UNSUPPORTED;
 			return kn_ax25_loopback_link_transfer_raw(&loop->link,
@@ -162,6 +172,43 @@ execute_command(struct kn_ax25_loopback *loop,
 		if (command->expect == KN_AX25_LOOPBACK_SCRIPT_EXPECT_DELIVERED) {
 			ep = endpoint(loop, command->endpoint);
 			actual = ep == NULL ? 0 : ep->delivered_payloads;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_REJECTED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->rejected_payloads;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT) {
+			const struct kn_ax25_payload_delivery_record *delivery;
+
+			ep = endpoint(loop, command->endpoint);
+			delivery = ep == NULL ? NULL :
+			    kn_ax25_payload_delivery_last_accepted(
+			    &ep->deliveries);
+			if (delivery == NULL || delivery->payload_is_text == 0 ||
+			    delivery->preview_len != strlen(command->text) ||
+			    memcmp(delivery->preview, command->text,
+			    delivery->preview_len) != 0) {
+				mismatch(loop, command, "last-payload-text");
+				return KN_AX25_LOOPBACK_ERR_MISMATCH;
+			}
+			return KN_AX25_LOOPBACK_OK;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_HEX) {
+			const struct kn_ax25_payload_delivery_record *delivery;
+			char hex[KN_AX25_PAYLOAD_DELIVERY_PREVIEW_MAX * 2 + 1];
+
+			ep = endpoint(loop, command->endpoint);
+			delivery = ep == NULL ? NULL :
+			    kn_ax25_payload_delivery_last_accepted(
+			    &ep->deliveries);
+			if (delivery == NULL ||
+			    kn_ax25_payload_delivery_preview_hex(delivery, hex,
+			    sizeof(hex)) != KN_AX25_PAYLOAD_DELIVERY_OK ||
+			    strcmp(hex, command->text) != 0) {
+				mismatch(loop, command, "last-payload-hex");
+				return KN_AX25_LOOPBACK_ERR_MISMATCH;
+			}
+			return KN_AX25_LOOPBACK_OK;
 		} else if (command->expect ==
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_PREPARED_COUNT) {
 			actual = loop->a.outbound_prepared_frames +

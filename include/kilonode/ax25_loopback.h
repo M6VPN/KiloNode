@@ -20,6 +20,11 @@ struct kn_ax25_loopback {
 	uint64_t mismatch_count;
 	uint64_t prepared_frames_generated;
 	uint64_t raw_ax25_frames_transferred;
+	uint64_t rejected_payloads;
+	uint64_t i_frames_sent;
+	uint64_t i_frames_received;
+	uint64_t rr_frames_sent;
+	uint64_t rr_frames_received;
 	uint64_t real_tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames_generated;
@@ -36,6 +41,12 @@ struct kn_ax25_loopback_result {
 	uint64_t endpoint_b_delivered;
 	uint64_t prepared_frames_generated;
 	uint64_t raw_ax25_frames_transferred;
+	uint64_t endpoint_a_rejected;
+	uint64_t endpoint_b_rejected;
+	uint64_t i_frames_sent;
+	uint64_t i_frames_received;
+	uint64_t rr_frames_sent;
+	uint64_t rr_frames_received;
 	uint64_t real_tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames_generated;

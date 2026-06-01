@@ -1,24 +1,17 @@
 # KiloNode AX.25 loopback script v1
-name connect-i-rr-disconnect
+name i-frame-sequence-mismatch
 endpoint-a M6VPN-1
 endpoint-b N0CALL
 port kiss0
 params modulo=8 window=1 t1=3000 t2=1000 t3=300000 n2=3
 event A local-connect
 run-until-idle max-steps=8
-event A send-i text="hello"
+event A send-i ns=3 text="bad"
 run-until-idle max-steps=8
 expect A state=connected
 expect B state=connected
-expect B delivered=1
-expect B rejected=0
-expect B last-payload-text="hello"
-event A local-disconnect
-run-until-idle max-steps=8
-expect A state=disconnected
-expect B state=disconnected
-expect prepared-count 5
-expect transferred 6
+expect B delivered=0
+expect B rejected=1
 expect tx-writes 0
 expect dispatch-calls 0
 expect fx25-frames 0

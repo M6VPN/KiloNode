@@ -51,6 +51,8 @@ struct kn_ax25_control_info {
 };
 
 void kn_ax25_control_decode(uint8_t, struct kn_ax25_control_info *);
+enum kn_ax25_control_error kn_ax25_control_encode_i(uint8_t, uint8_t,
+	uint8_t, uint8_t *);
 enum kn_ax25_control_error kn_ax25_control_encode_s(
 	enum kn_ax25_s_subtype, uint8_t, uint8_t, uint8_t *);
 enum kn_ax25_control_error kn_ax25_control_encode_u(

@@ -7,76 +7,20 @@
 #include <string.h>
 
 #include "kilonode/ax25_connection_event.h"
+#include "kilonode/ax25_control.h"
 #include "kilonode/ax25_frame_builder.h"
+#include "kilonode/ax25_i_frame.h"
 #include "kilonode/ax25_loopback_endpoint.h"
-#include "kilonode/buffer.h"
+#include "kilonode/ax25_loopback_payload.h"
 
-static enum kn_ax25_loopback_endpoint_error build_i_frame(
-	struct kn_ax25_loopback_endpoint *, const uint8_t *, size_t,
-	uint8_t *, size_t, size_t *);
 static enum kn_ax25_loopback_endpoint_error prepare_plans(
 	struct kn_ax25_loopback_endpoint *,
 	const struct kn_ax25_frame_plan_list *, uint32_t);
 static enum kn_ax25_loopback_endpoint_error process_event(
 	struct kn_ax25_loopback_endpoint *,
-	const struct kn_ax25_connection_event_record *);
+	const struct kn_ax25_connection_event_record *,
+	const struct kn_ax25_i_frame_decoded *);
 static void set_error(struct kn_ax25_loopback_endpoint *, const char *);
-
-static enum kn_ax25_loopback_endpoint_error
-build_i_frame(struct kn_ax25_loopback_endpoint *endpoint,
-	const uint8_t *payload, size_t payload_len, uint8_t *out,
-	size_t out_len, size_t *written)
-{
-	struct kn_ax25_connection_record *record;
-	struct kn_ax25_addr addr;
-	struct kn_buffer frame;
-	enum kn_ax25_error ax25_rc;
-	uint8_t control;
-
-	if (endpoint == NULL || payload == NULL || out == NULL ||
-	    written == NULL)
-		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
-	if (payload_len == 0 || payload_len > KN_AX25_LOOPBACK_I_PAYLOAD_MAX)
-		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_VALUE;
-	if (endpoint->table.count == 0)
-		return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
-	record = &endpoint->table.records[0];
-	if (record->connection.state != KN_AX25_CONNECTION_CONNECTED)
-		return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
-	if (kn_buffer_init(&frame, 0) != 0)
-		return KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.callsign = endpoint->peer;
-	ax25_rc = kn_ax25_address_encode(&addr, 0, &frame);
-	if (ax25_rc != KN_AX25_OK)
-		goto fail;
-	memset(&addr, 0, sizeof(addr));
-	addr.callsign = endpoint->local;
-	ax25_rc = kn_ax25_address_encode(&addr, 1, &frame);
-	if (ax25_rc != KN_AX25_OK)
-		goto fail;
-
-	control = (uint8_t)(((record->connection.send_state & 0x07U) << 1) |
-	    ((record->connection.receive_state & 0x07U) << 5));
-	if (kn_buffer_append_byte(&frame, control) != 0 ||
-	    kn_buffer_append_byte(&frame, KN_AX25_PID_NO_LAYER_3) != 0 ||
-	    kn_buffer_append(&frame, payload, payload_len) != 0)
-		goto fail;
-	if (frame.len > out_len)
-		goto fail;
-
-	memcpy(out, frame.data, frame.len);
-	*written = frame.len;
-	record->connection.send_state =
-	    (uint8_t)((record->connection.send_state + 1U) & 0x07U);
-	kn_buffer_free(&frame);
-	return KN_AX25_LOOPBACK_ENDPOINT_OK;
-
-fail:
-	kn_buffer_free(&frame);
-	return KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
-}
 
 static enum kn_ax25_loopback_endpoint_error
 prepare_plans(struct kn_ax25_loopback_endpoint *endpoint,
@@ -105,11 +49,13 @@ prepare_plans(struct kn_ax25_loopback_endpoint *endpoint,
 
 static enum kn_ax25_loopback_endpoint_error
 process_event(struct kn_ax25_loopback_endpoint *endpoint,
-	const struct kn_ax25_connection_event_record *event)
+	const struct kn_ax25_connection_event_record *event,
+	const struct kn_ax25_i_frame_decoded *i_frame)
 {
 	struct kn_ax25_connection_table_result result;
 	struct kn_ax25_connection_record *record;
 	size_t i;
+	uint8_t delivered;
 	uint32_t connection_id;
 	enum kn_ax25_connection_table_error table_rc;
 
@@ -129,10 +75,28 @@ process_event(struct kn_ax25_loopback_endpoint *endpoint,
 	    result.record_index);
 	if (record != NULL)
 		endpoint->last_state = record->connection.state;
+	delivered = 0;
 	for (i = 0; i < result.actions.count; i++) {
 		if (result.actions.actions[i].intent ==
-		    KN_AX25_ACTION_DELIVER_I_PAYLOAD)
+		    KN_AX25_ACTION_DELIVER_I_PAYLOAD) {
 			endpoint->delivered_payloads++;
+			delivered = 1;
+		}
+		if (result.actions.actions[i].intent == KN_AX25_ACTION_SEND_RR)
+			endpoint->rr_frames_sent++;
+		if (result.actions.actions[i].intent == KN_AX25_ACTION_SEND_REJ)
+			endpoint->rejected_payloads++;
+	}
+	if (i_frame != NULL) {
+		if (delivered != 0) {
+			if (kn_ax25_loopback_payload_record(endpoint, i_frame,
+			    1, "accepted") != KN_AX25_LOOPBACK_PAYLOAD_OK)
+				return KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
+		} else {
+			if (kn_ax25_loopback_payload_record(endpoint, i_frame,
+			    0, "sequence") != KN_AX25_LOOPBACK_PAYLOAD_OK)
+				return KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
+		}
 	}
 	if (record != NULL &&
 	    kn_ax25_scheduler_apply_actions(&endpoint->scheduler,
@@ -188,13 +152,16 @@ kn_ax25_loopback_endpoint_format(
 
 	needed = snprintf(buf, bufsiz,
 	    "endpoint=%s local=%s peer=%s state=%s inbound=%llu "
-	    "prepared=%llu delivered=%llu tx_writes=%llu dispatch=%llu "
-	    "fx25=%llu",
+	    "prepared=%llu delivered=%llu rejected=%llu i_rx=%llu rr_rx=%llu "
+	    "tx_writes=%llu dispatch=%llu fx25=%llu",
 	    endpoint->name, local, peer,
 	    kn_ax25_connection_state_name(endpoint->last_state),
 	    (unsigned long long)endpoint->inbound_frames,
 	    (unsigned long long)endpoint->outbound_prepared_frames,
 	    (unsigned long long)endpoint->delivered_payloads,
+	    (unsigned long long)endpoint->rejected_payloads,
+	    (unsigned long long)endpoint->i_frames_received,
+	    (unsigned long long)endpoint->rr_frames_received,
 	    (unsigned long long)endpoint->tx_queue_writes,
 	    (unsigned long long)endpoint->dispatch_calls,
 	    (unsigned long long)endpoint->fx25_frames);
@@ -245,6 +212,7 @@ kn_ax25_loopback_endpoint_init(struct kn_ax25_loopback_endpoint *endpoint,
 	    &endpoint->params);
 	kn_ax25_scheduler_init(&endpoint->scheduler);
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
+	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 	set_error(endpoint, "ok");
 	return KN_AX25_LOOPBACK_ENDPOINT_OK;
@@ -268,7 +236,7 @@ kn_ax25_loopback_endpoint_local_connect(
 	if (kn_ax25_connection_event_local_connect(&event, endpoint->now_ms,
 	    &key) != KN_AX25_CONNECTION_EVENT_OK)
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_VALUE;
-	return process_event(endpoint, &event);
+	return process_event(endpoint, &event, NULL);
 }
 
 enum kn_ax25_loopback_endpoint_error
@@ -289,7 +257,7 @@ kn_ax25_loopback_endpoint_local_disconnect(
 	if (kn_ax25_connection_event_local_disconnect(&event,
 	    endpoint->now_ms, &key) != KN_AX25_CONNECTION_EVENT_OK)
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_VALUE;
-	return process_event(endpoint, &event);
+	return process_event(endpoint, &event, NULL);
 }
 
 enum kn_ax25_loopback_endpoint_error
@@ -298,14 +266,29 @@ kn_ax25_loopback_endpoint_process_frame(
 	size_t data_len)
 {
 	struct kn_ax25_frame frame;
+	struct kn_ax25_i_frame_decoded i_frame;
 	struct kn_ax25_connection_event_record event;
 	enum kn_ax25_connection_event_error event_rc;
+	struct kn_ax25_control_info control;
 
 	if (endpoint == NULL || data == NULL || data_len == 0)
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
 	if (kn_ax25_frame_decode(data, data_len, &frame) != KN_AX25_OK) {
 		set_error(endpoint, "decode");
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_DECODE;
+	}
+	kn_ax25_control_decode(frame.control, &control);
+	kn_ax25_i_frame_decoded_clear(&i_frame);
+	if (control.class == KN_AX25_CONTROL_CLASS_I) {
+		if (kn_ax25_i_frame_decode_raw(data, data_len, &i_frame) !=
+		    KN_AX25_I_FRAME_OK) {
+			set_error(endpoint, "i-frame");
+			return KN_AX25_LOOPBACK_ENDPOINT_ERR_DECODE;
+		}
+		endpoint->i_frames_received++;
+	} else if (control.class == KN_AX25_CONTROL_CLASS_S &&
+	    control.s_subtype == KN_AX25_S_SUBTYPE_RR) {
+		endpoint->rr_frames_received++;
 	}
 	event_rc = kn_ax25_connection_event_from_frame_pair(&event,
 	    endpoint->now_ms, endpoint->port_name, &endpoint->local,
@@ -317,7 +300,8 @@ kn_ax25_loopback_endpoint_process_frame(
 		    KN_AX25_LOOPBACK_ENDPOINT_ERR_DECODE;
 	}
 	endpoint->inbound_frames++;
-	return process_event(endpoint, &event);
+	return process_event(endpoint, &event,
+	    control.class == KN_AX25_CONTROL_CLASS_I ? &i_frame : NULL);
 }
 
 enum kn_ax25_loopback_endpoint_error
@@ -392,19 +376,23 @@ kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *endpoint)
 	    &endpoint->params);
 	kn_ax25_scheduler_init(&endpoint->scheduler);
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
+	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 }
 
 enum kn_ax25_loopback_endpoint_error
 kn_ax25_loopback_endpoint_send_i(struct kn_ax25_loopback_endpoint *endpoint,
-	const uint8_t *payload, size_t payload_len, uint8_t *out,
-	size_t out_len, size_t *written)
+	const uint8_t *payload, size_t payload_len, uint8_t ns_override,
+	uint8_t use_ns_override, uint8_t *out, size_t out_len,
+	size_t *written)
 {
 	if (endpoint == NULL)
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
 
-	return build_i_frame(endpoint, payload, payload_len, out, out_len,
-	    written);
+	return kn_ax25_loopback_payload_send_i(endpoint, payload, payload_len,
+	    ns_override, use_ns_override, out, out_len, written) ==
+	    KN_AX25_LOOPBACK_PAYLOAD_OK ? KN_AX25_LOOPBACK_ENDPOINT_OK :
+	    KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
 }
 
 enum kn_ax25_loopback_endpoint_error

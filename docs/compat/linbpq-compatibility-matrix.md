@@ -221,6 +221,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 SABM/UA loopback | tested | Native loopback fixtures prove setup state transitions and prepared diagnostics only. |
 | AX.25 DISC/UA loopback | tested | Native loopback fixtures prove disconnect state transitions and no-transmit counters. |
 | AX.25 I/RR loopback | partial | Simulator-local I frame exchange is tested. Live connected-mode I-frame TX remains planned. |
+| Internal AX.25 I/RR payload loopback | implemented | M2.2 tests bounded text and binary payload diagnostics plus RR acknowledgement without live RF. |
+| BPQ/LinBPQ connected-mode payload interop | planned | Future black-box captures only. No LinBPQ code or command compatibility is used. |
 | Live RF connected-mode loopback | planned | Future work requires real TX safety gates and black-box interop planning. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |
 | Real connected-mode response TX | planned | Prepared diagnostics are not transmitted. |

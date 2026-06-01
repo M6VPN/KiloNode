@@ -18,7 +18,9 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	needed = snprintf(buf, bufsiz,
 	    "AX25-LOOPBACK name=%s result=%s A=%s B=%s "
 	    "prepared=%llu transferred=%llu A_delivered=%llu "
-	    "B_delivered=%llu tx_writes=%llu dispatch=%llu fx25=%llu "
+	    "B_delivered=%llu A_rejected=%llu B_rejected=%llu "
+	    "i_sent=%llu i_received=%llu rr_sent=%llu rr_received=%llu "
+	    "tx_writes=%llu dispatch=%llu fx25=%llu "
 	    "mismatches=%llu last=%s\n",
 	    result->name, result->pass != 0 ? "pass" : "fail",
 	    kn_ax25_connection_state_name(result->endpoint_a_state),
@@ -27,6 +29,12 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	    (unsigned long long)result->raw_ax25_frames_transferred,
 	    (unsigned long long)result->endpoint_a_delivered,
 	    (unsigned long long)result->endpoint_b_delivered,
+	    (unsigned long long)result->endpoint_a_rejected,
+	    (unsigned long long)result->endpoint_b_rejected,
+	    (unsigned long long)result->i_frames_sent,
+	    (unsigned long long)result->i_frames_received,
+	    (unsigned long long)result->rr_frames_sent,
+	    (unsigned long long)result->rr_frames_received,
 	    (unsigned long long)result->real_tx_queue_writes,
 	    (unsigned long long)result->dispatch_calls,
 	    (unsigned long long)result->fx25_frames_generated,

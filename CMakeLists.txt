@@ -85,14 +85,17 @@ add_library(packetcore STATIC
 	src/proto/ax25_connection_table.c
 	src/proto/ax25_frame_builder.c
 	src/proto/ax25_frame_plan.c
+	src/proto/ax25_i_frame.c
 	src/proto/ax25_live_diag.c
 	src/proto/ax25_live_scheduler.c
 	src/proto/ax25_loopback.c
 	src/proto/ax25_loopback_endpoint.c
 	src/proto/ax25_loopback_link.c
+	src/proto/ax25_loopback_payload.c
 	src/proto/ax25_loopback_report.c
 	src/proto/ax25_loopback_script.c
 	src/proto/ax25_params.c
+	src/proto/ax25_payload_delivery.c
 	src/proto/ax25_prepared_diag.c
 	src/proto/ax25_prepared_expect.c
 	src/proto/ax25_prepared_frame.c
@@ -255,10 +258,21 @@ target_link_libraries(test_ax25_frame_plan PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_frame_plan)
 add_test(NAME ax25_frame_plan COMMAND test_ax25_frame_plan)
 
+add_executable(test_ax25_i_frame tests/test_ax25_i_frame.c)
+target_link_libraries(test_ax25_i_frame PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_i_frame)
+add_test(NAME ax25_i_frame COMMAND test_ax25_i_frame)
+
 add_executable(test_ax25_params tests/test_ax25_params.c)
 target_link_libraries(test_ax25_params PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_params)
 add_test(NAME ax25_params COMMAND test_ax25_params)
+
+add_executable(test_ax25_payload_delivery
+	tests/test_ax25_payload_delivery.c)
+target_link_libraries(test_ax25_payload_delivery PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_payload_delivery)
+add_test(NAME ax25_payload_delivery COMMAND test_ax25_payload_delivery)
 
 add_executable(test_ax25_prepared_diag tests/test_ax25_prepared_diag.c)
 target_link_libraries(test_ax25_prepared_diag PRIVATE packetcore)
@@ -425,6 +439,12 @@ add_executable(test_ax25_loopback_link tests/test_ax25_loopback_link.c)
 target_link_libraries(test_ax25_loopback_link PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_loopback_link)
 add_test(NAME ax25_loopback_link COMMAND test_ax25_loopback_link)
+
+add_executable(test_ax25_loopback_payload
+	tests/test_ax25_loopback_payload.c)
+target_link_libraries(test_ax25_loopback_payload PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_payload)
+add_test(NAME ax25_loopback_payload COMMAND test_ax25_loopback_payload)
 
 add_executable(test_ax25_loopback_script
 	tests/test_ax25_loopback_script.c)

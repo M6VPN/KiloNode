@@ -125,6 +125,13 @@
 | Timeout loopback                 | implemented | Loopback fixture advances injected time, retries T1 setup, and accepts a later UA. |
 | Loopback safety counters         | implemented | Reports assert TX writes, dispatch calls, and FX.25 frame count remain zero. |
 | M2.1 loopback fixtures           | implemented | `tests/fixtures/ax25-loopback` scripts run through `kilonode-compat` and shell helpers. |
+| I-frame control encode/decode    | implemented | Modulo 8 N(S), N(R), and P/F helpers are unit-tested for sequence values 0 through 7. |
+| I-frame raw frame builder        | implemented | Builds raw AX.25 I-frame body bytes with PID and bounded payload, without HDLC, FCS, KISS, or FX.25. |
+| I-frame payload decode           | implemented | Decodes raw AX.25 I frames into callsigns, sequence fields, PID, payload length, and bounded previews. |
+| Loopback I/RR delivery           | implemented | Loopback fixtures deliver text and binary payload diagnostics and return RR acknowledgements. |
+| Sequence mismatch handling       | implemented | Loopback records rejected payload diagnostics and retains REJ frame plans without TX queue writes. |
+| Live daemon I-frame delivery     | planned     | Payloads are not delivered to daemon shell, BBS, RF command, or user sessions. |
+| Shell/BBS payload binding        | planned     | Connected-mode payload binding remains blocked behind future safety and session work. |
 | Real TX queue bridge          | planned     | Prepared frames are not copied to the real TX queue. |
 | Real response TX               | blocked     | Requires safety checklist completion and a separate implementation milestone. |
 | Dispatch planned              | planned     | Prepared bridge diagnostics do not run TX dispatch. |

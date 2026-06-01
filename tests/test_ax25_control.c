@@ -9,6 +9,7 @@
 #include "kilonode/ax25_control.h"
 
 static int test_i_classification(void);
+static int test_i_encode_decode(void);
 static int test_invalid_output_safe(void);
 static int test_s_encode_decode(void);
 static int test_s_classification(void);
@@ -24,6 +25,8 @@ main(void)
 	if (test_ui_classification() != 0)
 		return 1;
 	if (test_i_classification() != 0)
+		return 1;
+	if (test_i_encode_decode() != 0)
 		return 1;
 	if (test_s_classification() != 0)
 		return 1;
@@ -61,6 +64,23 @@ test_i_classification(void)
 		return 1;
 
 	return 0;
+}
+
+static int
+test_i_encode_decode(void)
+{
+	struct kn_ax25_control_info info;
+	uint8_t control;
+
+	if (kn_ax25_control_encode_i(7, 6, 1, &control) !=
+	    KN_AX25_CONTROL_OK)
+		return 1;
+	kn_ax25_control_decode(control, &info);
+	if (info.class != KN_AX25_CONTROL_CLASS_I ||
+	    info.ns != 7 || info.nr != 6 || info.poll_final != 1)
+		return 1;
+	return kn_ax25_control_encode_i(8, 0, 0, &control) ==
+	    KN_AX25_CONTROL_ERR_INVALID_VALUE ? 0 : 1;
 }
 
 static int
