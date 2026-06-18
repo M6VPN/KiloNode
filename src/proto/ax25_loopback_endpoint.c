@@ -21,6 +21,7 @@ static enum kn_ax25_loopback_endpoint_error process_event(
 	const struct kn_ax25_connection_event_record *,
 	const struct kn_ax25_i_frame_decoded *);
 static void set_error(struct kn_ax25_loopback_endpoint *, const char *);
+static void sync_window_counters(struct kn_ax25_loopback_endpoint *);
 
 static enum kn_ax25_loopback_endpoint_error
 prepare_plans(struct kn_ax25_loopback_endpoint *endpoint,
@@ -129,6 +130,20 @@ set_error(struct kn_ax25_loopback_endpoint *endpoint, const char *text)
 		endpoint->last_error[sizeof(endpoint->last_error) - 1] = '\0';
 }
 
+static void
+sync_window_counters(struct kn_ax25_loopback_endpoint *endpoint)
+{
+	if (endpoint == NULL)
+		return;
+
+	endpoint->outstanding_frames =
+	    kn_ax25_loopback_window_in_flight(&endpoint->window);
+	endpoint->outstanding_max_seen = endpoint->window.max_in_flight_seen;
+	endpoint->outstanding_acked = endpoint->window.acked;
+	endpoint->outstanding_rejected = endpoint->window.rejected;
+	endpoint->window_blocked = endpoint->window.blocked;
+}
+
 void
 kn_ax25_loopback_endpoint_free(struct kn_ax25_loopback_endpoint *endpoint)
 {
@@ -153,8 +168,9 @@ kn_ax25_loopback_endpoint_format(
 	needed = snprintf(buf, bufsiz,
 	    "endpoint=%s local=%s peer=%s state=%s inbound=%llu "
 	    "prepared=%llu delivered=%llu rejected=%llu reassembled=%llu "
-	    "segments_rx=%llu i_rx=%llu rr_rx=%llu tx_writes=%llu "
-	    "dispatch=%llu fx25=%llu",
+	    "segments_rx=%llu i_rx=%llu rr_rx=%llu outstanding=%llu "
+	    "outstanding_max=%llu acked=%llu window_blocked=%llu "
+	    "tx_writes=%llu dispatch=%llu fx25=%llu",
 	    endpoint->name, local, peer,
 	    kn_ax25_connection_state_name(endpoint->last_state),
 	    (unsigned long long)endpoint->inbound_frames,
@@ -165,6 +181,10 @@ kn_ax25_loopback_endpoint_format(
 	    (unsigned long long)endpoint->segments_received,
 	    (unsigned long long)endpoint->i_frames_received,
 	    (unsigned long long)endpoint->rr_frames_received,
+	    (unsigned long long)endpoint->outstanding_frames,
+	    (unsigned long long)endpoint->outstanding_max_seen,
+	    (unsigned long long)endpoint->outstanding_acked,
+	    (unsigned long long)endpoint->window_blocked,
 	    (unsigned long long)endpoint->tx_queue_writes,
 	    (unsigned long long)endpoint->dispatch_calls,
 	    (unsigned long long)endpoint->fx25_frames);
@@ -217,6 +237,7 @@ kn_ax25_loopback_endpoint_init(struct kn_ax25_loopback_endpoint *endpoint,
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
+	kn_ax25_loopback_window_init(&endpoint->window);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 	set_error(endpoint, "ok");
 	return KN_AX25_LOOPBACK_ENDPOINT_OK;
@@ -274,6 +295,9 @@ kn_ax25_loopback_endpoint_process_frame(
 	struct kn_ax25_connection_event_record event;
 	enum kn_ax25_connection_event_error event_rc;
 	struct kn_ax25_control_info control;
+	size_t acked;
+	size_t rejected;
+	enum kn_ax25_loopback_endpoint_error rc;
 
 	if (endpoint == NULL || data == NULL || data_len == 0)
 		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
@@ -304,8 +328,24 @@ kn_ax25_loopback_endpoint_process_frame(
 		    KN_AX25_LOOPBACK_ENDPOINT_ERR_DECODE;
 	}
 	endpoint->inbound_frames++;
-	return process_event(endpoint, &event,
+	rc = process_event(endpoint, &event,
 	    control.class == KN_AX25_CONTROL_CLASS_I ? &i_frame : NULL);
+	if (rc != KN_AX25_LOOPBACK_ENDPOINT_OK)
+		return rc;
+	if (control.class == KN_AX25_CONTROL_CLASS_S &&
+	    control.s_subtype == KN_AX25_S_SUBTYPE_RR) {
+		if (kn_ax25_loopback_window_ack_rr(&endpoint->window,
+		    control.nr, &acked) != KN_AX25_LOOPBACK_WINDOW_OK)
+			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
+	}
+	if (control.class == KN_AX25_CONTROL_CLASS_S &&
+	    control.s_subtype == KN_AX25_S_SUBTYPE_REJ) {
+		if (kn_ax25_loopback_window_reject(&endpoint->window,
+		    control.nr, &rejected) != KN_AX25_LOOPBACK_WINDOW_OK)
+			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
+	}
+	sync_window_counters(endpoint);
+	return KN_AX25_LOOPBACK_ENDPOINT_OK;
 }
 
 enum kn_ax25_loopback_endpoint_error
@@ -382,6 +422,7 @@ kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *endpoint)
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
+	kn_ax25_loopback_window_init(&endpoint->window);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 }
 

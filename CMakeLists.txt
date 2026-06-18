@@ -95,6 +95,7 @@ add_library(packetcore STATIC
 	src/proto/ax25_loopback_report.c
 	src/proto/ax25_loopback_script.c
 	src/proto/ax25_loopback_segment.c
+	src/proto/ax25_loopback_window.c
 	src/proto/ax25_paclen.c
 	src/proto/ax25_params.c
 	src/proto/ax25_payload_delivery.c
@@ -470,6 +471,12 @@ add_executable(test_ax25_loopback_segment
 target_link_libraries(test_ax25_loopback_segment PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_loopback_segment)
 add_test(NAME ax25_loopback_segment COMMAND test_ax25_loopback_segment)
+
+add_executable(test_ax25_loopback_window
+	tests/test_ax25_loopback_window.c)
+target_link_libraries(test_ax25_loopback_window PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_loopback_window)
+add_test(NAME ax25_loopback_window COMMAND test_ax25_loopback_window)
 
 add_executable(test_ax25_loopback_script
 	tests/test_ax25_loopback_script.c)

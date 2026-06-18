@@ -25,6 +25,7 @@ kn_ax25_loopback_segment_send(struct kn_ax25_loopback_endpoint *from,
 	size_t written;
 	size_t i;
 	size_t moved;
+	size_t window_size;
 	uint64_t accepted_before;
 
 	if (from == NULL || to == NULL || link == NULL ||
@@ -37,7 +38,8 @@ kn_ax25_loopback_segment_send(struct kn_ax25_loopback_endpoint *from,
 	record = &from->table.records[0];
 	if (record->connection.state != KN_AX25_CONNECTION_CONNECTED)
 		return KN_AX25_LOOPBACK_SEGMENT_ERR_STATE;
-	if (record->params.window_size != 1)
+	window_size = record->params.window_size;
+	if (window_size == 0)
 		return KN_AX25_LOOPBACK_SEGMENT_ERR_UNSUPPORTED;
 	if (kn_ax25_paclen_derive(&record->params, &paclen) !=
 	    KN_AX25_PACLEN_OK)
@@ -59,11 +61,14 @@ kn_ax25_loopback_segment_send(struct kn_ax25_loopback_endpoint *from,
 			return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
 		if (to->deliveries.accepted_count != accepted_before + 1)
 			return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
-		if (kn_ax25_loopback_link_transfer(link, to, from, &moved) !=
-		    KN_AX25_LOOPBACK_LINK_OK)
-			return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
-		if (moved == 0)
-			return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
+		if (kn_ax25_loopback_window_in_flight(&from->window) >=
+		    window_size || i + 1 == segment_count) {
+			if (kn_ax25_loopback_link_transfer(link, to, from,
+			    &moved) != KN_AX25_LOOPBACK_LINK_OK)
+				return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
+			if (moved == 0)
+				return KN_AX25_LOOPBACK_SEGMENT_ERR_TRANSFER;
+		}
 		(*segments_sent)++;
 	}
 

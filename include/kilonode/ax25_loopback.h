@@ -28,6 +28,11 @@ struct kn_ax25_loopback {
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;
 	uint64_t rr_frames_received;
+	uint64_t outstanding_frames;
+	uint64_t outstanding_max_seen;
+	uint64_t outstanding_acked;
+	uint64_t outstanding_rejected;
+	uint64_t window_blocked;
 	uint64_t real_tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames_generated;
@@ -54,6 +59,11 @@ struct kn_ax25_loopback_result {
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;
 	uint64_t rr_frames_received;
+	uint64_t outstanding_frames;
+	uint64_t outstanding_max_seen;
+	uint64_t outstanding_acked;
+	uint64_t outstanding_rejected;
+	uint64_t window_blocked;
 	uint64_t real_tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames_generated;

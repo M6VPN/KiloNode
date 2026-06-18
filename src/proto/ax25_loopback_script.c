@@ -141,6 +141,41 @@ expect_from_tokens(char *tokens[], size_t count,
 				return -1;
 			return 0;
 		}
+		if (strncmp(tokens[2], "outstanding=", 12) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING;
+			if (parse_u64(tokens[2] + 12, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "outstanding-max=", 16) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING_MAX;
+			if (parse_u64(tokens[2] + 16, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "acked=", 6) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_ACKED;
+			if (parse_u64(tokens[2] + 6, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "outstanding-rejected=", 21) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING_REJECTED;
+			if (parse_u64(tokens[2] + 21, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "window-blocked=", 15) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_WINDOW_BLOCKED;
+			if (parse_u64(tokens[2] + 15, &command->value) != 0)
+				return -1;
+			return 0;
+		}
 		if (strncmp(tokens[2], "last-payload-text=", 18) == 0) {
 			command->expect =
 			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT;

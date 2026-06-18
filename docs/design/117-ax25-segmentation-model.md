@@ -25,12 +25,18 @@ calling the M2.2 I-frame builder.
 
 ## Window Policy
 
-M2.3 implements window-size 1 for segmented loopback payloads.
+M2.3 introduced window-size 1 for segmented loopback payloads. M2.4 extends the
+same simulator path with outstanding-frame diagnostics for window sizes greater
+than 1.
 
-The sender emits one I frame, the peer records delivery diagnostics and prepares
-an RR, and the RR is moved back to the sender before the next segment is sent.
-Larger send windows remain planned because they need explicit outstanding-frame
-tracking and retransmission buffer policy.
+For window-size 1, the sender emits one I frame, the peer records delivery
+diagnostics and prepares an RR, and the RR is moved back to the sender before
+the next segment is sent.
+
+For larger windows, the sender records each I frame in a loopback-only
+outstanding list and sends up to the configured window before moving pending RR
+frames back from the peer. RR processing clears acknowledged outstanding frames.
+This does not create a retransmission queue and does not dispatch frames.
 
 ## Errors
 
@@ -41,6 +47,6 @@ The helpers reject:
 - too many segments for the bounded output list
 - payloads that do not fit the fixed simulator bounds
 - segmented send attempts when the endpoint is not connected
-- segmented send attempts with unsupported window sizes
+- segmented send attempts that exceed the configured send window
 
 The loopback path remains simulator-only and does not touch the real TX queue.

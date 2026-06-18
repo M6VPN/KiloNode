@@ -1,0 +1,25 @@
+# KiloNode AX.25 loopback script v1
+name window-three-binary
+endpoint-a M6VPN-1
+endpoint-b N0CALL
+port kiss0
+params modulo=8 window=3 paclen=2 t1=3000 t2=1000 t3=300000 n2=3
+event A local-connect
+run-until-idle max-steps=8
+event A send-i hex=000102030405 segment=true
+expect A state=connected
+expect B state=connected
+expect A outstanding=0
+expect A outstanding-max=3
+expect A acked=3
+expect A window-blocked=0
+expect B delivered=3
+expect B rejected=0
+expect B reassembled=1
+expect B segment-count=3
+expect B last-reassembled-hex=000102030405
+expect prepared-count 5
+expect transferred 8
+expect tx-writes 0
+expect dispatch-calls 0
+expect fx25-frames 0

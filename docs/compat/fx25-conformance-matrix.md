@@ -53,5 +53,6 @@
 | FX.25 loopback wrapping | planned | Future FX.25 loopback must wrap or unwrap around the AX.25 byte boundary with separate FEC tests. |
 | AX.25 I-frame boundary | scaffold | M2.2 I-frame build/decode operates on AX.25 bytes before any future FX.25 wrapping. |
 | FX.25 I-frame wrapping | planned | No FX.25 wrapper, FEC encoder, or FEC decoder is used for loopback payload fixtures. |
+| FX.25 windowed-loopback coupling | not implemented | M2.4 window diagnostics operate only on raw AX.25 I frames. FX.25 remains outside segmentation and window logic. |
 | AX.25 segmentation boundary | scaffold | M2.3 segmentation splits AX.25 I-frame payload bytes only and does not inspect FX.25. |
 | FX.25 segmented I-frame wrapping | planned | Future FX.25 work may wrap complete segmented AX.25 frames after AX.25 frame generation. |

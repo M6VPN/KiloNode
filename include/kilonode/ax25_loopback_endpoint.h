@@ -10,6 +10,7 @@
 
 #include "kilonode/ax25.h"
 #include "kilonode/ax25_connection_table.h"
+#include "kilonode/ax25_loopback_window.h"
 #include "kilonode/ax25_payload_delivery.h"
 #include "kilonode/ax25_prepared_queue.h"
 #include "kilonode/ax25_reassembly.h"
@@ -44,6 +45,7 @@ struct kn_ax25_loopback_endpoint {
 	struct kn_ax25_prepared_queue prepared;
 	struct kn_ax25_payload_delivery_queue deliveries;
 	struct kn_ax25_reassembly_queue reassemblies;
+	struct kn_ax25_loopback_window window;
 	uint64_t now_ms;
 	size_t sent_prepared_count;
 	uint64_t inbound_frames;
@@ -57,6 +59,11 @@ struct kn_ax25_loopback_endpoint {
 	uint64_t i_frames_received;
 	uint64_t rr_frames_sent;
 	uint64_t rr_frames_received;
+	uint64_t outstanding_frames;
+	uint64_t outstanding_max_seen;
+	uint64_t outstanding_acked;
+	uint64_t outstanding_rejected;
+	uint64_t window_blocked;
 	uint64_t tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames;

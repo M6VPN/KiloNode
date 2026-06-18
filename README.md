@@ -22,6 +22,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Receive-Only Bench Validation](#receive-only-bench-validation)
 - [AX.25 Response Safety Gate](#ax25-response-safety-gate)
 - [v0.1-alpha Readiness](#v01-alpha-readiness)
+- [M2 Loopback Work](#m2-loopback-work)
 - [Compatibility](#compatibility)
 - [License](#license)
 
@@ -189,6 +190,23 @@ FX.25 release. The readiness audit lives in
 ./scripts/ax25-no-transmit-check.sh
 ./scripts/test.sh
 ```
+
+## M2 Loopback Work
+
+M2 is currently simulator-only. It adds in-memory AX.25 connected-mode loopback
+flows, I-frame payload diagnostics, paclen segmentation, and windowed
+outstanding-frame diagnostics.
+
+Current M2 checks:
+
+```sh
+./scripts/m2-readiness-check.sh
+./scripts/ax25-loopback-fixtures.sh
+./build/test_ax25_loopback_window
+```
+
+M2 still does not expose CONNECT, bind payloads to shell or BBS, write the real
+TX queue, dispatch frames, or implement FX.25 wrapping.
 
 ## Compatibility
 

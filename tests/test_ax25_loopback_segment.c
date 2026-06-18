@@ -13,6 +13,8 @@ static int test_binary_segmented(void);
 static int test_boundary(void);
 static int test_text_segmented(void);
 static int test_window_one(void);
+static int test_window_three(void);
+static int test_window_two(void);
 
 int
 main(void)
@@ -24,6 +26,10 @@ main(void)
 	if (test_boundary() != 0)
 		return 1;
 	if (test_window_one() != 0)
+		return 1;
+	if (test_window_two() != 0)
+		return 1;
+	if (test_window_three() != 0)
 		return 1;
 	return 0;
 }
@@ -87,4 +93,18 @@ test_window_one(void)
 {
 	return run_fixture(fixture_path(
 	    "tests/fixtures/ax25-loopback/window-one-segmented.loop"));
+}
+
+static int
+test_window_three(void)
+{
+	return run_fixture(fixture_path(
+	    "tests/fixtures/ax25-loopback/window-three-binary.loop"));
+}
+
+static int
+test_window_two(void)
+{
+	return run_fixture(fixture_path(
+	    "tests/fixtures/ax25-loopback/window-two-segmented.loop"));
 }

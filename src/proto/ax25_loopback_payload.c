@@ -33,6 +33,7 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 	struct kn_ax25_connection_record *record;
 	struct kn_ax25_sequence_state sequence;
 	struct kn_ax25_i_frame_request request;
+	size_t window_size;
 	uint8_t ns;
 
 	if (endpoint == NULL || out == NULL || written == NULL)
@@ -45,6 +46,9 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 	if (record->connection.state != KN_AX25_CONNECTION_CONNECTED)
 		return KN_AX25_LOOPBACK_PAYLOAD_ERR_STATE;
 	if (payload_len > record->params.max_info_len)
+		return KN_AX25_LOOPBACK_PAYLOAD_ERR_INVALID_VALUE;
+	window_size = record->params.window_size;
+	if (window_size == 0)
 		return KN_AX25_LOOPBACK_PAYLOAD_ERR_INVALID_VALUE;
 
 	kn_ax25_i_frame_request_clear(&request);
@@ -70,10 +74,19 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 	if (kn_ax25_i_frame_build(&request, out, out_len, written) !=
 	    KN_AX25_I_FRAME_OK)
 		return KN_AX25_LOOPBACK_PAYLOAD_ERR_BUFFER;
+	if (kn_ax25_loopback_window_record(&endpoint->window, request.ns,
+	    request.nr, payload_len, endpoint->i_frames_sent,
+	    window_size) != KN_AX25_LOOPBACK_WINDOW_OK) {
+		endpoint->window_blocked = endpoint->window.blocked;
+		return KN_AX25_LOOPBACK_PAYLOAD_ERR_STATE;
+	}
 	if (use_ns_override == 0)
 		record->connection.send_state =
 		    kn_ax25_sequence_increment_mod8(
 		    record->connection.send_state);
+	endpoint->outstanding_frames =
+	    kn_ax25_loopback_window_in_flight(&endpoint->window);
+	endpoint->outstanding_max_seen = endpoint->window.max_in_flight_seen;
 	endpoint->i_frames_sent++;
 	return KN_AX25_LOOPBACK_PAYLOAD_OK;
 }

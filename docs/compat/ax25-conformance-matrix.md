@@ -132,7 +132,9 @@
 | Sequence mismatch handling       | implemented | Loopback records rejected payload diagnostics and retains REJ frame plans without TX queue writes. |
 | Paclen validation                | implemented | `ax25_paclen` validates paclen and max-info bounds, including paclen not exceeding max-info. |
 | I-frame segmentation             | implemented | Simulator segmenter splits binary-safe payloads into ordered paclen-sized I-frame chunks. |
-| Window=1 segmented loopback      | implemented | Segmented loopback sends one I frame, processes RR, then sends the next segment. Larger windows remain planned. |
+| Window=1 segmented loopback      | implemented | Segmented loopback sends one I frame, processes RR, then sends the next segment. |
+| Windowed segmented loopback      | implemented | M2.4 records outstanding I frames and supports windowed simulator sends with RR acknowledgement diagnostics. |
+| Outstanding-frame diagnostics    | implemented | Loopback reports outstanding, max in-flight, acknowledged, rejected, and window-blocked counters. |
 | Reassembly diagnostics           | implemented | Loopback endpoints record bounded diagnostics for completed segmented payload reassembly. |
 | Binary segmented payload         | implemented | Fixture coverage reassembles binary payload previews without NUL assumptions. |
 | Live segmentation                | planned     | Daemon connected-mode segmentation is not wired to live sessions. |

@@ -58,6 +58,17 @@ collect_result(const struct kn_ax25_loopback *loop,
 	    loop->b.rr_frames_sent;
 	result->rr_frames_received = loop->a.rr_frames_received +
 	    loop->b.rr_frames_received;
+	result->outstanding_frames = loop->a.outstanding_frames +
+	    loop->b.outstanding_frames;
+	result->outstanding_max_seen = loop->a.outstanding_max_seen >
+	    loop->b.outstanding_max_seen ? loop->a.outstanding_max_seen :
+	    loop->b.outstanding_max_seen;
+	result->outstanding_acked = loop->a.outstanding_acked +
+	    loop->b.outstanding_acked;
+	result->outstanding_rejected = loop->a.outstanding_rejected +
+	    loop->b.outstanding_rejected;
+	result->window_blocked = loop->a.window_blocked +
+	    loop->b.window_blocked;
 	result->real_tx_queue_writes =
 	    loop->a.tx_queue_writes + loop->b.tx_queue_writes;
 	result->dispatch_calls = loop->a.dispatch_calls + loop->b.dispatch_calls;
@@ -207,6 +218,26 @@ execute_command(struct kn_ax25_loopback *loop,
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_SEGMENT_COUNT) {
 			ep = endpoint(loop, command->endpoint);
 			actual = ep == NULL ? 0 : ep->segments_received;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->outstanding_frames;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING_MAX) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->outstanding_max_seen;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_ACKED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->outstanding_acked;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_OUTSTANDING_REJECTED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->outstanding_rejected;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_WINDOW_BLOCKED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->window_blocked;
 		} else if (command->expect ==
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT) {
 			const struct kn_ax25_payload_delivery_record *delivery;
