@@ -34,6 +34,7 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 	struct kn_ax25_sequence_state sequence;
 	struct kn_ax25_i_frame_request request;
 	size_t window_size;
+	uint64_t retransmit_id;
 	uint8_t ns;
 
 	if (endpoint == NULL || out == NULL || written == NULL)
@@ -80,6 +81,13 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 		endpoint->window_blocked = endpoint->window.blocked;
 		return KN_AX25_LOOPBACK_PAYLOAD_ERR_STATE;
 	}
+	if (kn_ax25_loopback_retransmit_record(&endpoint->retransmit,
+	    request.ns, request.nr, payload_len, endpoint->i_frames_sent,
+	    out, *written, &retransmit_id) !=
+	    KN_AX25_LOOPBACK_RETRANSMIT_OK) {
+		endpoint->retransmit_full = endpoint->retransmit.full;
+		return KN_AX25_LOOPBACK_PAYLOAD_ERR_STATE;
+	}
 	if (use_ns_override == 0)
 		record->connection.send_state =
 		    kn_ax25_sequence_increment_mod8(
@@ -87,6 +95,10 @@ kn_ax25_loopback_payload_send_i(struct kn_ax25_loopback_endpoint *endpoint,
 	endpoint->outstanding_frames =
 	    kn_ax25_loopback_window_in_flight(&endpoint->window);
 	endpoint->outstanding_max_seen = endpoint->window.max_in_flight_seen;
+	endpoint->retransmit_buffered = endpoint->retransmit.recorded;
+	endpoint->retransmit_needed =
+	    kn_ax25_loopback_retransmit_count_retry_needed(
+	    &endpoint->retransmit);
 	endpoint->i_frames_sent++;
 	return KN_AX25_LOOPBACK_PAYLOAD_OK;
 }

@@ -94,6 +94,10 @@ event_from_text(const char *text, enum kn_ax25_loopback_script_event *event)
 		*event = KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_I;
 		return 0;
 	}
+	if (strcmp(text, "send-rej") == 0) {
+		*event = KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_REJ;
+		return 0;
+	}
 	return -1;
 }
 
@@ -173,6 +177,41 @@ expect_from_tokens(char *tokens[], size_t count,
 			command->expect =
 			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_WINDOW_BLOCKED;
 			if (parse_u64(tokens[2] + 15, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "retransmit-buffer=", 18) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_BUFFER;
+			if (parse_u64(tokens[2] + 18, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "retransmit-needed=", 18) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_NEEDED;
+			if (parse_u64(tokens[2] + 18, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "retransmit-acked=", 17) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_ACKED;
+			if (parse_u64(tokens[2] + 17, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "retransmit-replayed=", 20) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_REPLAYED;
+			if (parse_u64(tokens[2] + 20, &command->value) != 0)
+				return -1;
+			return 0;
+		}
+		if (strncmp(tokens[2], "retransmit-full=", 16) == 0) {
+			command->expect =
+			    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_FULL;
+			if (parse_u64(tokens[2] + 16, &command->value) != 0)
 				return -1;
 			return 0;
 		}
@@ -612,9 +651,30 @@ kn_ax25_loopback_script_parse_file(const char *path,
 				if (parse_payload_tokens(tokens, count,
 				    &command) != 0)
 					goto parse_error;
+			} else if (command.event ==
+			    KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_REJ) {
+				if (count != 4 ||
+				    strncmp(tokens[3], "nr=", 3) != 0 ||
+				    parse_u64(tokens[3] + 3, &value) != 0 ||
+				    value > 7)
+					goto parse_error;
+				command.value = value;
 			} else if (count != 3) {
 				goto parse_error;
 			}
+			if (append_command(script, &command) != 0)
+				goto parse_error;
+			continue;
+		}
+		if (strcmp(tokens[0], "replay-buffer") == 0 && count == 3) {
+			if (endpoint_from_text(tokens[1],
+			    &command.endpoint) != 0 ||
+			    strncmp(tokens[2], "max-frames=", 11) != 0 ||
+			    parse_u64(tokens[2] + 11, &value) != 0 ||
+			    value == 0)
+				goto parse_error;
+			command.type = KN_AX25_LOOPBACK_SCRIPT_REPLAY_BUFFER;
+			command.value = value;
 			if (append_command(script, &command) != 0)
 				goto parse_error;
 			continue;

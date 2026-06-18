@@ -226,6 +226,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 I/RR loopback | partial | Simulator-local I frame exchange is tested. Live connected-mode I-frame TX remains planned. |
 | Internal AX.25 I/RR payload loopback | implemented | M2.2 tests bounded text and binary payload diagnostics plus RR acknowledgement without live RF. |
 | Internal AX.25 windowed loopback | implemented | M2.4 tests native outstanding-frame diagnostics and windowed segmented sends without LinBPQ or RF. |
+| Internal AX.25 retransmission-buffer loopback | implemented | M2.5 tests native REJ-driven replay diagnostics without LinBPQ, RF, real TX queue writes, or dispatch. |
 | BPQ/LinBPQ connected-mode payload interop | planned | Future black-box captures only. No LinBPQ code or command compatibility is used. |
 | Live RF connected-mode loopback | planned | Future work requires real TX safety gates and black-box interop planning. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |

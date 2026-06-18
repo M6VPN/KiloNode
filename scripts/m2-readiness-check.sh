@@ -26,6 +26,7 @@ for test_bin in \
 	./build/test_ax25_loopback_endpoint \
 	./build/test_ax25_loopback_link \
 	./build/test_ax25_loopback_payload \
+	./build/test_ax25_loopback_retransmit \
 	./build/test_ax25_loopback_script \
 	./build/test_ax25_loopback_report \
 	./build/test_ax25_loopback_segment \
@@ -39,7 +40,7 @@ for test_bin in \
 done
 
 if [ "$status" -eq 0 ]; then
-	printf 'OK m2-readiness-check loopback=true window=true hardware=false linbpq=false tx_writes=0\n'
+	printf 'OK m2-readiness-check loopback=true window=true retransmit=true hardware=false linbpq=false tx_writes=0\n'
 fi
 
 exit "$status"

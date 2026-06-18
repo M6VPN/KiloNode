@@ -10,6 +10,7 @@
 
 #include "kilonode/ax25.h"
 #include "kilonode/ax25_connection_table.h"
+#include "kilonode/ax25_loopback_retransmit.h"
 #include "kilonode/ax25_loopback_window.h"
 #include "kilonode/ax25_payload_delivery.h"
 #include "kilonode/ax25_prepared_queue.h"
@@ -45,6 +46,7 @@ struct kn_ax25_loopback_endpoint {
 	struct kn_ax25_prepared_queue prepared;
 	struct kn_ax25_payload_delivery_queue deliveries;
 	struct kn_ax25_reassembly_queue reassemblies;
+	struct kn_ax25_loopback_retransmit_buffer retransmit;
 	struct kn_ax25_loopback_window window;
 	uint64_t now_ms;
 	size_t sent_prepared_count;
@@ -64,6 +66,11 @@ struct kn_ax25_loopback_endpoint {
 	uint64_t outstanding_acked;
 	uint64_t outstanding_rejected;
 	uint64_t window_blocked;
+	uint64_t retransmit_buffered;
+	uint64_t retransmit_needed;
+	uint64_t retransmit_acked;
+	uint64_t retransmit_replayed;
+	uint64_t retransmit_full;
 	uint64_t tx_queue_writes;
 	uint64_t dispatch_calls;
 	uint64_t fx25_frames;
@@ -87,7 +94,12 @@ enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_process_frame(
 enum kn_ax25_loopback_endpoint_error
 kn_ax25_loopback_endpoint_process_timers(
 	struct kn_ax25_loopback_endpoint *, size_t, size_t *);
+enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_replay_buffer(
+	struct kn_ax25_loopback_endpoint *, uint8_t *, size_t, size_t *);
 void kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *);
+enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_send_rej(
+	struct kn_ax25_loopback_endpoint *, uint8_t, uint8_t *, size_t,
+	size_t *);
 enum kn_ax25_loopback_endpoint_error kn_ax25_loopback_endpoint_send_i(
 	struct kn_ax25_loopback_endpoint *, const uint8_t *, size_t,
 	uint8_t, uint8_t, uint8_t *, size_t, size_t *);

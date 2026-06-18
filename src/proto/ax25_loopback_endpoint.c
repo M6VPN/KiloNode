@@ -21,6 +21,7 @@ static enum kn_ax25_loopback_endpoint_error process_event(
 	const struct kn_ax25_connection_event_record *,
 	const struct kn_ax25_i_frame_decoded *);
 static void set_error(struct kn_ax25_loopback_endpoint *, const char *);
+static void sync_retransmit_counters(struct kn_ax25_loopback_endpoint *);
 static void sync_window_counters(struct kn_ax25_loopback_endpoint *);
 
 static enum kn_ax25_loopback_endpoint_error
@@ -131,6 +132,21 @@ set_error(struct kn_ax25_loopback_endpoint *endpoint, const char *text)
 }
 
 static void
+sync_retransmit_counters(struct kn_ax25_loopback_endpoint *endpoint)
+{
+	if (endpoint == NULL)
+		return;
+
+	endpoint->retransmit_buffered = endpoint->retransmit.recorded;
+	endpoint->retransmit_needed =
+	    kn_ax25_loopback_retransmit_count_retry_needed(
+	    &endpoint->retransmit);
+	endpoint->retransmit_acked = endpoint->retransmit.acked;
+	endpoint->retransmit_replayed = endpoint->retransmit.replayed;
+	endpoint->retransmit_full = endpoint->retransmit.full;
+}
+
+static void
 sync_window_counters(struct kn_ax25_loopback_endpoint *endpoint)
 {
 	if (endpoint == NULL)
@@ -142,6 +158,7 @@ sync_window_counters(struct kn_ax25_loopback_endpoint *endpoint)
 	endpoint->outstanding_acked = endpoint->window.acked;
 	endpoint->outstanding_rejected = endpoint->window.rejected;
 	endpoint->window_blocked = endpoint->window.blocked;
+	sync_retransmit_counters(endpoint);
 }
 
 void
@@ -170,6 +187,8 @@ kn_ax25_loopback_endpoint_format(
 	    "prepared=%llu delivered=%llu rejected=%llu reassembled=%llu "
 	    "segments_rx=%llu i_rx=%llu rr_rx=%llu outstanding=%llu "
 	    "outstanding_max=%llu acked=%llu window_blocked=%llu "
+	    "retransmit_buffered=%llu retransmit_needed=%llu "
+	    "retransmit_replayed=%llu "
 	    "tx_writes=%llu dispatch=%llu fx25=%llu",
 	    endpoint->name, local, peer,
 	    kn_ax25_connection_state_name(endpoint->last_state),
@@ -185,6 +204,9 @@ kn_ax25_loopback_endpoint_format(
 	    (unsigned long long)endpoint->outstanding_max_seen,
 	    (unsigned long long)endpoint->outstanding_acked,
 	    (unsigned long long)endpoint->window_blocked,
+	    (unsigned long long)endpoint->retransmit_buffered,
+	    (unsigned long long)endpoint->retransmit_needed,
+	    (unsigned long long)endpoint->retransmit_replayed,
 	    (unsigned long long)endpoint->tx_queue_writes,
 	    (unsigned long long)endpoint->dispatch_calls,
 	    (unsigned long long)endpoint->fx25_frames);
@@ -237,6 +259,7 @@ kn_ax25_loopback_endpoint_init(struct kn_ax25_loopback_endpoint *endpoint,
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
+	kn_ax25_loopback_retransmit_init(&endpoint->retransmit);
 	kn_ax25_loopback_window_init(&endpoint->window);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
 	set_error(endpoint, "ok");
@@ -337,11 +360,18 @@ kn_ax25_loopback_endpoint_process_frame(
 		if (kn_ax25_loopback_window_ack_rr(&endpoint->window,
 		    control.nr, &acked) != KN_AX25_LOOPBACK_WINDOW_OK)
 			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
+		if (kn_ax25_loopback_retransmit_ack_rr(&endpoint->retransmit,
+		    control.nr, &acked) != KN_AX25_LOOPBACK_RETRANSMIT_OK)
+			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
 	}
 	if (control.class == KN_AX25_CONTROL_CLASS_S &&
 	    control.s_subtype == KN_AX25_S_SUBTYPE_REJ) {
 		if (kn_ax25_loopback_window_reject(&endpoint->window,
 		    control.nr, &rejected) != KN_AX25_LOOPBACK_WINDOW_OK)
+			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
+		if (kn_ax25_loopback_retransmit_mark_rej(
+		    &endpoint->retransmit, control.nr, &rejected) !=
+		    KN_AX25_LOOPBACK_RETRANSMIT_OK)
 			return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
 	}
 	sync_window_counters(endpoint);
@@ -422,8 +452,44 @@ kn_ax25_loopback_endpoint_reset(struct kn_ax25_loopback_endpoint *endpoint)
 	kn_ax25_prepared_queue_init(&endpoint->prepared);
 	kn_ax25_payload_delivery_queue_init(&endpoint->deliveries);
 	kn_ax25_reassembly_queue_init(&endpoint->reassemblies);
+	kn_ax25_loopback_retransmit_init(&endpoint->retransmit);
 	kn_ax25_loopback_window_init(&endpoint->window);
 	endpoint->last_state = KN_AX25_CONNECTION_DISCONNECTED;
+}
+
+enum kn_ax25_loopback_endpoint_error
+kn_ax25_loopback_endpoint_replay_buffer(
+	struct kn_ax25_loopback_endpoint *endpoint, uint8_t *out,
+	size_t out_len, size_t *written)
+{
+	if (endpoint == NULL || out == NULL || written == NULL)
+		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
+	if (kn_ax25_loopback_retransmit_next(&endpoint->retransmit, out,
+	    out_len, written) != KN_AX25_LOOPBACK_RETRANSMIT_OK)
+		return KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE;
+	sync_retransmit_counters(endpoint);
+	return KN_AX25_LOOPBACK_ENDPOINT_OK;
+}
+
+enum kn_ax25_loopback_endpoint_error
+kn_ax25_loopback_endpoint_send_rej(struct kn_ax25_loopback_endpoint *endpoint,
+	uint8_t nr, uint8_t *out, size_t out_len, size_t *written)
+{
+	struct kn_ax25_frame_builder_request request;
+
+	if (endpoint == NULL || out == NULL || written == NULL)
+		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_ARGUMENT;
+	if (nr > 7)
+		return KN_AX25_LOOPBACK_ENDPOINT_ERR_INVALID_VALUE;
+	kn_ax25_frame_builder_request_clear(&request);
+	request.source = endpoint->local;
+	request.destination = endpoint->peer;
+	request.type = KN_AX25_FRAME_PLAN_REJ;
+	request.nr = nr;
+	if (kn_ax25_frame_builder_build(&request, out, out_len, written) !=
+	    KN_AX25_FRAME_BUILDER_OK)
+		return KN_AX25_LOOPBACK_ENDPOINT_ERR_BUFFER;
+	return KN_AX25_LOOPBACK_ENDPOINT_OK;
 }
 
 enum kn_ax25_loopback_endpoint_error

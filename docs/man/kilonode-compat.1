@@ -240,7 +240,13 @@ for example
 .Ql params modulo=8 window=2 paclen=5 t1=3000 t2=1000 t3=300000 n2=3
 followed by
 .Ql event A send-i text="hello world" segment=true .
-Loopback reports include outstanding-frame diagnostics for windowed sends.
+Retransmission diagnostics may use
+.Ql event B send-rej nr=0
+and
+.Ql replay-buffer A max-frames=1
+to replay buffered raw AX.25 bytes inside the simulator only.
+Loopback reports include outstanding-frame diagnostics for windowed sends and
+retransmission-buffer counters for replay diagnostics.
 Payloads remain diagnostics-only and are not bound to shell or BBS sessions.
 .It Cm run-ax25-loopback-dir Ar path
 Run all

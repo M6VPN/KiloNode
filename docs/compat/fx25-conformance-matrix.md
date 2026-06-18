@@ -56,3 +56,4 @@
 | FX.25 windowed-loopback coupling | not implemented | M2.4 window diagnostics operate only on raw AX.25 I frames. FX.25 remains outside segmentation and window logic. |
 | AX.25 segmentation boundary | scaffold | M2.3 segmentation splits AX.25 I-frame payload bytes only and does not inspect FX.25. |
 | FX.25 segmented I-frame wrapping | planned | Future FX.25 work may wrap complete segmented AX.25 frames after AX.25 frame generation. |
+| FX.25 retransmission-buffer coupling | not implemented | M2.5 retransmission diagnostics replay raw AX.25 bytes only and keep FX.25 frame counts at zero. |

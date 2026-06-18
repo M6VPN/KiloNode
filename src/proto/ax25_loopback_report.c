@@ -24,6 +24,9 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	    "i_sent=%llu i_received=%llu rr_sent=%llu rr_received=%llu "
 	    "outstanding=%llu outstanding_max=%llu acked=%llu "
 	    "outstanding_rejected=%llu window_blocked=%llu "
+	    "retransmit_buffered=%llu retransmit_needed=%llu "
+	    "retransmit_acked=%llu retransmit_replayed=%llu "
+	    "retransmit_full=%llu "
 	    "tx_writes=%llu dispatch=%llu fx25=%llu "
 	    "mismatches=%llu last=%s\n",
 	    result->name, result->pass != 0 ? "pass" : "fail",
@@ -48,6 +51,11 @@ kn_ax25_loopback_report_format(const struct kn_ax25_loopback_result *result,
 	    (unsigned long long)result->outstanding_acked,
 	    (unsigned long long)result->outstanding_rejected,
 	    (unsigned long long)result->window_blocked,
+	    (unsigned long long)result->retransmit_buffered,
+	    (unsigned long long)result->retransmit_needed,
+	    (unsigned long long)result->retransmit_acked,
+	    (unsigned long long)result->retransmit_replayed,
+	    (unsigned long long)result->retransmit_full,
 	    (unsigned long long)result->real_tx_queue_writes,
 	    (unsigned long long)result->dispatch_calls,
 	    (unsigned long long)result->fx25_frames_generated,

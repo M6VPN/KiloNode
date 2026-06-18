@@ -135,6 +135,10 @@
 | Window=1 segmented loopback      | implemented | Segmented loopback sends one I frame, processes RR, then sends the next segment. |
 | Windowed segmented loopback      | implemented | M2.4 records outstanding I frames and supports windowed simulator sends with RR acknowledgement diagnostics. |
 | Outstanding-frame diagnostics    | implemented | Loopback reports outstanding, max in-flight, acknowledged, rejected, and window-blocked counters. |
+| Retransmission buffer diagnostics | implemented | M2.5 records outbound loopback I-frame bytes in a bounded diagnostic buffer. |
+| REJ-driven loopback replay        | implemented | Loopback fixtures mark buffered frames for retry after REJ and replay raw AX.25 bytes in memory only. |
+| Retransmission replay counters    | implemented | Reports expose buffered, retry-needed, acknowledged, replayed, and full counters. |
+| Live retransmission replay        | planned     | Daemon retransmission dispatch is not implemented and no TX queue writes occur. |
 | Reassembly diagnostics           | implemented | Loopback endpoints record bounded diagnostics for completed segmented payload reassembly. |
 | Binary segmented payload         | implemented | Fixture coverage reassembles binary payload previews without NUL assumptions. |
 | Live segmentation                | planned     | Daemon connected-mode segmentation is not wired to live sessions. |

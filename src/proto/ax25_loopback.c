@@ -69,6 +69,16 @@ collect_result(const struct kn_ax25_loopback *loop,
 	    loop->b.outstanding_rejected;
 	result->window_blocked = loop->a.window_blocked +
 	    loop->b.window_blocked;
+	result->retransmit_buffered = loop->a.retransmit_buffered +
+	    loop->b.retransmit_buffered;
+	result->retransmit_needed = loop->a.retransmit_needed +
+	    loop->b.retransmit_needed;
+	result->retransmit_acked = loop->a.retransmit_acked +
+	    loop->b.retransmit_acked;
+	result->retransmit_replayed = loop->a.retransmit_replayed +
+	    loop->b.retransmit_replayed;
+	result->retransmit_full = loop->a.retransmit_full +
+	    loop->b.retransmit_full;
 	result->real_tx_queue_writes =
 	    loop->a.tx_queue_writes + loop->b.tx_queue_writes;
 	result->dispatch_calls = loop->a.dispatch_calls + loop->b.dispatch_calls;
@@ -104,8 +114,10 @@ execute_command(struct kn_ax25_loopback *loop,
 	size_t paclen;
 	size_t segments_sent;
 	size_t moved;
+	size_t i;
 	uint64_t actual;
 	enum kn_ax25_connection_state state;
+	enum kn_ax25_loopback_endpoint_error endpoint_rc;
 
 	switch (command->type) {
 	case KN_AX25_LOOPBACK_SCRIPT_NOW:
@@ -161,6 +173,18 @@ execute_command(struct kn_ax25_loopback *loop,
 			    to, frame, frame_len) == KN_AX25_LOOPBACK_LINK_OK ?
 			    KN_AX25_LOOPBACK_OK : KN_AX25_LOOPBACK_ERR_INTERNAL;
 		}
+		if (command->event == KN_AX25_LOOPBACK_SCRIPT_EVENT_SEND_REJ) {
+			to = command->endpoint ==
+			    KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A ? &loop->b :
+			    &loop->a;
+			if (kn_ax25_loopback_endpoint_send_rej(ep,
+			    (uint8_t)command->value, frame, sizeof(frame),
+			    &frame_len) != KN_AX25_LOOPBACK_ENDPOINT_OK)
+				return KN_AX25_LOOPBACK_ERR_UNSUPPORTED;
+			return kn_ax25_loopback_link_transfer_raw(&loop->link,
+			    to, frame, frame_len) == KN_AX25_LOOPBACK_LINK_OK ?
+			    KN_AX25_LOOPBACK_OK : KN_AX25_LOOPBACK_ERR_INTERNAL;
+		}
 		return KN_AX25_LOOPBACK_ERR_INTERNAL;
 	case KN_AX25_LOOPBACK_SCRIPT_PROCESS_TIMERS:
 		if (command->endpoint == KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A ||
@@ -187,6 +211,27 @@ execute_command(struct kn_ax25_loopback *loop,
 		return kn_ax25_loopback_link_transfer(&loop->link, ep, to,
 		    &moved) == KN_AX25_LOOPBACK_LINK_OK ?
 		    KN_AX25_LOOPBACK_OK : KN_AX25_LOOPBACK_ERR_INTERNAL;
+	case KN_AX25_LOOPBACK_SCRIPT_REPLAY_BUFFER:
+		ep = endpoint(loop, command->endpoint);
+		to = command->endpoint ==
+		    KN_AX25_LOOPBACK_SCRIPT_ENDPOINT_A ? &loop->b : &loop->a;
+		if (ep == NULL || to == NULL)
+			return KN_AX25_LOOPBACK_ERR_INTERNAL;
+		moved = 0;
+		for (i = 0; i < (size_t)command->value; i++) {
+			endpoint_rc = kn_ax25_loopback_endpoint_replay_buffer(
+			    ep, frame, sizeof(frame), &frame_len);
+			if (endpoint_rc == KN_AX25_LOOPBACK_ENDPOINT_ERR_STATE)
+				break;
+			if (endpoint_rc != KN_AX25_LOOPBACK_ENDPOINT_OK)
+				return KN_AX25_LOOPBACK_ERR_INTERNAL;
+			if (kn_ax25_loopback_link_transfer_raw(&loop->link, to,
+			    frame, frame_len) != KN_AX25_LOOPBACK_LINK_OK)
+				return KN_AX25_LOOPBACK_ERR_INTERNAL;
+			moved++;
+		}
+		return moved > 0 ? KN_AX25_LOOPBACK_OK :
+		    KN_AX25_LOOPBACK_ERR_UNSUPPORTED;
 	case KN_AX25_LOOPBACK_SCRIPT_RUN_UNTIL_IDLE:
 		return run_until_idle(loop, (size_t)command->value);
 	case KN_AX25_LOOPBACK_SCRIPT_EXPECT:
@@ -238,6 +283,26 @@ execute_command(struct kn_ax25_loopback *loop,
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_WINDOW_BLOCKED) {
 			ep = endpoint(loop, command->endpoint);
 			actual = ep == NULL ? 0 : ep->window_blocked;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_BUFFER) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->retransmit_buffered;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_NEEDED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->retransmit_needed;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_ACKED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->retransmit_acked;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_REPLAYED) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->retransmit_replayed;
+		} else if (command->expect ==
+		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_RETRANSMIT_FULL) {
+			ep = endpoint(loop, command->endpoint);
+			actual = ep == NULL ? 0 : ep->retransmit_full;
 		} else if (command->expect ==
 		    KN_AX25_LOOPBACK_SCRIPT_EXPECT_LAST_PAYLOAD_TEXT) {
 			const struct kn_ax25_payload_delivery_record *delivery;

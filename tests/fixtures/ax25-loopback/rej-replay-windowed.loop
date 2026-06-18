@@ -1,0 +1,30 @@
+# KiloNode AX.25 loopback script v1
+name rej-replay-windowed
+endpoint-a M6VPN-1
+endpoint-b N0CALL
+port kiss0
+params modulo=8 window=2 paclen=8 t1=3000 t2=1000 t3=300000 n2=3
+event A local-connect
+run-until-idle max-steps=8
+event A send-i text="one"
+event A send-i text="two"
+event B send-rej nr=1
+expect A retransmit-buffer=2
+expect A retransmit-needed=1
+replay-buffer A max-frames=1
+expect A retransmit-replayed=1
+run-until-idle max-steps=8
+expect A state=connected
+expect B state=connected
+expect A retransmit-buffer=2
+expect A retransmit-needed=0
+expect A retransmit-acked=2
+expect A retransmit-replayed=1
+expect A retransmit-full=0
+expect B delivered=2
+expect B rejected=1
+expect prepared-count 5
+expect transferred 9
+expect tx-writes 0
+expect dispatch-calls 0
+expect fx25-frames 0

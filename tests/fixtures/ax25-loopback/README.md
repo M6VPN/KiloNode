@@ -13,5 +13,9 @@ M2.4 fixtures add windowed segmented text and binary payload cases.
 Outstanding I-frame state and RR acknowledgements are recorded as diagnostics
 only.
 
+M2.5 fixtures add retransmission-buffer diagnostics. They record outbound
+I-frame bytes, mark REJ-driven retries, replay buffered bytes inside the
+simulator only, and assert that real TX and dispatch counters remain zero.
+
 The fixtures do not open KISS transports, do not use RF hardware, do not write
 to the real TX queue, do not dispatch frames, and do not generate FX.25 frames.
