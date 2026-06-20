@@ -139,6 +139,9 @@
 | REJ-driven loopback replay        | implemented | Loopback fixtures mark buffered frames for retry after REJ and replay raw AX.25 bytes in memory only. |
 | Retransmission replay counters    | implemented | Reports expose buffered, retry-needed, acknowledged, replayed, and full counters. |
 | Live retransmission replay        | planned     | Daemon retransmission dispatch is not implemented and no TX queue writes occur. |
+| Local-admin CONNECT dry-run       | implemented | M2.6 validates CONNECT intent offline and reports SABM/SABME planning without creating sessions. |
+| CONNECT dry-run safety counters   | implemented | Dry-run reports keep connection-created false, bridge blocked, TX writes zero, dispatch zero, and FX.25 zero. |
+| Live CONNECT command              | blocked     | No daemon, shell, BBS, RF UI, or control socket path exposes CONNECT. |
 | Reassembly diagnostics           | implemented | Loopback endpoints record bounded diagnostics for completed segmented payload reassembly. |
 | Binary segmented payload         | implemented | Fixture coverage reassembles binary payload previews without NUL assumptions. |
 | Live segmentation                | planned     | Daemon connected-mode segmentation is not wired to live sessions. |

@@ -10,8 +10,8 @@ and FX.25 remain blocked until separate safety gates are met.
 | M2.2 | AX.25 I-frame builder and loopback payload delivery | complete |
 | M2.3 | AX.25 segmentation, paclen, and loopback payload limits | complete |
 | M2.4 | AX.25 windowed loopback and outstanding-frame diagnostics | complete |
-| M2.5 | Retransmission buffer diagnostics and retry replay polish | active |
-| M2.6 | Controlled local-admin CONNECT dry-run planning | planned |
+| M2.5 | Retransmission buffer diagnostics and retry replay polish | complete |
+| M2.6 | Controlled local-admin CONNECT dry-run planning | active |
 | M2.7 | Connected-mode shell over loopback | planned |
 | M2.8 | RF BBS access planning | planned |
 | M2.9 | LinBPQ black-box observation import | planned |

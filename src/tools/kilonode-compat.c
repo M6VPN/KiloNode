@@ -9,6 +9,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "kilonode/ax25_connect_dry_run.h"
 #include "kilonode/ax25_timer_replay.h"
 #include "kilonode/ax25_timer_replay_report.h"
 #include "kilonode/ax25_loopback.h"
@@ -50,6 +51,7 @@ struct compat_dir_entry {
 };
 
 static int command_check_transcript(const char *);
+static int command_check_ax25_connect_dry_run(const char *);
 static int command_check_ax25_loopback(const char *);
 static int command_check_ax25_timer_replay(const char *);
 static int command_check_bench_pack(const char *);
@@ -84,6 +86,7 @@ static int command_manual_workspace_init(const char *);
 static int command_observe_process(int, char *[]);
 static int command_observe_tcp(int, char *[]);
 static int command_replay_dir(const char *);
+static int command_replay_ax25_connect_dry_run(const char *);
 static int command_replay_ax25_loopback_dir(const char *);
 static int command_replay_ax25_loopback(const char *);
 static int command_replay_ax25_timer_dir(const char *);
@@ -99,6 +102,7 @@ static int command_replay_capture(const char *);
 static int command_replay_capture_dir(const char *);
 static int command_replay_transcript(const char *);
 static int command_report_transcript(const char *);
+static int command_ax25_connect_dry_run_report(const char *);
 static int command_ax25_loopback_report(const char *);
 static int command_ax25_timer_replay_report(const char *);
 static int command_requirements_coverage(const char *, const char *);
@@ -164,6 +168,9 @@ main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "check-transcript") == 0 && argc == 3)
 		return command_check_transcript(argv[2]);
+	if (strcmp(argv[1], "check-ax25-connect-dry-run") == 0 &&
+	    argc == 3)
+		return command_check_ax25_connect_dry_run(argv[2]);
 	if (strcmp(argv[1], "check-ax25-loopback") == 0 && argc == 3)
 		return command_check_ax25_loopback(argv[2]);
 	if (strcmp(argv[1], "check-ax25-timer-replay") == 0 && argc == 3)
@@ -249,6 +256,8 @@ main(int argc, char *argv[])
 	if (strcmp(argv[1], "run-ax25-timer-prepared-dir") == 0 &&
 	    argc == 3)
 		return command_replay_ax25_timer_prepared_dir(argv[2]);
+	if (strcmp(argv[1], "run-ax25-connect-dry-run") == 0 && argc == 3)
+		return command_replay_ax25_connect_dry_run(argv[2]);
 	if (strcmp(argv[1], "run-ax25-loopback") == 0 && argc == 3)
 		return command_replay_ax25_loopback(argv[2]);
 	if (strcmp(argv[1], "run-ax25-loopback-dir") == 0 && argc == 3)
@@ -276,6 +285,9 @@ main(int argc, char *argv[])
 		return command_report_transcript(argv[2]);
 	if (strcmp(argv[1], "ax25-timer-replay-report") == 0 && argc == 3)
 		return command_ax25_timer_replay_report(argv[2]);
+	if (strcmp(argv[1], "ax25-connect-dry-run-report") == 0 &&
+	    argc == 3)
+		return command_ax25_connect_dry_run_report(argv[2]);
 	if (strcmp(argv[1], "requirements-coverage") == 0 && argc == 4)
 		return command_requirements_coverage(argv[2], argv[3]);
 	if (strcmp(argv[1], "requirements-report") == 0 && argc == 3)
@@ -285,6 +297,12 @@ main(int argc, char *argv[])
 
 	usage();
 	return 1;
+}
+
+static int
+command_ax25_connect_dry_run_report(const char *path)
+{
+	return command_replay_ax25_connect_dry_run(path);
 }
 
 static int
@@ -372,6 +390,26 @@ command_bench_pack_report(const char *path)
 	    sizeof(report)) != KN_COMPAT_BENCH_OK)
 		return 1;
 	printf("%s", report);
+	return 0;
+}
+
+static int
+command_check_ax25_connect_dry_run(const char *path)
+{
+	struct kn_ax25_connect_dry_run_script script;
+	struct kn_ax25_connect_dry_run_error_info error;
+
+	if (kn_ax25_connect_dry_run_parse_file(path, &script, &error) !=
+	    KN_AX25_CONNECT_DRY_RUN_OK) {
+		fprintf(stderr, "ERR ax25-connect-dry-run path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_connect_dry_run_error_name(error.error),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	printf("OK ax25-connect-dry-run=%s commands=%llu\n", script.name,
+	    (unsigned long long)script.command_count);
 	return 0;
 }
 
@@ -1224,6 +1262,34 @@ command_risk_report(const char *path)
 	}
 	printf("%s", report);
 	return 0;
+}
+
+static int
+command_replay_ax25_connect_dry_run(const char *path)
+{
+	struct kn_ax25_connect_dry_run_result result;
+	struct kn_ax25_connect_dry_run_error_info error;
+	char report[KN_AX25_CONNECT_DRY_RUN_REPORT_MAX];
+	enum kn_ax25_connect_dry_run_error rc;
+
+	rc = kn_ax25_connect_dry_run_run_file(path, &result, &error);
+	if (rc != KN_AX25_CONNECT_DRY_RUN_OK &&
+	    rc != KN_AX25_CONNECT_DRY_RUN_ERR_MISMATCH) {
+		fprintf(stderr, "ERR ax25-connect-dry-run path=%s error=%s "
+		    "line=%llu detail=%s\n", path,
+		    kn_ax25_connect_dry_run_error_name(rc),
+		    (unsigned long long)error.line,
+		    error.message[0] == '\0' ? "-" : error.message);
+		return 1;
+	}
+	if (kn_ax25_connect_dry_run_format_report(&result, report,
+	    sizeof(report)) != KN_AX25_CONNECT_DRY_RUN_OK)
+		return 1;
+	printf("%s", report);
+	return result.pass != 0 && result.tx_writes == 0 &&
+	    result.dispatch_calls == 0 && result.fx25_frames == 0 &&
+	    result.connection_created == 0 && result.bridge_blocked != 0 ?
+	    0 : 1;
 }
 
 static int
@@ -2277,6 +2343,9 @@ usage(void)
 	    "       kilonode-compat run-ax25-timer-replay-dir PATH\n"
 	    "       kilonode-compat run-ax25-timer-prepared PATH\n"
 	    "       kilonode-compat run-ax25-timer-prepared-dir PATH\n"
+	    "       kilonode-compat check-ax25-connect-dry-run PATH\n"
+	    "       kilonode-compat run-ax25-connect-dry-run PATH\n"
+	    "       kilonode-compat ax25-connect-dry-run-report PATH\n"
 	    "       kilonode-compat run-ax25-loopback PATH\n"
 	    "       kilonode-compat run-ax25-loopback-dir PATH\n"
 	    "       kilonode-compat ax25-loopback-report PATH\n"

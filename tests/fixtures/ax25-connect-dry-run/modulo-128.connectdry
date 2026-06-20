@@ -1,0 +1,13 @@
+# KiloNode AX.25 CONNECT dry-run v1
+name modulo-128
+local M6VPN-1
+remote N0CALL
+port kiss0
+params modulo=128 window=1 paclen=256 t1=3000 t2=1000 t3=300000 n2=3
+expect planned-state awaiting-connection
+expect frame-kind SABME
+expect bridge blocked
+expect connection-created false
+expect tx-writes 0
+expect dispatch-calls 0
+expect fx25-frames 0

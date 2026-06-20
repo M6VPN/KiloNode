@@ -227,6 +227,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | Internal AX.25 I/RR payload loopback | implemented | M2.2 tests bounded text and binary payload diagnostics plus RR acknowledgement without live RF. |
 | Internal AX.25 windowed loopback | implemented | M2.4 tests native outstanding-frame diagnostics and windowed segmented sends without LinBPQ or RF. |
 | Internal AX.25 retransmission-buffer loopback | implemented | M2.5 tests native REJ-driven replay diagnostics without LinBPQ, RF, real TX queue writes, or dispatch. |
+| Internal AX.25 CONNECT dry-run | implemented | M2.6 validates KiloNode-native CONNECT intent offline without LinBPQ, live CONNECT, RF, TX queue writes, or dispatch. |
 | BPQ/LinBPQ connected-mode payload interop | planned | Future black-box captures only. No LinBPQ code or command compatibility is used. |
 | Live RF connected-mode loopback | planned | Future work requires real TX safety gates and black-box interop planning. |
 | Manual LinBPQ prepared response comparison | planned | Future receive-only black-box captures may be compared manually. |

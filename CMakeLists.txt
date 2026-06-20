@@ -83,6 +83,7 @@ add_library(packetcore STATIC
 	src/proto/ax25_connection_event.c
 	src/proto/ax25_connection_key.c
 	src/proto/ax25_connection_table.c
+	src/proto/ax25_connect_dry_run.c
 	src/proto/ax25_frame_builder.c
 	src/proto/ax25_frame_plan.c
 	src/proto/ax25_i_frame.c
@@ -444,6 +445,19 @@ add_executable(test_ax25_timer_replay_script
 target_link_libraries(test_ax25_timer_replay_script PRIVATE packetcore)
 kilonode_target_defaults(test_ax25_timer_replay_script)
 add_test(NAME ax25_timer_replay_script COMMAND test_ax25_timer_replay_script)
+
+add_executable(test_ax25_connect_dry_run
+	tests/test_ax25_connect_dry_run.c)
+target_link_libraries(test_ax25_connect_dry_run PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_connect_dry_run)
+add_test(NAME ax25_connect_dry_run COMMAND test_ax25_connect_dry_run)
+
+add_executable(test_ax25_connect_dry_run_script
+	tests/test_ax25_connect_dry_run_script.c)
+target_link_libraries(test_ax25_connect_dry_run_script PRIVATE packetcore)
+kilonode_target_defaults(test_ax25_connect_dry_run_script)
+add_test(NAME ax25_connect_dry_run_script
+	COMMAND test_ax25_connect_dry_run_script)
 
 add_executable(test_ax25_loopback tests/test_ax25_loopback.c)
 target_link_libraries(test_ax25_loopback PRIVATE packetcore)

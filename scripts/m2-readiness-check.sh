@@ -19,9 +19,12 @@ run()
 }
 
 run ./scripts/ax25-loopback-fixtures.sh
+run ./scripts/ax25-connect-dry-run-fixtures.sh
 run ./scripts/ax25-no-transmit-check.sh
 
 for test_bin in \
+	./build/test_ax25_connect_dry_run \
+	./build/test_ax25_connect_dry_run_script \
 	./build/test_ax25_i_frame \
 	./build/test_ax25_loopback_endpoint \
 	./build/test_ax25_loopback_link \
@@ -40,7 +43,7 @@ for test_bin in \
 done
 
 if [ "$status" -eq 0 ]; then
-	printf 'OK m2-readiness-check loopback=true window=true retransmit=true hardware=false linbpq=false tx_writes=0\n'
+	printf 'OK m2-readiness-check loopback=true window=true retransmit=true connect_dry_run=true hardware=false linbpq=false tx_writes=0\n'
 fi
 
 exit "$status"

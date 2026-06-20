@@ -1,0 +1,6 @@
+# KiloNode AX.25 CONNECT dry-run v1
+name invalid-remote-callsign
+local M6VPN-1
+remote BAD-CALL-TOO-LONG
+port kiss0
+expect tx-writes 0

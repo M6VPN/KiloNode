@@ -6,6 +6,15 @@
 .Nd replay KiloNode compatibility lab transcripts
 .Sh SYNOPSIS
 .Nm
+.Cm check-ax25-connect-dry-run
+.Ar path
+.Nm
+.Cm run-ax25-connect-dry-run
+.Ar path
+.Nm
+.Cm ax25-connect-dry-run-report
+.Ar path
+.Nm
 .Cm check-ax25-loopback
 .Ar path
 .Nm
@@ -226,6 +235,15 @@ Show command usage.
 .Bl -tag -width Ds
 .It Cm check-transcript Ar path
 Validate transcript syntax.
+.It Cm check-ax25-connect-dry-run Ar path
+Validate one offline AX.25 CONNECT dry-run fixture without running it.
+.It Cm run-ax25-connect-dry-run Ar path
+Run one offline AX.25 CONNECT dry-run fixture.
+Dry-run fixtures validate hypothetical local-admin CONNECT intent only. They
+report planned SABM or SABME setup, blocked prepared-to-TX bridge state, and
+no-transmit counters.
+.It Cm ax25-connect-dry-run-report Ar path
+Run one CONNECT dry-run fixture and print the diagnostic report.
 .It Cm check-ax25-loopback Ar path
 Validate one AX.25 loopback script without running it.
 .It Cm run-ax25-loopback Ar path

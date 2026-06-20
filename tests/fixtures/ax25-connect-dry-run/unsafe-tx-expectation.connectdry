@@ -1,0 +1,7 @@
+# KiloNode AX.25 CONNECT dry-run v1
+name unsafe-tx-expectation
+local M6VPN-1
+remote N0CALL
+port kiss0
+expect planned-state awaiting-connection
+expect tx-writes 1
