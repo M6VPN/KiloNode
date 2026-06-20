@@ -238,6 +238,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AXIP/AXUDP | planned | Later IP transport target |
 | AGWPE TCP | planned | Later soundmodem compatibility target |
 | BPQEther | planned | Later Ethernet compatibility target |
-| VARA external modem | planned | External modem adapter target |
-| ARDOP external modem | planned | External modem adapter target |
+| VARA FM external modem | planned | Future external modem adapter target, not BPQ/LinBPQ command compatibility |
+| VARA HF external modem | planned | Future external modem adapter target, not BPQ/LinBPQ command compatibility |
+| Mercury OFDM external modem | planned | Future Rhizomatica Mercury adapter target kept outside KiloNode source |
+| ARDOP external modem | planned | Future external TCP host adapter target |
 | Pactor external modem | planned | External modem adapter target |

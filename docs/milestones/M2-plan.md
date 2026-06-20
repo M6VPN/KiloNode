@@ -13,10 +13,13 @@ and FX.25 remain blocked until separate safety gates are met.
 | M2.5 | Retransmission buffer diagnostics and retry replay polish | complete |
 | M2.6 | Controlled local-admin CONNECT dry-run planning | complete |
 | M2.7 | Hobbyist preview release polish | active |
-| M2.8 | RF BBS access planning | planned |
-| M2.9 | LinBPQ black-box observation import | planned |
-| M2.10 | FX.25 detection planning and test vectors | planned |
+| M2.8 | External modem support roadmap | planned |
+| M2.9 | RF BBS access planning | planned |
+| M2.10 | LinBPQ black-box observation import | planned |
+| M2.11 | FX.25 detection planning and test vectors | planned |
 
-M2 work should now favor a usable hobbyist preview over deeper simulator-only
-detail. Real TX, live CONNECT, RF BBS, NET/ROM, and FX.25 still require separate
-milestones.
+M2 work should now favor a usable hobbyist preview and practical modem paths
+over deeper simulator-only detail. Dire Wolf receive-only use is the first
+working hobbyist path. VARA FM/HF, Mercury OFDM, and ARDOP are future external
+modem adapter targets. Real TX, live CONNECT, RF BBS, NET/ROM, and FX.25 still
+require separate milestones.

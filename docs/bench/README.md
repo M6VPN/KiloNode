@@ -13,6 +13,12 @@ Supported input paths:
 - PTY KISS
 - Unix socket KISS
 
+Planned external modem paths:
+
+- VARA FM and VARA HF
+- Mercury OFDM
+- ARDOP
+
 Synthetic capture fixtures for this workflow live in `tests/fixtures/bench`.
 See [capture-fixtures.md](capture-fixtures.md) and
 [replay-bench-captures.md](replay-bench-captures.md). AX.25 diagnostic replay
@@ -28,6 +34,13 @@ and [ax25-future-tx-lab-notes.md](ax25-future-tx-lab-notes.md). Live scheduler
 smoke diagnostics are documented in
 [ax25-live-scheduler-smoke.md](ax25-live-scheduler-smoke.md). Current bench work
 remains offline or receive-only.
+
+External modem roadmap notes:
+
+- [Dire Wolf receive-only path](direwolf-receive-only.md)
+- [VARA external modem roadmap](vara-external-modem.md)
+- [Mercury OFDM external modem roadmap](mercury-ofdm-external-modem.md)
+- [ARDOP external modem roadmap](ardop-external-modem.md)
 
 Primary validation commands:
 

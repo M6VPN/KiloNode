@@ -86,6 +86,10 @@ Receive-only bench configs live in `packaging/examples/kilonode-rx-bench-*.conf`
 Use those when listening to a local KISS source. Keep `tx-enabled false` unless
 a later release explicitly documents a real TX lab flow.
 
+Dire Wolf TCP KISS is the recommended first receive-only modem path. VARA FM,
+VARA HF, Mercury OFDM, and ARDOP are planned external modem adapter targets and
+are not working KiloNode integrations yet.
+
 ## Current Limits
 
 - No live CONNECT command.

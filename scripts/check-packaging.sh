@@ -96,6 +96,7 @@ check_rx_bench_config packaging/examples/kilonode-rx-bench-unix-kiss.conf
 
 require_file docs/bench/README.md
 require_file docs/bench/receive-only-safety.md
+require_file docs/bench/direwolf-receive-only.md
 require_file docs/bench/direwolf-usb-soundcard-kiss.md
 require_file docs/bench/kilotnc-receive-only.md
 require_file docs/bench/serial-kiss-receive-only.md
@@ -115,6 +116,9 @@ require_file docs/bench/fx25-capture-placeholders.md
 require_file docs/bench/ax25-response-bench-gate.md
 require_file docs/bench/ax25-prepared-response-validation.md
 require_file docs/bench/ax25-future-tx-lab-notes.md
+require_file docs/bench/vara-external-modem.md
+require_file docs/bench/mercury-ofdm-external-modem.md
+require_file docs/bench/ardop-external-modem.md
 require_file docs/getting-started-hobbyist.md
 
 require_file docs/milestones/M1-v0.1-alpha-readiness.md
@@ -125,6 +129,7 @@ require_file docs/milestones/M1-compatibility-audit.md
 require_file docs/milestones/M1-known-limitations.md
 require_file docs/milestones/M1-next-milestones.md
 require_file docs/milestones/M2.7-hobbyist-preview.md
+require_file docs/milestones/M2.8-external-modem-roadmap.md
 require_file docs/release/v0.2-alpha-checklist.md
 
 require_file docs/safety/README.md

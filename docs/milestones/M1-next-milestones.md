@@ -12,9 +12,10 @@ gates.
 | M2.5 | Retransmission buffer diagnostics and retry replay polish | Complete, no dispatch or real TX. |
 | M2.6 | Controlled local-admin CONNECT dry-run planning | Complete, offline planning without RF or real TX. |
 | M2.7 | Hobbyist preview release polish | Active, short no-hardware path for trying the current release. |
-| M2.8 | RF BBS access planning | Separate auth, sysop, abuse, and safety design. |
-| M2.9 | LinBPQ black-box observation import | Manual observations only, no source inspection. |
-| M2.10 | FX.25 detection planning and test vectors | Detection and FEC vectors before decode or wrap claims. |
+| M2.8 | External modem support roadmap | Dire Wolf receive-only now; VARA FM/HF, Mercury OFDM, and ARDOP planned. |
+| M2.9 | RF BBS access planning | Separate auth, sysop, abuse, and safety design. |
+| M2.10 | LinBPQ black-box observation import | Manual observations only, no source inspection. |
+| M2.11 | FX.25 detection planning and test vectors | Detection and FEC vectors before decode or wrap claims. |
 
 Do not combine real TX, CONNECT, RF BBS, NET/ROM, forwarding, and FX.25 into one
 milestone. Each needs its own safety and compatibility proof.

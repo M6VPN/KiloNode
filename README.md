@@ -21,6 +21,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Build Profiles](#build-profiles)
 - [Install](#install)
 - [Receive-Only Bench Validation](#receive-only-bench-validation)
+- [Supported and Planned Modems](#supported-and-planned-modems)
 - [AX.25 Response Safety Gate](#ax25-response-safety-gate)
 - [v0.1-alpha Readiness](#v01-alpha-readiness)
 - [M2 Loopback Work](#m2-loopback-work)
@@ -189,6 +190,27 @@ diagnostics runtime and checks that TX write attempts stay at zero.
 
 Manual capture workspaces are covered in
 [manual-capture-workspace.md](docs/bench/manual-capture-workspace.md).
+
+## Supported and Planned Modems
+
+Current practical receive paths use KISS:
+
+- Dire Wolf TCP KISS from a sound card.
+- KiloTNC KISS, when available.
+- Serial, TCP, PTY, and Unix socket KISS sources.
+
+Planned external modem adapter targets:
+
+- VARA FM.
+- VARA HF.
+- Mercury OFDM from Rhizomatica.
+- ARDOP.
+
+These planned modem adapters will be external process or TCP interface
+boundaries. KiloNode will not vendor modem source code, and this roadmap does
+not enable transmit, PTT, live CONNECT, RF BBS, or forwarding.
+
+See [M2.8 External Modem Roadmap](docs/milestones/M2.8-external-modem-roadmap.md).
 
 ## AX.25 Response Safety Gate
 
