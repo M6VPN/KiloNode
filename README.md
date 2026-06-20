@@ -17,6 +17,7 @@ No LinBPQ or BPQ32 GPL code is used.
 - [Requirements](#requirements)
 - [Setup](#setup)
 - [Usage](#usage)
+- [Try KiloNode in 5 Minutes](#try-kilonode-in-5-minutes)
 - [Build Profiles](#build-profiles)
 - [Install](#install)
 - [Receive-Only Bench Validation](#receive-only-bench-validation)
@@ -68,6 +69,39 @@ Query the control socket:
 ```sh
 ./build/kilonodectl --socket /tmp/kilonode/control.sock status
 ```
+
+## Try KiloNode in 5 Minutes
+
+The fastest no-hardware path is the hobbyist smoke check:
+
+```sh
+./scripts/build.sh
+./scripts/hobbyist-smoke.sh
+```
+
+This checks the local hobbyist config, AX.25 loopback demo, CONNECT dry-run
+planner, local BBS store test, and no-transmit gates.
+
+The recommended local preview config is:
+
+```sh
+./build/kilonoded --config packaging/examples/kilonode-hobbyist-local.conf --check-config
+```
+
+Run a local AX.25 loopback payload demo:
+
+```sh
+./build/kilonode-compat run-ax25-loopback tests/fixtures/ax25-loopback/connect-i-rr-disconnect.loop
+```
+
+Run a local CONNECT dry-run:
+
+```sh
+./build/kilonode-compat run-ax25-connect-dry-run tests/fixtures/ax25-connect-dry-run/basic.connectdry
+```
+
+More detail is in
+[Getting Started for Hobbyists](docs/getting-started-hobbyist.md).
 
 ## Build Profiles
 
@@ -195,12 +229,14 @@ FX.25 release. The readiness audit lives in
 
 M2 is currently simulator-only. It adds in-memory AX.25 connected-mode loopback
 flows, I-frame payload diagnostics, paclen segmentation, and windowed
-outstanding-frame diagnostics.
+outstanding-frame diagnostics. M2.7 adds the hobbyist preview path for trying
+that work without hardware.
 
 Current M2 checks:
 
 ```sh
 ./scripts/m2-readiness-check.sh
+./scripts/hobbyist-smoke.sh
 ./scripts/ax25-loopback-fixtures.sh
 ./build/test_ax25_loopback_window
 ```

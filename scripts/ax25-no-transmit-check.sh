@@ -11,6 +11,7 @@ docs/examples/kilonode.conf
 packaging/examples/kilonode.conf
 packaging/examples/kilonode-minimal.conf
 packaging/examples/kilonode-bbs-local.conf
+packaging/examples/kilonode-hobbyist-local.conf
 packaging/examples/kilonode-monitor-only.conf
 packaging/examples/kilonode-rx-bench-tcp-kiss.conf
 packaging/examples/kilonode-rx-bench-serial-kiss.conf

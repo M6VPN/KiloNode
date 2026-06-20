@@ -9,6 +9,10 @@ tracking.
 
 `kilonode-bbs-local.conf` enables the local TCP shell and local BBS store.
 
+`kilonode-hobbyist-local.conf` is the recommended local preview config. It
+enables local control, local shell, local BBS storage, and a localhost KISS
+listener while keeping every transmit path disabled.
+
 `kilonode.conf` is a balanced local example with control, shell, BBS, and a
 localhost TCP KISS listener.
 

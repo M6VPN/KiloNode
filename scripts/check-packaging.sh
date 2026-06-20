@@ -85,6 +85,7 @@ require_file packaging/netbsd/kilonoded
 check_config packaging/examples/kilonode.conf
 check_config packaging/examples/kilonode-minimal.conf
 check_config packaging/examples/kilonode-bbs-local.conf
+check_config packaging/examples/kilonode-hobbyist-local.conf
 check_config packaging/examples/kilonode-monitor-only.conf
 check_config packaging/examples/kilonode-tx-test-only.conf
 check_config packaging/examples/kilonode-tx-lab-only.conf
@@ -114,6 +115,7 @@ require_file docs/bench/fx25-capture-placeholders.md
 require_file docs/bench/ax25-response-bench-gate.md
 require_file docs/bench/ax25-prepared-response-validation.md
 require_file docs/bench/ax25-future-tx-lab-notes.md
+require_file docs/getting-started-hobbyist.md
 
 require_file docs/milestones/M1-v0.1-alpha-readiness.md
 require_file docs/milestones/M1-feature-inventory.md
@@ -122,6 +124,8 @@ require_file docs/milestones/M1-safety-audit.md
 require_file docs/milestones/M1-compatibility-audit.md
 require_file docs/milestones/M1-known-limitations.md
 require_file docs/milestones/M1-next-milestones.md
+require_file docs/milestones/M2.7-hobbyist-preview.md
+require_file docs/release/v0.2-alpha-checklist.md
 
 require_file docs/safety/README.md
 require_file docs/safety/ax25-response-safety-checklist.md
@@ -145,6 +149,7 @@ require_file scripts/ax25-safety-check.sh
 require_file scripts/ax25-no-transmit-check.sh
 require_file scripts/ax25-prepared-gate-report.sh
 require_file scripts/ax25-response-bench-preflight.sh
+require_file scripts/hobbyist-smoke.sh
 require_file scripts/m1-docs-audit.sh
 require_file scripts/m1-test-inventory.sh
 require_file scripts/m1-safety-audit.sh
@@ -197,8 +202,8 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/bench-rx-workspace-list.sh scripts/bench-rx-workspace-replay.sh \
 	scripts/bench-rx-workspace-report.sh scripts/ax25-safety-check.sh \
 	scripts/ax25-no-transmit-check.sh scripts/ax25-prepared-gate-report.sh \
-	scripts/ax25-response-bench-preflight.sh scripts/m1-docs-audit.sh \
-	scripts/m1-test-inventory.sh scripts/m1-safety-audit.sh \
+	scripts/ax25-response-bench-preflight.sh scripts/hobbyist-smoke.sh \
+	scripts/m1-docs-audit.sh scripts/m1-test-inventory.sh scripts/m1-safety-audit.sh \
 	scripts/m1-compatibility-audit.sh scripts/m1-readiness-check.sh; then
 	echo "packaging files must not contain privileged helper commands"
 	status=1
