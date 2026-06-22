@@ -36,6 +36,14 @@ Show configured ports.
 Show daemon counters.
 .It Cm heard Op Fl -port Ar name
 Show heard AX.25 stations.
+.It Cm modems
+Show configured external modem status records.
+.It Cm modem Ar name
+Show one configured external modem status record.
+.It Cm modem-profiles
+Show built-in external modem profiles.
+.It Cm modem-profile Ar type
+Show one built-in external modem profile.
 .It Cm ax25 status
 Show read-only AX.25 runtime diagnostics.
 .It Cm ax25 params
@@ -129,6 +137,10 @@ Example local control socket path.
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge-frame 1
 .Dl kilonodectl --socket /tmp/kilonode/control.sock ax25 prepared-bridge-counters
+.Dl kilonodectl --socket /tmp/kilonode/control.sock modem-profiles
+.Dl kilonodectl --socket /tmp/kilonode/control.sock modem-profile mercury-ofdm
+.Dl kilonodectl --socket /tmp/kilonode/control.sock modems
+.Dl kilonodectl --socket /tmp/kilonode/control.sock modem mercury0
 .Dl kilonodectl --socket /tmp/kilonode/control.sock tx gates
 .Dl kilonodectl --socket /tmp/kilonode/control.sock heard
 .Dl kilonodectl --socket /tmp/kilonode/control.sock bbs messages
@@ -152,6 +164,8 @@ AX.25 prepared bridge commands are diagnostics only. They do not enable TX,
 enqueue prepared frames, or dispatch frames. See
 .Pa docs/safety/README.md
 for the response safety gate.
+External modem commands are read-only. They do not launch modem processes,
+connect sockets, enable CONNECT, or transmit.
 .Sh SEE ALSO
 .Xr kilonoded 8
 .Sh AUTHORS

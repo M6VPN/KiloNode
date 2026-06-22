@@ -46,6 +46,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | BPQEther | planned | Later Ethernet compatibility target |
 | VARA FM external modem | planned | Future external TCP modem adapter target |
 | VARA HF external modem | planned | Future external TCP modem adapter target |
-| Mercury OFDM external modem | planned | Future external modem adapter target for Rhizomatica Mercury |
+| External modem status scaffold | implemented | Config/profile/status model and read-only control commands, no process launch |
+| External modem profile control | tested | `MODEMS`, `MODEM`, `MODEM PROFILES`, and `MODEM PROFILE` are read-only |
+| Mercury OFDM external modem | planned | First-class planned target for Rhizomatica Mercury, interface discovery required |
 | ARDOP external modem | planned | Future external TCP host adapter target |
 | Pactor external modem | planned | External modem adapter target |

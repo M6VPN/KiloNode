@@ -11,6 +11,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | AX.25 modulo 8 sequence accounting | tested | Basic receive and acknowledgement helpers |
 | Internal AX.25 segmented loopback | tested | KiloNode loopback splits paclen-sized I frames, records reassembly diagnostics, and returns RR frames |
 | BPQ/LinBPQ paclen compatibility | planned | Future black-box observation only, no BPQ/LinBPQ config or segmentation logic copied |
+| External modem status scaffold | implemented | KiloNode-native modem profile/status model only, no BPQ/LinBPQ syntax or behavior |
+| External modem command compatibility | planned | No BPQ/LinBPQ modem commands are implemented |
 | Live RF payload segmentation | planned | Not implemented |
 | AX.25 action intents | tested | Bounded intents only, no frame bytes or TX queue writes |
 | AX.25 response frame builder | tested | Raw AX.25 SABM/SABME/UA/DM/DISC/RR/RNR/REJ builder only |

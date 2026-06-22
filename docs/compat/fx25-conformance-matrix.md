@@ -58,3 +58,5 @@
 | FX.25 segmented I-frame wrapping | planned | Future FX.25 work may wrap complete segmented AX.25 frames after AX.25 frame generation. |
 | FX.25 retransmission-buffer coupling | not implemented | M2.5 retransmission diagnostics replay raw AX.25 bytes only and keep FX.25 frame counts at zero. |
 | FX.25 CONNECT dry-run coupling | not implemented | M2.6 CONNECT dry-run plans AX.25 setup intent only and reports FX.25 frame counts as zero. |
+| External modem boundary | scaffold | Mercury OFDM and other modem profiles are separate from FX.25 support. |
+| Mercury OFDM coupling | not implemented | Mercury is an external modem target and does not implement or imply FX.25 FEC. |

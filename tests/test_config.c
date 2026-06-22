@@ -37,6 +37,13 @@ static int test_bbs_unknown_key(void);
 static int test_comment_handling(void);
 static int test_control_block(void);
 static int test_duplicate_control_block(void);
+static int test_external_modem_duplicate_name(void);
+static int test_external_modem_invalid_mode(void);
+static int test_external_modem_invalid_type(void);
+static int test_external_modem_multiple_valid(void);
+static int test_external_modem_unsafe_autostart(void);
+static int test_external_modem_unsafe_connect(void);
+static int test_external_modem_unsafe_tx(void);
 static int test_duplicate_heard_block(void);
 static int test_heard_block(void);
 static int test_invalid_heard_max_entries(void);
@@ -156,6 +163,20 @@ main(void)
 	if (test_control_block() != 0)
 		return 1;
 	if (test_duplicate_control_block() != 0)
+		return 1;
+	if (test_external_modem_multiple_valid() != 0)
+		return 1;
+	if (test_external_modem_duplicate_name() != 0)
+		return 1;
+	if (test_external_modem_invalid_type() != 0)
+		return 1;
+	if (test_external_modem_invalid_mode() != 0)
+		return 1;
+	if (test_external_modem_unsafe_tx() != 0)
+		return 1;
+	if (test_external_modem_unsafe_connect() != 0)
+		return 1;
+	if (test_external_modem_unsafe_autostart() != 0)
 		return 1;
 	if (test_heard_block() != 0)
 		return 1;
@@ -823,6 +844,138 @@ test_duplicate_control_block(void)
 		"}\n";
 
 	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_KEY);
+}
+
+static int
+test_external_modem_duplicate_name(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_DUPLICATE_EXTERNAL_MODEM);
+}
+
+static int
+test_external_modem_invalid_mode(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"mode live\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_external_modem_invalid_type(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem modem0 {\n"
+		"type unknown\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_external_modem_multiple_valid(void)
+{
+	struct kn_config config;
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"enabled false\n"
+		"type mercury-ofdm\n"
+		"mode status-only\n"
+		"host 127.0.0.1\n"
+		"port 0\n"
+		"auto-start false\n"
+		"tx-enabled false\n"
+		"connect-enabled false\n"
+		"notes \"Mercury OFDM planned external adapter\"\n"
+		"}\n"
+		"external-modem direwolf0 {\n"
+		"enabled false\n"
+		"type kiss-tcp\n"
+		"mode receive-only\n"
+		"host 127.0.0.1\n"
+		"port 8001\n"
+		"auto-start false\n"
+		"tx-enabled false\n"
+		"connect-enabled false\n"
+		"}\n";
+
+	if (kn_config_parse_text(text, &config) != KN_CONFIG_OK)
+		return 1;
+	if (config.external_modem_count != 2)
+		return 1;
+	if (config.external_modems[0].type !=
+	    KN_EXTERNAL_MODEM_TYPE_MERCURY_OFDM)
+		return 1;
+	return config.external_modems[1].type ==
+	    KN_EXTERNAL_MODEM_TYPE_KISS_TCP ? 0 : 1;
+}
+
+static int
+test_external_modem_unsafe_autostart(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"auto-start true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_external_modem_unsafe_connect(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"connect-enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
+}
+
+static int
+test_external_modem_unsafe_tx(void)
+{
+	const char text[] =
+		"node {\n"
+		"callsign M6VPN-1\n"
+		"}\n"
+		"external-modem mercury0 {\n"
+		"type mercury-ofdm\n"
+		"tx-enabled true\n"
+		"}\n";
+
+	return expect_error(text, KN_CONFIG_ERR_INVALID_VALUE);
 }
 
 static int

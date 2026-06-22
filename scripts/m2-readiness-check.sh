@@ -20,6 +20,7 @@ run()
 
 run ./scripts/ax25-loopback-fixtures.sh
 run ./scripts/ax25-connect-dry-run-fixtures.sh
+run ./scripts/external-modem-check-configs.sh
 run ./scripts/ax25-no-transmit-check.sh
 
 for test_bin in \
@@ -42,8 +43,16 @@ for test_bin in \
 	run "$test_bin"
 done
 
+for test_bin in \
+	./build/test_external_modem \
+	./build/test_external_modem_control \
+	./build/test_external_modem_profile \
+	./build/test_external_modem_status; do
+	run "$test_bin"
+done
+
 if [ "$status" -eq 0 ]; then
-	printf 'OK m2-readiness-check loopback=true window=true retransmit=true connect_dry_run=true hardware=false linbpq=false tx_writes=0\n'
+	printf 'OK m2-readiness-check loopback=true window=true retransmit=true connect_dry_run=true external_modems=true hardware=false linbpq=false tx_writes=0\n'
 fi
 
 exit "$status"

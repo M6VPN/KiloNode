@@ -86,6 +86,8 @@ check_config packaging/examples/kilonode.conf
 check_config packaging/examples/kilonode-minimal.conf
 check_config packaging/examples/kilonode-bbs-local.conf
 check_config packaging/examples/kilonode-hobbyist-local.conf
+check_config packaging/examples/kilonode-external-modem-status.conf
+check_config packaging/examples/kilonode-mercury-planned.conf
 check_config packaging/examples/kilonode-monitor-only.conf
 check_config packaging/examples/kilonode-tx-test-only.conf
 check_config packaging/examples/kilonode-tx-lab-only.conf
@@ -120,6 +122,13 @@ require_file docs/bench/vara-external-modem.md
 require_file docs/bench/mercury-ofdm-external-modem.md
 require_file docs/bench/ardop-external-modem.md
 require_file docs/getting-started-hobbyist.md
+require_file docs/modems/README.md
+require_file docs/modems/direwolf-kiss.md
+require_file docs/modems/kilotnc-kiss.md
+require_file docs/modems/mercury-ofdm.md
+require_file docs/modems/vara-hf-fm.md
+require_file docs/modems/ardop.md
+require_file docs/modems/external-modem-discovery-checklist.md
 
 require_file docs/milestones/M1-v0.1-alpha-readiness.md
 require_file docs/milestones/M1-feature-inventory.md
@@ -130,6 +139,7 @@ require_file docs/milestones/M1-known-limitations.md
 require_file docs/milestones/M1-next-milestones.md
 require_file docs/milestones/M2.7-hobbyist-preview.md
 require_file docs/milestones/M2.8-external-modem-roadmap.md
+require_file docs/milestones/M2.8-external-modem-scaffold.md
 require_file docs/release/v0.2-alpha-checklist.md
 
 require_file docs/safety/README.md
@@ -154,6 +164,8 @@ require_file scripts/ax25-safety-check.sh
 require_file scripts/ax25-no-transmit-check.sh
 require_file scripts/ax25-prepared-gate-report.sh
 require_file scripts/ax25-response-bench-preflight.sh
+require_file scripts/external-modem-check-configs.sh
+require_file scripts/external-modem-status-smoke.sh
 require_file scripts/hobbyist-smoke.sh
 require_file scripts/m1-docs-audit.sh
 require_file scripts/m1-test-inventory.sh
@@ -208,6 +220,8 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/bench-rx-workspace-report.sh scripts/ax25-safety-check.sh \
 	scripts/ax25-no-transmit-check.sh scripts/ax25-prepared-gate-report.sh \
 	scripts/ax25-response-bench-preflight.sh scripts/hobbyist-smoke.sh \
+	scripts/external-modem-check-configs.sh \
+	scripts/external-modem-status-smoke.sh \
 	scripts/m1-docs-audit.sh scripts/m1-test-inventory.sh scripts/m1-safety-audit.sh \
 	scripts/m1-compatibility-audit.sh scripts/m1-readiness-check.sh; then
 	echo "packaging files must not contain privileged helper commands"

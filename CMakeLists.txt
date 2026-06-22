@@ -68,6 +68,10 @@ add_library(packetcore STATIC
 	src/core/stats.c
 	src/daemon/daemon.c
 	src/daemon/daemon_ax25_scheduler.c
+	src/modem/external_modem.c
+	src/modem/external_modem_control.c
+	src/modem/external_modem_profile.c
+	src/modem/external_modem_status.c
 	src/monitor/monitor.c
 	src/node/node_command.c
 	src/node/node_command_dispatch.c
@@ -531,6 +535,29 @@ add_executable(test_config tests/test_config.c)
 target_link_libraries(test_config PRIVATE packetcore)
 kilonode_target_defaults(test_config)
 add_test(NAME config COMMAND test_config)
+
+add_executable(test_external_modem tests/test_external_modem.c)
+target_link_libraries(test_external_modem PRIVATE packetcore)
+kilonode_target_defaults(test_external_modem)
+add_test(NAME external_modem COMMAND test_external_modem)
+
+add_executable(test_external_modem_control
+	tests/test_external_modem_control.c)
+target_link_libraries(test_external_modem_control PRIVATE packetcore)
+kilonode_target_defaults(test_external_modem_control)
+add_test(NAME external_modem_control COMMAND test_external_modem_control)
+
+add_executable(test_external_modem_profile
+	tests/test_external_modem_profile.c)
+target_link_libraries(test_external_modem_profile PRIVATE packetcore)
+kilonode_target_defaults(test_external_modem_profile)
+add_test(NAME external_modem_profile COMMAND test_external_modem_profile)
+
+add_executable(test_external_modem_status
+	tests/test_external_modem_status.c)
+target_link_libraries(test_external_modem_status PRIVATE packetcore)
+kilonode_target_defaults(test_external_modem_status)
+add_test(NAME external_modem_status COMMAND test_external_modem_status)
 
 add_executable(test_access_policy tests/test_access_policy.c)
 target_link_libraries(test_access_policy PRIVATE packetcore)

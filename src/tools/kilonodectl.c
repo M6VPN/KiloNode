@@ -109,6 +109,45 @@ main(int argc, char *argv[])
 			}
 			continue;
 		}
+		if (strcmp(argv[i], "modems") == 0) {
+			if (command_set(command, sizeof(command), "MODEMS") != 0)
+				return 1;
+			continue;
+		}
+		if (strcmp(argv[i], "modem") == 0) {
+			if (i + 1 >= argc) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			needed = snprintf(command, sizeof(command), "MODEM %s",
+			    argv[i + 1]);
+			if (needed < 0 || (size_t)needed >= sizeof(command)) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			i++;
+			continue;
+		}
+		if (strcmp(argv[i], "modem-profiles") == 0) {
+			if (command_set(command, sizeof(command),
+			    "MODEM PROFILES") != 0)
+				return 1;
+			continue;
+		}
+		if (strcmp(argv[i], "modem-profile") == 0) {
+			if (i + 1 >= argc) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			needed = snprintf(command, sizeof(command),
+			    "MODEM PROFILE %s", argv[i + 1]);
+			if (needed < 0 || (size_t)needed >= sizeof(command)) {
+				usage(stderr, argv[0]);
+				return 1;
+			}
+			i++;
+			continue;
+		}
 		if (command_set(command, sizeof(command),
 		    command_map(argv[i])) != 0) {
 			usage(stderr, argv[0]);
@@ -737,6 +776,10 @@ usage(FILE *out, const char *argv0)
 	fprintf(out, "       %s --socket PATH stats\n", argv0);
 	fprintf(out, "       %s --socket PATH heard\n", argv0);
 	fprintf(out, "       %s --socket PATH heard --port NAME\n", argv0);
+	fprintf(out, "       %s --socket PATH modems\n", argv0);
+	fprintf(out, "       %s --socket PATH modem NAME\n", argv0);
+	fprintf(out, "       %s --socket PATH modem-profiles\n", argv0);
+	fprintf(out, "       %s --socket PATH modem-profile TYPE\n", argv0);
 	fprintf(out, "       %s --socket PATH ax25 status\n", argv0);
 	fprintf(out, "       %s --socket PATH ax25 params\n", argv0);
 	fprintf(out, "       %s --socket PATH ax25 connections [--port PORT]\n",

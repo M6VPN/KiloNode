@@ -199,6 +199,13 @@ Current practical receive paths use KISS:
 - KiloTNC KISS, when available.
 - Serial, TCP, PTY, and Unix socket KISS sources.
 
+KiloNode also has a read-only external modem status scaffold:
+
+```sh
+./build/kilonodectl --socket /tmp/kilonode/control.sock modem-profiles
+./build/kilonodectl --socket /tmp/kilonode/control.sock modems
+```
+
 Planned external modem adapter targets:
 
 - VARA FM.
@@ -207,10 +214,12 @@ Planned external modem adapter targets:
 - ARDOP.
 
 These planned modem adapters will be external process or TCP interface
-boundaries. KiloNode will not vendor modem source code, and this roadmap does
-not enable transmit, PTT, live CONNECT, RF BBS, or forwarding.
+boundaries. KiloNode will not vendor modem source code, and this scaffold does
+not launch modem processes or enable transmit, PTT, live CONNECT, RF BBS, or
+forwarding.
 
-See [M2.8 External Modem Roadmap](docs/milestones/M2.8-external-modem-roadmap.md).
+See [Modems](docs/modems/README.md) and
+[M2.8 External Modem Scaffold](docs/milestones/M2.8-external-modem-scaffold.md).
 
 ## AX.25 Response Safety Gate
 

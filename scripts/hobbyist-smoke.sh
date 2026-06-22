@@ -27,6 +27,7 @@ if [ ! -x ./build/kilonode-compat ] || [ ! -x ./build/kilonoded ]; then
 fi
 
 run_quiet config ./build/kilonoded --config packaging/examples/kilonode-hobbyist-local.conf --check-config
+run_quiet external-modem-configs ./scripts/external-modem-check-configs.sh
 run_quiet loopback ./build/kilonode-compat run-ax25-loopback tests/fixtures/ax25-loopback/connect-i-rr-disconnect.loop
 run_quiet connect-dry-run ./build/kilonode-compat run-ax25-connect-dry-run tests/fixtures/ax25-connect-dry-run/basic.connectdry
 run_quiet bbs-local ./build/test_bbs_shell_store

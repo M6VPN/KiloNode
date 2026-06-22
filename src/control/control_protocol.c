@@ -14,6 +14,7 @@
 #include "kilonode/bbs_control.h"
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
+#include "kilonode/external_modem_control.h"
 #include "kilonode/heard.h"
 #include "kilonode/rf_abuse.h"
 #include "kilonode/rf_command.h"
@@ -266,7 +267,7 @@ format_help(char *buf, size_t bufsiz)
 	offset = 0;
 	rc = append_format(buf, bufsiz, &offset,
 	    "OK HELP PING VERSION STATUS PORTS STATS HEARD BBS RX TX RF HELP "
-	    "AX25 QUIT\n");
+	    "AX25 MODEMS MODEM QUIT\n");
 	if (rc != KN_CONTROL_OK)
 		return rc;
 	return append_format(buf, bufsiz, &offset, "END\n");
@@ -1413,6 +1414,23 @@ kn_control_protocol_handle(const char *command,
 	if (strncmp(command, "AX25 ", 5) == 0)
 		return return_with_cap(snapshot, out, out_len,
 		    format_ax25(snapshot, command + 5, out, out_len));
+	if (strcmp(command, "MODEMS") == 0 ||
+	    strncmp(command, "MODEM ", 6) == 0) {
+		enum kn_external_modem_control_error modem_rc;
+
+		modem_rc = kn_external_modem_control_format(command,
+		    snapshot->external_modems, out, out_len);
+		if (modem_rc == KN_EXTERNAL_MODEM_CONTROL_OK)
+			return return_with_cap(snapshot, out, out_len,
+			    KN_CONTROL_OK);
+		if (modem_rc == KN_EXTERNAL_MODEM_CONTROL_ERR_BUFFER)
+			return KN_CONTROL_ERR_IO;
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
+	if (strcmp(command, "MODEM") == 0) {
+		(void)snprintf(out, out_len, "ERR invalid-modem-command\n");
+		return KN_CONTROL_ERR_UNKNOWN_COMMAND;
+	}
 	if (strcmp(command, "BBS") == 0) {
 		(void)snprintf(out, out_len, "ERR invalid-bbs-command\n");
 		return KN_CONTROL_ERR_UNKNOWN_COMMAND;

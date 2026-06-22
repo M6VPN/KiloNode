@@ -13,6 +13,7 @@
 #include "kilonode/ax25_prepared_policy.h"
 #include "kilonode/ax25_scheduler_policy.h"
 #include "kilonode/callsign.h"
+#include "kilonode/external_modem.h"
 #include "kilonode/tx_policy.h"
 #include "kilonode/transport.h"
 
@@ -131,7 +132,9 @@ enum kn_config_error {
 	KN_CONFIG_ERR_MISSING_REQUIRED,
 	KN_CONFIG_ERR_INVALID_VALUE,
 	KN_CONFIG_ERR_DUPLICATE_PORT,
-	KN_CONFIG_ERR_TOO_MANY_PORTS
+	KN_CONFIG_ERR_TOO_MANY_PORTS,
+	KN_CONFIG_ERR_DUPLICATE_EXTERNAL_MODEM,
+	KN_CONFIG_ERR_TOO_MANY_EXTERNAL_MODEMS
 };
 
 enum kn_config_port_type {
@@ -298,6 +301,8 @@ struct kn_config {
 	struct kn_config_transmit transmit;
 	struct kn_config_rf_command rf_command;
 	struct kn_config_shell shell;
+	struct kn_external_modem_config external_modems[KN_EXTERNAL_MODEM_MAX];
+	size_t external_modem_count;
 	struct kn_config_port ports[KN_CONFIG_PORT_MAX];
 	size_t port_count;
 	enum kn_config_error error;

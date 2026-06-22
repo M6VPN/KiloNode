@@ -12,6 +12,8 @@ packaging/examples/kilonode.conf
 packaging/examples/kilonode-minimal.conf
 packaging/examples/kilonode-bbs-local.conf
 packaging/examples/kilonode-hobbyist-local.conf
+packaging/examples/kilonode-external-modem-status.conf
+packaging/examples/kilonode-mercury-planned.conf
 packaging/examples/kilonode-monitor-only.conf
 packaging/examples/kilonode-rx-bench-tcp-kiss.conf
 packaging/examples/kilonode-rx-bench-serial-kiss.conf
@@ -37,13 +39,15 @@ check_not_enabled_in_block()
 	block="$2"
 	key="$3"
 	bad="$4"
-	value="$(awk -v block="$block" -v key="$key" '
+	value="$(awk -v block="$block" -v key="$key" -v bad="$bad" '
 		$1 == block && $2 == "{" { in_block = 1; next }
+		$1 == block && $3 == "{" { in_block = 1; next }
 		in_block && $1 == "}" { in_block = 0; next }
-		in_block && $1 == key { print $2 }
+		in_block && $1 == key && $2 == bad { found = 1 }
+		END { print found ? "bad" : "ok" }
 	' "$file")"
 
-	if [ "$value" = "$bad" ]; then
+	if [ "$value" = "bad" ]; then
 		fail "$file enables ${block}.${key} ${bad}"
 	fi
 }
@@ -59,6 +63,9 @@ for file in $non_lab_configs; do
 	check_not_enabled_in_block "$file" ax25 prepared-bridge-to-tx true
 	check_not_enabled_in_block "$file" ax25 live-scheduler-tx-actions true
 	check_not_enabled_in_block "$file" ax25 live-scheduler-smoke-create-test-connection true
+	check_not_enabled_in_block "$file" external-modem tx-enabled true
+	check_not_enabled_in_block "$file" external-modem connect-enabled true
+	check_not_enabled_in_block "$file" external-modem auto-start true
 done
 
 for file in $all_configs; do

@@ -90,6 +90,16 @@ Dire Wolf TCP KISS is the recommended first receive-only modem path. VARA FM,
 VARA HF, Mercury OFDM, and ARDOP are planned external modem adapter targets and
 are not working KiloNode integrations yet.
 
+Inspect modem profiles after starting a daemon with control enabled:
+
+```sh
+./build/kilonodectl --socket /tmp/kilonode/control.sock modem-profiles
+./build/kilonodectl --socket /tmp/kilonode/control.sock modems
+```
+
+Mercury OFDM is visible as a planned profile only. KiloNode does not launch
+Mercury or assume its interface details yet.
+
 ## Current Limits
 
 - No live CONNECT command.

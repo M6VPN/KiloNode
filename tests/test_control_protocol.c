@@ -13,6 +13,7 @@
 #include "kilonode/ax25_runtime.h"
 #include "kilonode/callsign.h"
 #include "kilonode/control.h"
+#include "kilonode/external_modem_status.h"
 #include "kilonode/heard.h"
 #include "kilonode/rf_command_queue.h"
 #include "kilonode/rx_event.h"
@@ -73,6 +74,11 @@ static int test_heard_one_entry(void);
 static int test_heard_port_filter(void);
 static int test_heard_port_unknown(void);
 static int test_heard_port_overlong(void);
+static int test_modem_existing(void);
+static int test_modem_malformed(void);
+static int test_modem_profiles(void);
+static int test_modems_empty(void);
+static int test_modems_populated(void);
 static int test_overlong_command(void);
 static int test_ping_response(void);
 static int test_ports_one_port(void);
@@ -235,6 +241,16 @@ main(void)
 		return 1;
 	if (test_help_response() != 0)
 		return 1;
+	if (test_modems_empty() != 0)
+		return 1;
+	if (test_modems_populated() != 0)
+		return 1;
+	if (test_modem_existing() != 0)
+		return 1;
+	if (test_modem_profiles() != 0)
+		return 1;
+	if (test_modem_malformed() != 0)
+		return 1;
 	if (test_unknown_command() != 0)
 		return 1;
 	if (test_overlong_command() != 0)
@@ -373,6 +389,7 @@ snapshot_init(struct kn_control_snapshot *snapshot,
 	snapshot->rf_abuse = NULL;
 	snapshot->rf_ignore = NULL;
 	snapshot->ax25_runtime = NULL;
+	snapshot->external_modems = NULL;
 	snapshot->control_max_command_bytes = 0;
 	snapshot->control_max_response_lines = 0;
 }
@@ -1045,6 +1062,106 @@ test_help_response(void)
 		return 1;
 
 	return strstr(out, "END\n") != NULL ? 0 : 1;
+}
+
+static int
+test_modem_existing(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_external_modem_config config;
+	struct kn_external_modem_status_table table;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_external_modem_config_defaults(&config);
+	(void)snprintf(config.name, sizeof(config.name), "mercury0");
+	config.type = KN_EXTERNAL_MODEM_TYPE_MERCURY_OFDM;
+	config.mode = KN_EXTERNAL_MODEM_MODE_STATUS_ONLY;
+	(void)snprintf(config.host, sizeof(config.host), "127.0.0.1");
+	config.has_type = 1;
+	config.has_mode = 1;
+	config.has_host = 1;
+	config.has_port = 1;
+	if (kn_external_modem_status_table_init(&table, &config, 1) !=
+	    KN_EXTERNAL_MODEM_OK)
+		return 1;
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.external_modems = &table;
+	if (kn_control_protocol_handle("MODEM mercury0", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	return strstr(out, "name=mercury0") != NULL ? 0 : 1;
+}
+
+static int
+test_modem_malformed(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("MODEM", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_ERR_UNKNOWN_COMMAND)
+		return 1;
+	return strcmp(out, "ERR invalid-modem-command\n") == 0 ? 0 : 1;
+}
+
+static int
+test_modem_profiles(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("MODEM PROFILE mercury-ofdm",
+	    &snapshot, out, sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	if (strstr(out, "type=mercury-ofdm") == NULL)
+		return 1;
+	if (kn_control_protocol_handle("MODEM PROFILES", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	return strstr(out, "type=kiss-tcp") != NULL ? 0 : 1;
+}
+
+static int
+test_modems_empty(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	if (kn_control_protocol_handle("MODEMS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	return strstr(out, "OK MODEMS count=0") != NULL ? 0 : 1;
+}
+
+static int
+test_modems_populated(void)
+{
+	struct kn_control_snapshot snapshot;
+	struct kn_daemon_stats daemon;
+	struct kn_external_modem_config config;
+	struct kn_external_modem_status_table table;
+	char out[KN_CONTROL_QUEUE_MAX];
+
+	kn_external_modem_config_defaults(&config);
+	(void)snprintf(config.name, sizeof(config.name), "mercury0");
+	config.type = KN_EXTERNAL_MODEM_TYPE_MERCURY_OFDM;
+	config.mode = KN_EXTERNAL_MODEM_MODE_STATUS_ONLY;
+	if (kn_external_modem_status_table_init(&table, &config, 1) !=
+	    KN_EXTERNAL_MODEM_OK)
+		return 1;
+	snapshot_init(&snapshot, &daemon, NULL, 0);
+	snapshot.external_modems = &table;
+	if (kn_control_protocol_handle("MODEMS", &snapshot, out,
+	    sizeof(out)) != KN_CONTROL_OK)
+		return 1;
+	return strstr(out, "MODEM name=mercury0") != NULL ? 0 : 1;
 }
 
 static int

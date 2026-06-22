@@ -22,6 +22,7 @@ ctest --test-dir build --output-on-failure
 ./scripts/ax25-connect-dry-run-fixtures.sh
 ./scripts/m1-docs-audit.sh
 ./scripts/ax25-no-transmit-check.sh
+./scripts/external-modem-check-configs.sh
 ./scripts/ax25-live-scheduler-smoke-check.sh
 ./scripts/ax25-safety-check.sh
 ./scripts/ax25-prepared-gate-report.sh

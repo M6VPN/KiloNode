@@ -33,13 +33,15 @@ enum parser_block {
 	BLOCK_RF_COMMAND,
 	BLOCK_SHELL,
 	BLOCK_TRANSMIT,
-	BLOCK_PORT
+	BLOCK_PORT,
+	BLOCK_EXTERNAL_MODEM
 };
 
 struct parser {
 	struct kn_config *config;
 	enum parser_block block;
 	struct kn_config_port *port;
+	struct kn_external_modem_config *external_modem;
 };
 
 static enum kn_config_error config_validate(struct kn_config *);
@@ -51,6 +53,8 @@ static enum kn_config_error bbs_key_set(struct kn_config *, char **, size_t,
 	size_t);
 static enum kn_config_error copy_field(char *, size_t, const char *,
 	struct kn_config *, size_t);
+static enum kn_config_error external_modem_key_set(struct parser *, char **,
+	size_t, size_t);
 static enum kn_config_error heard_key_set(struct kn_config *, char **, size_t,
 	size_t);
 static uint8_t key_seen(uint8_t *, struct kn_config *, size_t);
@@ -179,6 +183,13 @@ config_validate(struct kn_config *config)
 		return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
 		    "real transmit dispatch requires explicit port tx");
 
+	for (i = 0; i < config->external_modem_count; i++) {
+		if (kn_external_modem_config_validate(
+		    &config->external_modems[i]) != KN_EXTERNAL_MODEM_OK)
+			return set_error(config, KN_CONFIG_ERR_INVALID_VALUE, 0,
+			    "invalid external modem config");
+	}
+
 	if (config->bbs.has_block != 0 && config->bbs.enabled != 0 &&
 	    config->bbs.has_store_path == 0)
 		return set_error(config, KN_CONFIG_ERR_MISSING_REQUIRED, 0,
@@ -282,6 +293,10 @@ kn_config_error_name(enum kn_config_error error)
 		return "duplicate port";
 	case KN_CONFIG_ERR_TOO_MANY_PORTS:
 		return "too many ports";
+	case KN_CONFIG_ERR_DUPLICATE_EXTERNAL_MODEM:
+		return "duplicate external modem";
+	case KN_CONFIG_ERR_TOO_MANY_EXTERNAL_MODEMS:
+		return "too many external modems";
 	}
 
 	return "unknown";
@@ -1534,6 +1549,7 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 			    line_no, "unexpected block close");
 		parser->block = BLOCK_NONE;
 		parser->port = NULL;
+		parser->external_modem = NULL;
 		return KN_CONFIG_OK;
 	}
 
@@ -1601,6 +1617,10 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 
 	if (parser->block == BLOCK_PORT)
 		return port_key_set(parser, tokens, token_count, line_no);
+
+	if (parser->block == BLOCK_EXTERNAL_MODEM)
+		return external_modem_key_set(parser, tokens, token_count,
+		    line_no);
 
 	if (strcmp(tokens[0], "node") == 0) {
 		if (token_count != 2 || strcmp(tokens[1], "{") != 0)
@@ -1755,8 +1775,149 @@ line_parse(struct parser *parser, char *line, size_t line_no)
 		return KN_CONFIG_OK;
 	}
 
+	if (strcmp(tokens[0], "external-modem") == 0) {
+		struct kn_external_modem_config *modem;
+
+		if (token_count != 3 || strcmp(tokens[2], "{") != 0)
+			return set_error(parser->config, KN_CONFIG_ERR_PARSE,
+			    line_no, "invalid external-modem block");
+		if (parser->config->external_modem_count >=
+		    KN_EXTERNAL_MODEM_MAX)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_TOO_MANY_EXTERNAL_MODEMS, line_no,
+			    "too many external modems");
+		if (kn_external_modem_name_valid(tokens[1]) == 0)
+			return set_error(parser->config,
+			    KN_CONFIG_ERR_INVALID_VALUE, line_no,
+			    "invalid external modem name");
+		for (i = 0; i < parser->config->external_modem_count; i++) {
+			if (strcmp(parser->config->external_modems[i].name,
+			    tokens[1]) == 0)
+				return set_error(parser->config,
+				    KN_CONFIG_ERR_DUPLICATE_EXTERNAL_MODEM,
+				    line_no, "duplicate external modem");
+		}
+		modem = &parser->config->external_modems[
+		    parser->config->external_modem_count++];
+		kn_external_modem_config_defaults(modem);
+		rc = copy_field(modem->name, sizeof(modem->name), tokens[1],
+		    parser->config, line_no);
+		if (rc != KN_CONFIG_OK)
+			return rc;
+		parser->block = BLOCK_EXTERNAL_MODEM;
+		parser->external_modem = modem;
+		return KN_CONFIG_OK;
+	}
+
 	return set_error(parser->config, KN_CONFIG_ERR_UNKNOWN_BLOCK, line_no,
 	    "unknown block");
+}
+
+static enum kn_config_error
+external_modem_key_set(struct parser *parser, char **tokens,
+	size_t token_count, size_t line_no)
+{
+	struct kn_external_modem_config *modem;
+	unsigned long value;
+	char *end;
+
+	if (token_count != 2)
+		return set_error(parser->config, KN_CONFIG_ERR_PARSE, line_no,
+		    "invalid external-modem key");
+
+	modem = parser->external_modem;
+
+	if (strcmp(tokens[0], "enabled") == 0) {
+		if (key_seen(&modem->has_enabled, parser->config, line_no) != 0)
+			return parser->config->error;
+		if (parse_bool(tokens[1], &modem->enabled) != KN_CONFIG_OK)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "type") == 0) {
+		if (key_seen(&modem->has_type, parser->config, line_no) != 0)
+			return parser->config->error;
+		modem->type = kn_external_modem_type_parse(tokens[1]);
+		if (modem->type == KN_EXTERNAL_MODEM_TYPE_NONE)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem type");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "mode") == 0) {
+		if (key_seen(&modem->has_mode, parser->config, line_no) != 0)
+			return parser->config->error;
+		modem->mode = kn_external_modem_mode_parse(tokens[1]);
+		if (modem->mode == KN_EXTERNAL_MODEM_MODE_NONE)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem mode");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "host") == 0) {
+		if (key_seen(&modem->has_host, parser->config, line_no) != 0)
+			return parser->config->error;
+		if (kn_external_modem_host_valid(tokens[1]) == 0)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem host");
+		return copy_field(modem->host, sizeof(modem->host), tokens[1],
+		    parser->config, line_no);
+	}
+
+	if (strcmp(tokens[0], "port") == 0) {
+		if (key_seen(&modem->has_port, parser->config, line_no) != 0)
+			return parser->config->error;
+		errno = 0;
+		value = strtoul(tokens[1], &end, 10);
+		if (errno != 0 || *end != '\0' || value > UINT16_MAX)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem port");
+		modem->port = (uint16_t)value;
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "auto-start") == 0) {
+		if (key_seen(&modem->has_auto_start, parser->config,
+		    line_no) != 0)
+			return parser->config->error;
+		if (parse_bool(tokens[1], &modem->auto_start) != KN_CONFIG_OK)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem auto-start value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "tx-enabled") == 0) {
+		if (key_seen(&modem->has_tx_enabled, parser->config,
+		    line_no) != 0)
+			return parser->config->error;
+		if (parse_bool(tokens[1], &modem->tx_enabled) != KN_CONFIG_OK)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem tx-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "connect-enabled") == 0) {
+		if (key_seen(&modem->has_connect_enabled, parser->config,
+		    line_no) != 0)
+			return parser->config->error;
+		if (parse_bool(tokens[1], &modem->connect_enabled) !=
+		    KN_CONFIG_OK)
+			return set_error(parser->config, KN_CONFIG_ERR_INVALID_VALUE,
+			    line_no, "invalid external modem connect-enabled value");
+		return KN_CONFIG_OK;
+	}
+
+	if (strcmp(tokens[0], "notes") == 0) {
+		if (key_seen(&modem->has_notes, parser->config, line_no) != 0)
+			return parser->config->error;
+		return copy_field(modem->notes, sizeof(modem->notes),
+		    tokens[1], parser->config, line_no);
+	}
+
+	return set_error(parser->config, KN_CONFIG_ERR_UNKNOWN_KEY, line_no,
+	    "unknown external-modem key");
 }
 
 static enum kn_config_error
