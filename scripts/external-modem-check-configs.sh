@@ -11,6 +11,8 @@ configs="
 packaging/examples/kilonode-external-modem-status.conf
 packaging/examples/kilonode-mercury-planned.conf
 packaging/examples/kilonode-hobbyist-local.conf
+packaging/examples/kilonode-hobbyist-v0.2-alpha.conf
+packaging/examples/kilonode-mercury-discovery.conf
 packaging/examples/kilonode-rx-bench-tcp-kiss.conf
 "
 

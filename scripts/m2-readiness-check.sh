@@ -21,6 +21,7 @@ run()
 run ./scripts/ax25-loopback-fixtures.sh
 run ./scripts/ax25-connect-dry-run-fixtures.sh
 run ./scripts/external-modem-check-configs.sh
+run ./scripts/mercury-discovery-check.sh
 run ./scripts/ax25-no-transmit-check.sh
 
 for test_bin in \

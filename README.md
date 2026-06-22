@@ -78,6 +78,7 @@ The fastest no-hardware path is the hobbyist smoke check:
 ```sh
 ./scripts/build.sh
 ./scripts/hobbyist-smoke.sh
+./scripts/hobbyist-first-run.sh
 ```
 
 This checks the local hobbyist config, AX.25 loopback demo, CONNECT dry-run
@@ -86,7 +87,13 @@ planner, local BBS store test, and no-transmit gates.
 The recommended local preview config is:
 
 ```sh
-./build/kilonoded --config packaging/examples/kilonode-hobbyist-local.conf --check-config
+./build/kilonoded --config packaging/examples/kilonode-hobbyist-v0.2-alpha.conf --check-config
+```
+
+Run the v0.2-alpha readiness checks before using the hobbyist preview:
+
+```sh
+./scripts/v02-alpha-readiness-check.sh
 ```
 
 Run a local AX.25 loopback payload demo:
@@ -102,7 +109,8 @@ Run a local CONNECT dry-run:
 ```
 
 More detail is in
-[Getting Started for Hobbyists](docs/getting-started-hobbyist.md).
+[Getting Started for Hobbyists](docs/getting-started-hobbyist.md) and
+[Hobbyist v0.2-alpha Preview](docs/product/hobbyist-v0.2-alpha-preview.md).
 
 ## Build Profiles
 
@@ -220,6 +228,8 @@ forwarding.
 
 See [Modems](docs/modems/README.md) and
 [M2.8 External Modem Scaffold](docs/milestones/M2.8-external-modem-scaffold.md).
+Mercury-specific discovery material starts at
+[Mercury OFDM Discovery Pack](docs/modems/mercury-ofdm-discovery-pack.md).
 
 ## AX.25 Response Safety Gate
 

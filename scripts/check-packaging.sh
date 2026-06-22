@@ -86,8 +86,10 @@ check_config packaging/examples/kilonode.conf
 check_config packaging/examples/kilonode-minimal.conf
 check_config packaging/examples/kilonode-bbs-local.conf
 check_config packaging/examples/kilonode-hobbyist-local.conf
+check_config packaging/examples/kilonode-hobbyist-v0.2-alpha.conf
 check_config packaging/examples/kilonode-external-modem-status.conf
 check_config packaging/examples/kilonode-mercury-planned.conf
+check_config packaging/examples/kilonode-mercury-discovery.conf
 check_config packaging/examples/kilonode-monitor-only.conf
 check_config packaging/examples/kilonode-tx-test-only.conf
 check_config packaging/examples/kilonode-tx-lab-only.conf
@@ -122,10 +124,20 @@ require_file docs/bench/vara-external-modem.md
 require_file docs/bench/mercury-ofdm-external-modem.md
 require_file docs/bench/ardop-external-modem.md
 require_file docs/getting-started-hobbyist.md
+require_file docs/product/README.md
+require_file docs/product/hobbyist-v0.2-alpha-preview.md
+require_file docs/product/first-run-checklist.md
+require_file docs/product/what-works-today.md
+require_file docs/product/what-is-still-blocked.md
+require_file docs/product/modem-support-status.md
 require_file docs/modems/README.md
 require_file docs/modems/direwolf-kiss.md
 require_file docs/modems/kilotnc-kiss.md
 require_file docs/modems/mercury-ofdm.md
+require_file docs/modems/mercury-ofdm-discovery-pack.md
+require_file docs/modems/mercury-ofdm-interface-questions.md
+require_file docs/modems/mercury-ofdm-test-plan.md
+require_file docs/modems/mercury-ofdm-capture-notes.md
 require_file docs/modems/vara-hf-fm.md
 require_file docs/modems/ardop.md
 require_file docs/modems/external-modem-discovery-checklist.md
@@ -140,6 +152,10 @@ require_file docs/milestones/M1-next-milestones.md
 require_file docs/milestones/M2.7-hobbyist-preview.md
 require_file docs/milestones/M2.8-external-modem-roadmap.md
 require_file docs/milestones/M2.8-external-modem-scaffold.md
+require_file docs/milestones/M2.9-hobbyist-v0.2-alpha-readiness.md
+require_file docs/milestones/M2.9-release-checklist.md
+require_file docs/milestones/M2.9-known-limitations.md
+require_file docs/milestones/M2.9-next-work.md
 require_file docs/release/v0.2-alpha-checklist.md
 
 require_file docs/safety/README.md
@@ -167,6 +183,11 @@ require_file scripts/ax25-response-bench-preflight.sh
 require_file scripts/external-modem-check-configs.sh
 require_file scripts/external-modem-status-smoke.sh
 require_file scripts/hobbyist-smoke.sh
+require_file scripts/hobbyist-first-run.sh
+require_file scripts/hobbyist-status.sh
+require_file scripts/v02-alpha-readiness-check.sh
+require_file scripts/mercury-discovery-check.sh
+require_file scripts/mercury-status-placeholder.sh
 require_file scripts/m1-docs-audit.sh
 require_file scripts/m1-test-inventory.sh
 require_file scripts/m1-safety-audit.sh
@@ -198,6 +219,9 @@ require_file tests/fixtures/safety/ax25-response-safety.report.expected
 require_file tests/fixtures/milestones/README.md
 require_file tests/fixtures/milestones/m1-required-checks.txt
 require_file tests/fixtures/milestones/m1-blocked-features.txt
+require_file tests/fixtures/product/README.md
+require_file tests/fixtures/product/v02-alpha-required-checks.txt
+require_file tests/fixtures/product/v02-alpha-blocked-features.txt
 
 check_manpage docs/man/kilonoded.8
 check_manpage docs/man/kilonodectl.1
@@ -220,8 +244,12 @@ if grep -R -n "$blocked_word" packaging scripts/install-local.sh \
 	scripts/bench-rx-workspace-report.sh scripts/ax25-safety-check.sh \
 	scripts/ax25-no-transmit-check.sh scripts/ax25-prepared-gate-report.sh \
 	scripts/ax25-response-bench-preflight.sh scripts/hobbyist-smoke.sh \
+	scripts/hobbyist-first-run.sh scripts/hobbyist-status.sh \
+	scripts/v02-alpha-readiness-check.sh \
 	scripts/external-modem-check-configs.sh \
 	scripts/external-modem-status-smoke.sh \
+	scripts/mercury-discovery-check.sh \
+	scripts/mercury-status-placeholder.sh \
 	scripts/m1-docs-audit.sh scripts/m1-test-inventory.sh scripts/m1-safety-audit.sh \
 	scripts/m1-compatibility-audit.sh scripts/m1-readiness-check.sh; then
 	echo "packaging files must not contain privileged helper commands"

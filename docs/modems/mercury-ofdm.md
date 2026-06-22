@@ -9,6 +9,14 @@ documented process or TCP interface after the interface discovery checklist is
 complete. No Mercury source is vendored, copied, linked, embedded, or used as an
 implementation reference.
 
-Use `packaging/examples/kilonode-mercury-planned.conf` to inspect the planned
-profile through KiloNode status commands. The config keeps Mercury disabled,
+Use `packaging/examples/kilonode-mercury-planned.conf` or
+`packaging/examples/kilonode-mercury-discovery.conf` to inspect the planned
+profile through KiloNode status commands. Both configs keep Mercury disabled,
 status-only, no autostart, no CONNECT, and no transmit.
+
+Discovery material:
+
+- [Mercury OFDM Discovery Pack](mercury-ofdm-discovery-pack.md)
+- [Mercury OFDM Interface Questions](mercury-ofdm-interface-questions.md)
+- [Mercury OFDM Test Plan](mercury-ofdm-test-plan.md)
+- [Mercury OFDM Capture Notes](mercury-ofdm-capture-notes.md)

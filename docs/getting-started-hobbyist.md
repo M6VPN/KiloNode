@@ -17,6 +17,7 @@ Run the hobbyist smoke check:
 
 ```sh
 ./scripts/hobbyist-smoke.sh
+./scripts/hobbyist-first-run.sh
 ```
 
 Expected output is a short list of `OK` lines ending with:
@@ -30,13 +31,13 @@ OK hobbyist-smoke hardware=false daemon_started=false tx_writes=0 dispatch=0 fx2
 Use the hobbyist local config for a localhost-only preview:
 
 ```sh
-./build/kilonoded --config packaging/examples/kilonode-hobbyist-local.conf --check-config
+./build/kilonoded --config packaging/examples/kilonode-hobbyist-v0.2-alpha.conf --check-config
 ```
 
 To run the daemon in the foreground:
 
 ```sh
-./build/kilonoded --config packaging/examples/kilonode-hobbyist-local.conf --foreground
+./build/kilonoded --config packaging/examples/kilonode-hobbyist-v0.2-alpha.conf --foreground
 ```
 
 In another terminal, query status:
@@ -99,6 +100,17 @@ Inspect modem profiles after starting a daemon with control enabled:
 
 Mercury OFDM is visible as a planned profile only. KiloNode does not launch
 Mercury or assume its interface details yet.
+
+For v0.2-alpha readiness, run:
+
+```sh
+./scripts/v02-alpha-readiness-check.sh
+./scripts/mercury-discovery-check.sh
+./scripts/mercury-status-placeholder.sh
+```
+
+Product preview notes live in
+`docs/product/hobbyist-v0.2-alpha-preview.md`.
 
 ## Current Limits
 

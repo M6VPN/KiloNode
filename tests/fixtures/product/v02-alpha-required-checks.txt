@@ -1,0 +1,9 @@
+# KiloNode v0.2-alpha required checks v1
+required build
+required unit-tests
+required hobbyist-smoke
+required no-transmit-check
+required external-modem-config-check
+required mercury-discovery-check
+required packaging-check
+required m2-readiness-check

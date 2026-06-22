@@ -243,5 +243,7 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | VARA FM external modem | planned | Future external modem adapter target, not BPQ/LinBPQ command compatibility |
 | VARA HF external modem | planned | Future external modem adapter target, not BPQ/LinBPQ command compatibility |
 | Mercury OFDM external modem | planned | Future Rhizomatica Mercury adapter target kept outside KiloNode source |
+| Mercury discovery pack | implemented | Product docs and discovery checklist do not change BPQ/LinBPQ compatibility scope |
+| v0.2-alpha hobbyist readiness | implemented | Readiness scripts do not run LinBPQ and keep compatibility work black-box only |
 | ARDOP external modem | planned | Future external TCP host adapter target |
 | Pactor external modem | planned | External modem adapter target |

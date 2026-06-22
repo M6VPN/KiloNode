@@ -23,6 +23,8 @@ ctest --test-dir build --output-on-failure
 ./scripts/m1-docs-audit.sh
 ./scripts/ax25-no-transmit-check.sh
 ./scripts/external-modem-check-configs.sh
+./scripts/mercury-discovery-check.sh
+./scripts/hobbyist-first-run.sh
 ./scripts/ax25-live-scheduler-smoke-check.sh
 ./scripts/ax25-safety-check.sh
 ./scripts/ax25-prepared-gate-report.sh

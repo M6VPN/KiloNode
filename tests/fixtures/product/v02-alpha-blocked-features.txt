@@ -1,0 +1,13 @@
+# KiloNode v0.2-alpha blocked features v1
+blocked live-connect
+blocked real-tx
+blocked tx-dispatch
+blocked rf-bbs
+blocked netrom
+blocked forwarding
+blocked mercury-implementation
+blocked vara-implementation
+blocked ardop-implementation
+blocked fx25-fec
+blocked ptt-control
+blocked channel-busy-policy

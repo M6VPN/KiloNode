@@ -60,3 +60,5 @@
 | FX.25 CONNECT dry-run coupling | not implemented | M2.6 CONNECT dry-run plans AX.25 setup intent only and reports FX.25 frame counts as zero. |
 | External modem boundary | scaffold | Mercury OFDM and other modem profiles are separate from FX.25 support. |
 | Mercury OFDM coupling | not implemented | Mercury is an external modem target and does not implement or imply FX.25 FEC. |
+| Mercury discovery pack | implemented | Discovery docs explicitly keep Mercury separate from FX.25 wrapping and FEC. |
+| v0.2-alpha FX.25 posture | planned | Product readiness docs keep FX.25 blocked and planned only. |

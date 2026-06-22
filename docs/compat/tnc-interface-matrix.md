@@ -48,6 +48,8 @@ Status values: `planned`, `partial`, `implemented`, `tested`.
 | VARA HF external modem | planned | Future external TCP modem adapter target |
 | External modem status scaffold | implemented | Config/profile/status model and read-only control commands, no process launch |
 | External modem profile control | tested | `MODEMS`, `MODEM`, `MODEM PROFILES`, and `MODEM PROFILE` are read-only |
+| v0.2-alpha hobbyist modem status path | implemented | Product docs and scripts show modem profiles without starting modem processes |
+| Mercury OFDM discovery pack | implemented | Discovery questions, test plan, capture notes, and status-only config are documented |
 | Mercury OFDM external modem | planned | First-class planned target for Rhizomatica Mercury, interface discovery required |
 | ARDOP external modem | planned | Future external TCP host adapter target |
 | Pactor external modem | planned | External modem adapter target |
